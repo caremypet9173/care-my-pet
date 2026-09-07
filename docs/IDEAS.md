@@ -49,5 +49,9 @@ produkt względem MVP właścicielskiego — wraca, gdy rdzeń się sprawdzi.
 - **Program partnerski dla weterynarzy** jako kanał dystrybucji.
 - **Wielojęzyczność** (np. ukraiński, angielski) — istotne przy wolontariuszach.
 - **Powiadomienia SMS** obok push i email.
+- **Moderator AI dla asystenta** — osobny model przepuszczający wiadomości i
+  blokujący konwersacje spoza domeny / próby nadużycia. W MVP wystarcza system
+  prompt + capy długości; moderator to hardening na v2 (dokłada koszt i złożoność:
+  każda wiadomość przechodzi przez drugi model).
 - **Kolejne gatunki** poza psem i kotem.
 - **Integracja z kalendarzem systemowym** (Google Calendar).

@@ -28,12 +28,25 @@ Odrzucamy subskrypcję i freemium na rzecz **przedpłaconego salda**:
 Trzon aplikacji: profil zwierzaka, historia medyczna, szczepienia i profilaktyka
 z przypomnieniami, kalendarz wizyt, powiadomienia, konta rodzinne.
 
-### Co jest płatne
-Zasoby zużywające realnie AI — przede wszystkim **analiza dokumentu z wynikami
-badań przez AI**, orientacyjnie **~0,5 EUR za analizę**.
+### Co jest płatne — cennik
 
-*(Otwarte: czy asystent konwersacyjny też schodzi z salda, czy jest darmowy w
-rozsądnym zakresie — patrz §5.)*
+Dwa zasoby zużywające realnie AI schodzą z tego samego salda:
+
+| Zasób | Cena z salda |
+|---|---|
+| Analiza dokumentu z wynikami badań (AI) | ~0,5 EUR / analiza |
+| Zapytanie do asystenta ponad dzienny limit | 0,01 EUR / zapytanie |
+
+Asystent konwersacyjny jest **darmowy do 20 wiadomości dziennie**; dopiero
+nadwyżka ponad limit schodzi z salda po 0,01 EUR za zapytanie. Rozliczenie jest
+**za pojedyncze zapytanie**, nie za paczkę — prostsze księgowanie salda i brak
+zmuszania użytkownika do kupowania z góry. Limit 20/dzień to parametr do rewizji
+po pierwszych danych o użyciu; w razie potrzeby pulę można podnieść bez zmiany
+modelu.
+
+**Do weryfikacji przy implementacji:** realny koszt zapytania asystenta należy
+zmierzyć tak samo jak koszt analizy (`koszt_analizy.py`), żeby potwierdzić, że
+0,01 EUR jest nad kosztem z marżą.
 
 ### Dlaczego prepaid, a nie subskrypcja
 Duża część docelowych użytkowników to opiekunowie okazjonalni: jeden zwierzak,
@@ -64,9 +77,7 @@ Wolumen AI należy monitorować od pierwszych użytkowników.
 
 ## 5. Otwarte pytania
 
-1. Czy asystent AH (poza analizą dokumentów) schodzi z salda, czy jest darmowy w
-   rozsądnym limicie?
-2. Jaka konkretna kwota za analizę i jakie nominały doładowań (np. 10 / 25 / 50 zł)?
-3. Jak zachęcić użytkownika okazjonalnego do pierwszego doładowania — darmowa
+1. Jaka konkretna kwota za analizę i jakie nominały doładowań (np. 10 / 25 / 50 zł)?
+2. Jak zachęcić użytkownika okazjonalnego do pierwszego doładowania — darmowa
    pierwsza analiza na start?
-4. Czy wprowadzać śledzenie trendów parametrów w czasie jako osobny płatny upsell?
+3. Czy wprowadzać śledzenie trendów parametrów w czasie jako osobny płatny upsell?

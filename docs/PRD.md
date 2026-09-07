@@ -91,6 +91,25 @@ Każdy wpis podpisany autorem i datą (kto i kiedy dodał/zmienił).
 - Sugeruje, co przygotować przed wizytą, na podstawie historii.
 - Informuje o zalecanych interwałach profilaktyki dla gatunku i wieku.
 
+**Limit i płatność:** darmowy do **20 wiadomości dziennie**; po przekroczeniu
+każde kolejne zapytanie schodzi z salda po **0,01 EUR** (patrz MONETIZATION).
+Limit 20/dzień jest parametrem do rewizji po pierwszych danych o użyciu.
+
+**Ograniczenie zakresu:** system prompt trzyma asystenta przy temacie zdrowia i
+opieki nad zwierzakiem i odmawia zadań spoza domeny (ochrona przed „programowaniem"
+na asystencie).
+
+**Zabezpieczenie kosztowe (wymóg implementacyjny):** koszt zależy od tokenów, nie
+od liczby wiadomości, więc obok limitu 20/dzień obowiązują dwa twarde capy:
+- **Cap wejścia** — twardy limit długości pojedynczej wiadomości, walidowany w
+  aplikacji **przed** wysłaniem do modelu (sam system prompt tego nie chroni —
+  koszt nalicza się od tego, co użytkownik wysłał). Blokuje wklejanie ścian tekstu
+  typu „odpowiedz na 100 pytań…".
+- **Cap wyjścia** — `max_tokens` na odpowiedź, żeby ograniczyć koszt generacji.
+
+Konkretne wartości capów ustalane przy implementacji (na podstawie typowej
+długości realnych pytań).
+
 ### 5.7 Odczyt wyników badań przez AI  *(funkcja płatna — patrz MONETIZATION)*
 Użytkownik wrzuca plik z wynikami (PDF / JPG / PNG / skan). System:
 - **Ekstrakcja** — odczytuje parametry i wartości.
@@ -170,8 +189,6 @@ odpowiedź na ryzyko halucynacji przy danych medycznych.
 
 ## 10. Otwarte pytania
 
-1. Czy asystent AI poza analizą dokumentów też jest limitowany saldem, czy
-   darmowy w rozsądnym zakresie? (dotyka MONETIZATION)
-2. Jak aktywować użytkownika okazjonalnego (jeden zwierzak, 2–3 wizyty/rok)?
-3. Powiadomienia SMS — potrzebne, czy push + email wystarczą na MVP?
-4. Docelowy termin launchu MVP?
+1. Jak aktywować użytkownika okazjonalnego (jeden zwierzak, 2–3 wizyty/rok)?
+2. Powiadomienia SMS — potrzebne, czy push + email wystarczą na MVP?
+3. Docelowy termin launchu MVP?

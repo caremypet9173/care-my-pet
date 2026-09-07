@@ -73,6 +73,21 @@ nie generuje kosztu tokenów przy każdym otwarciu.
 wyciąga wartości liczbowe z opisowych raportów (np. wymiary narządów z opisu USG).
 Do walidacji ręcznej przed dopuszczeniem ekstrakcji liczbowej z opisów.
 
+### Kontrola kosztu asystenta konwersacyjnego
+
+Koszt zapytania zależy od tokenów, nie od liczby wiadomości, więc limit 20/dzień
+nie wystarcza — trzeba ograniczyć rozmiar pojedynczego wywołania. Trzy warstwy:
+
+- **Cap wejścia (twardy, w aplikacji).** Walidacja długości wiadomości **przed**
+  wysłaniem do modelu. To musi być kod, nie instrukcja w system promptcie — koszt
+  nalicza się od tego, co użytkownik wysłał, zanim model zareaguje na prompt.
+- **Ograniczenie kontekstu.** Ilość historii zwierzaka doklejanej do promptu jest
+  wyznaczana po stronie aplikacji, więc górny koszt zapytania jest z góry znany
+  niezależnie od treści pytania.
+- **Cap wyjścia.** `max_tokens` na odpowiedź ogranicza koszt generacji.
+
+Konkretne wartości dobierane przy implementacji.
+
 ---
 
 ## 4. Model danych (szkic)
