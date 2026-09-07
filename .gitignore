@@ -3,7 +3,12 @@
 # dependencies
 /node_modules
 /.pnp
-.pnp.js
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
 # testing
 /coverage
@@ -23,10 +28,15 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# local env files
-.env*.local
+# env files (nigdy nie commituj sekretów; .env.example zostaje)
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
 
 # vercel
 .vercel
@@ -34,3 +44,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/
+
+# Claude Code (osobiste zgody i lokalne nadpisania — nie do repo)
+.claude/settings.local.json
+
+# IDE / edytor
+.idea/
+.vscode/*
+!.vscode/extensions.json
