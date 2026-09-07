@@ -23,8 +23,9 @@ tyle infrastruktury, żeby dzielić to na dwa pliki.
 | Odczyt plików | Claude Haiku |
 | Ekstrakcja danych z dokumentów | Gemini (Pro) |
 
-**Typografia:** Plus Jakarta Sans (nagłówki), DM Sans (tekst).
-**Kolory marki:** zieleń #1D7A4F, akcent bursztynowy #BA7517, tło kremowe #faf8f5.
+**Typografia i kolory:** patrz `DESIGN.md`. UI budowany na tokenach
+semantycznych (`--color-primary` itd.), nie na wartościach hex w kodzie —
+motywy kolorystyczne są przełączalne.
 
 ---
 
