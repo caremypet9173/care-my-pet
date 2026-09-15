@@ -1,7 +1,7 @@
 # ROADMAP
 
-**Wersja:** 0.1 (MVP)
-**Data:** 2026-09-07
+**Wersja:** 0.2 (MVP)
+**Data:** 2026-09-15
 **Powiązane:** PRD.md, TECH.md, MONETIZATION.md
 
 Trzy kamienie milowe do launchu MVP, potem kierunki rozwoju. Kolejność jest
@@ -50,7 +50,19 @@ Domknięcie modelu i funkcji, które monetyzujemy.
 
 ## Marketing przedlaunchowy (równolegle do M1–M2)
 
-- Landing page + zapis na listę oczekujących (Supabase).
+- Landing page + zapis na listę oczekujących. To ta sama warstwa publiczna, która
+  po launchu rozrasta się o blog (patrz niżej) — nie budujemy dwóch osobnych landingów.
 - Grupy na Facebooku dla właścicieli psów i kotów.
 - TikTok / Instagram — krótkie video pokazujące odczyt wyników przez AI
   (efektowne i łatwe do pokazania); formaty z kotami, napisy, lektor AI, montaż w CapCut.
+
+---
+
+## Warstwa publiczna — blog (równolegle, po M1)
+
+Blog na `caremypet.pl` prowadzony przez osobę contentową z zewnętrznego CMS (Sanity),
+poza Supabase. Szczegóły techniczne w `TECH.md` (§8 „Warstwa publiczna").
+
+**Kolejność:** rdzeń aplikacji (M1) ma pierwszeństwo. Blog nie może wyprzedzić ani
+opóźnić MVP — infrastruktura contentowa wchodzi, gdy panel stoi. W konflikcie
+priorytetów rozstrzyga dowiezienie MVP.

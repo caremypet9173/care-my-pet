@@ -19,7 +19,7 @@ Decyzje produktowe i techniczne żyją w `docs/`. Przed pracą nad funkcją prze
 odpowiedni dokument, nie zgaduj:
 
 - `docs/PRD.md` — zakres, funkcje, user stories, co poza zakresem
-- `docs/TECH.md` — stack, architektura, pipeline AI, model danych
+- `docs/TECH.md` — stack, architektura, pipeline AI, model danych, hosting, warstwa publiczna
 - `docs/MONETIZATION.md` — model płatności (prepaid) i cennik
 - `docs/ROADMAP.md` — kolejność prac (M1 → M3)
 - `docs/IDEAS.md` — zakres odłożony na v2+ (nie implementować bez decyzji)
@@ -31,14 +31,16 @@ zamiast działać na nieaktualnym założeniu.
 
 - Frontend: Next.js 15 (App Router), React 19, TypeScript, Tailwind, shadcn/ui
 - Backend: Supabase — PostgreSQL + RLS, Auth, Storage, Edge Functions (Deno), Realtime
-- Hosting: Vercel (tylko UI + Cron)
+- Hosting: self-hosted Next.js (origin) za Cloudflare; orkiestracja K8s (dev-ops)
+- Treść publiczna: landing + blog jako route groups w tej samej apce; blog z zewnętrznego CMS (Sanity), poza Supabase
 - PWA: next-pwa + Workbox; powiadomienia: Web Push (VAPID) + Resend (email)
 - AI: Gemini (ekstrakcja) → Claude Sonnet 4.5 (interpretacja/asystent), Claude Haiku (odczyt plików)
 
 ## Reguły architektoniczne
 
-- **Logika biznesowa w Supabase Edge Functions.** Vercel obsługuje wyłącznie UI i
-  wyzwalacze Cron — nie umieszczaj tam logiki domenowej.
+- **Logika biznesowa w Supabase Edge Functions.** Warstwa hostingu (self-hosted
+  Next.js) obsługuje wyłącznie UI i wyzwalacze Cron — nie umieszczaj tam logiki
+  domenowej.
 - **Izolacja danych przez RLS.** Każdy wiersz nosi `gospodarstwo_id`; polityki RLS
   odcinają dostęp do cudzych danych na poziomie bazy. Każda migracja musi
   uwzględniać polityki RLS.

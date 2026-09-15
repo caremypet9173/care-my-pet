@@ -1,7 +1,7 @@
 # PRD — Care My Pet
 
-**Wersja:** 0.1 (MVP)
-**Data:** 2026-09-07
+**Wersja:** 0.2 (MVP)
+**Data:** 2026-09-15
 **Status:** Aktywny
 **Powiązane:** TECH.md, MONETIZATION.md, ROADMAP.md
 
@@ -24,6 +24,12 @@ odczytuje wyniki z dokumentów i odpowiada na pytania o historię pupila.
 Fundacji, schronisk i organizacji prozwierzęcych. Ten segment (role zespołowe,
 domy tymczasowe, adopcje, ewidencja ustawowa) jest realny, ale świadomie
 odłożony do v2 — patrz `IDEAS.md`.
+
+### Warstwa publiczna (poza zakresem funkcjonalnym aplikacji)
+Landing i blog na `caremypet.pl` to równoległy strumień marketingowo-contentowy,
+prowadzony przez osobę contentową (blog z zewnętrznego CMS). Nie jest to funkcja
+panelu i nie zmienia zakresu aplikacji („wyłącznie właściciel prywatny").
+Szczegóły techniczne w `TECH.md` (§8 „Warstwa publiczna").
 
 ---
 
