@@ -9,25 +9,37 @@
 
 ## 1. Logo — system znaków
 
-Marka używa **dwóch wersji znaku**, dobieranych wielkością. Nie miniaturyzuj
-pełnego logo — w małych rozmiarach zlewa się w plamę (zweryfikowane testem 32 px).
+Marka używa **dwóch wersji znaku**, dobieranych wielkością.
 
 | Wersja | Kiedy | Opis |
 |---|---|---|
 | **Pełne logo** | ≥ ~120 px — strona, nagłówek, materiały, prezentacje | Okrąg-uścisk: pies, kot, króliki, dłoń u dołu, łapa u góry, bursztynowe serce w centrum |
-| **Ikona** | favicon, awatary (GitHub, social), ikona PWA, ikony aplikacji | Pełne ciemnozielone koło + jedno bursztynowe serce. Bez pierścienia, bez zwierząt |
+| **Ikona** | favicon, PWA install icon, apple-touch-icon, ikony sklepowe, awatary (GitHub, social) — wszystkie rozmiary: 512 / 192 / 180 / 32 / 16 px | Pies i kot trzymani w dłoni, bursztynowe serce w centrum. Bez królików, bez łapy nad kołem |
+
+**Świadomy kompromis czytelności:** przy 32 i 16 px (favicon) ikona traci
+część czytelności — pies i kot zlewają się w kształt, choć serce w centrum
+pozostaje rozpoznawalne. Testowano osobną, uproszczoną wersję (samo koło +
+serce, bez zwierząt) dla tych rozmiarów — decyzja: **niewarta rozjazdu
+wizualnego między rozmiarami**, wolimy spójny znak wszędzie kosztem
+czytelności w najmniejszym rozmiarze.
 
 **Wordmark:** „Care My Pet" — Plus Jakarta Sans, bold. **Bez tagline'u.**
-W lockupie napis stoi po prawej od znaku. Przed użyciem produkcyjnym zamień tekst
-na krzywe.
+W lockupie napis stoi pod znakiem (wyśrodkowany).
+
+**Wektor (SVG):** świadomie nie prowadzimy. Produkt nie ma materiałów
+drukowanych ani zastosowań wymagających skalowania poza gotowe rozmiary
+rastrowe — wszystkie miejsca użycia (favicon, PWA, apple-touch-icon, UI)
+docelowo są PNG w stałych rozmiarach (patrz „Eksport" niżej). Źródłem prawdy
+dla kolorów i rozmiarów są skrypty w `assets/brand/tools/`, nie plik wektorowy.
 
 ### Zasady
-- Ikona ma **wypełnione koło**, nie pierścień — pierścień ginie poniżej 32 px.
 - Serce to jedyny ciepły akcent i główna dominanta — nie osłabiaj go dodatkowymi
   elementami w wersji ikonowej.
 - **Monogram (CMP / litery) nie jest częścią identyfikacji** — odrzucony
   świadomie; znak plus wordmark wystarczają.
 - Cienkie detale (wąsy kota, palce dłoni) istnieją tylko w pełnym logo.
+- Ikona to uproszczenie pełnego logo (bez królików, bez łapy nad kołem), nie
+  osobna kompozycja — zachowuje pozę psa, kota i dłoni z pełnego logo.
 - Znak marki pozostaje **zielono-bursztynowy niezależnie od wybranego motywu UI**.
 
 ### Uwaga o zakresie
@@ -37,7 +49,8 @@ niż bieżący zakres aplikacji, a model danych jest przygotowany na kolejne gat
 
 ### Eksport
 Z ikony wygeneruj PNG w rozmiarach **512, 192, 180, 32, 16** (PWA i iOS wolą PNG
-niż SVG). Sprawdzaj czytelność zawsze w 16 px, nie w 100%.
+niż SVG). Sprawdzaj czytelność zawsze w rzeczywistym rozmiarze docelowym (16 px,
+32 px), nie w 100% powiększeniu.
 
 ---
 
@@ -132,7 +145,7 @@ mają zbliżoną jasność — pilnuj kontrastu tekstu na akcencie.
 
 | Temat | Uwagi |
 |---|---|
-| Ciemny motyw | Nie zdefiniowany — wymaga osobnego przemyślenia kontrastów tekstu i powierzchni |
+| Ciemny motyw (tokeny UI: surface/text/border) | Nie zdefiniowany — wymaga osobnego przemyślenia kontrastów tekstu i powierzchni. **Znak marki i ikona są już zweryfikowane jako dark-mode-safe** (czytelne na ciemnym tle bez zmian) — patrz `assets/brand/README.md`. Wordmark ma osobny wariant z jasnym tekstem (`*-dark.png` per motyw), bo domyślny ciemnozielony ginie na ciemnym tle. Kolor tła użyty do testu (`#0B1F16`) jest prowizoryczny, nie jest oficjalnym tokenem |
 | Wybór motywu domyślnego po testach | Forest domyślnie; do weryfikacji na żywym UI |
 | Czy motyw jest przełączalny przez użytkownika | Czy to ustawienie w aplikacji, czy tylko narzędzie deweloperskie |
 | Kontrast WCAG | Każdy motyw zweryfikować pod kątem czytelności tekstu na tłach |
