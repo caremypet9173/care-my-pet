@@ -1,7 +1,7 @@
 # PRD — Care My Pet
 
-**Wersja:** 0.2 (MVP)
-**Data:** 2026-09-15
+**Wersja:** 0.3 (MVP / pilotaż)
+**Data:** 2026-09-28
 **Status:** Aktywny
 **Powiązane:** TECH.md, MONETIZATION.md, ROADMAP.md
 
@@ -25,11 +25,23 @@ Fundacji, schronisk i organizacji prozwierzęcych. Ten segment (role zespołowe,
 domy tymczasowe, adopcje, ewidencja ustawowa) jest realny, ale świadomie
 odłożony do v2 — patrz `IDEAS.md`.
 
-### Warstwa publiczna (poza zakresem funkcjonalnym aplikacji)
-Landing i blog na `caremypet.pl` to równoległy strumień marketingowo-contentowy,
-prowadzony przez osobę contentową (blog z zewnętrznego CMS). Nie jest to funkcja
-panelu i nie zmienia zakresu aplikacji („wyłącznie właściciel prywatny").
-Szczegóły techniczne w `TECH.md` (§8 „Warstwa publiczna").
+### Sposób uruchomienia — cichy pilotaż
+
+Najpierw Wojtek używa serwisu dla swoich czterech kotów i obszernego zbioru
+prawdziwych badań. Następnie zaprasza przyjaciół. Dostęp do pilotażu jest
+kontrolowany; każdy znajomy ma własne gospodarstwo, chyba że został świadomie
+zaproszony do wspólnej opieki. Zaproszenie do serwisu nie nadaje dostępu do kotów Wojtka.
+
+M1 jest opanowane w odrębnych PoC. Pozostaje integracja i weryfikacja całego
+przepływu na docelowym środowisku, a nie ponowne udowadnianie tych samych funkcji.
+Pełna lista funkcji poniżej opisuje docelowe MVP; nie każda jest bramką pilotażu.
+
+### Strona główna i warstwa publiczna
+
+Forma strony głównej pozostaje otwarta. Klasyczny landing ani lista oczekujących
+nie są wymaganiami. Pilotaż potrzebuje czytelnego wejścia do aplikacji i logowania.
+Blog, SEO i kampania pozyskania użytkowników są odłożone do decyzji o szerszym
+otwarciu. Kierunek techniczny warstwy publicznej: `TECH.md` §8.
 
 ---
 
@@ -97,7 +109,7 @@ Każdy wpis podpisany autorem i datą (kto i kiedy dodał/zmienił).
 - Sugeruje, co przygotować przed wizytą, na podstawie historii.
 - Informuje o zalecanych interwałach profilaktyki dla gatunku i wieku.
 
-**Limit i płatność:** darmowy do **20 wiadomości dziennie**; po przekroczeniu
+**Docelowy limit i płatność (po pilotażu):** darmowy do **20 wiadomości dziennie**; po przekroczeniu
 każde kolejne zapytanie schodzi z salda po **0,01 EUR** (patrz MONETIZATION).
 Limit 20/dzień jest parametrem do rewizji po pierwszych danych o użyciu.
 
@@ -116,7 +128,7 @@ od liczby wiadomości, więc obok limitu 20/dzień obowiązują dwa twarde capy:
 Konkretne wartości capów ustalane przy implementacji (na podstawie typowej
 długości realnych pytań).
 
-### 5.7 Odczyt wyników badań przez AI  *(funkcja płatna — patrz MONETIZATION)*
+### 5.7 Odczyt wyników badań przez AI  *(docelowo płatna — patrz MONETIZATION)*
 Użytkownik wrzuca plik z wynikami (PDF / JPG / PNG / skan). System:
 - **Ekstrakcja** — odczytuje parametry i wartości.
 - **Walidacja norm** — porównuje z normami dla gatunku i wieku, flaguje odchylenia.
@@ -181,7 +193,18 @@ odpowiedź na ryzyko halucynacji przy danych medycznych.
 
 ---
 
-## 9. Metryki sukcesu (6 miesięcy)
+## 9. Kryteria pilotażu i późniejsze metryki
+
+Najpierw mierzymy użyteczność na rzeczywistych danych:
+
+- Czy można wygodnie prowadzić dokumentację wszystkich czterech kotów i odnaleźć wynik?
+- Jak często odczyt AI wymaga korekty wartości, jednostki, daty lub przypisania do kota?
+- Jaki jest czas i koszt analizy dokumentu, również przy błędzie i ponowieniu?
+- Czy znajomi samodzielnie dodają pupila i badanie oraz wracają przy kolejnej potrzebie?
+- Czy izolacja gospodarstw i odtworzenie bazy wraz z plikami zostały sprawdzone?
+
+Wyniki i progi akceptacji ustalamy na podstawie pilotażu. Poniższe dawne cele
+wzrostowe są hipotezą dla etapu publicznego; nie obowiązują jako kryteria cichego startu.
 
 | Metryka | Cel |
 |---|---|
@@ -197,4 +220,6 @@ odpowiedź na ryzyko halucynacji przy danych medycznych.
 
 1. Jak aktywować użytkownika okazjonalnego (jeden zwierzak, 2–3 wizyty/rok)?
 2. Powiadomienia SMS — potrzebne, czy push + email wystarczą na MVP?
-3. Docelowy termin launchu MVP?
+3. Kiedy rozszerzyć pilotaż na przyjaciół i jakie wyniki uzasadnią publiczne otwarcie?
+4. Forma strony głównej. Hosting pilotażu wybrany: Vercel + Supabase managed (`HOSTING.md`).
+5. Budżet AI i zasady finansowania użycia przez uczestników pilotażu.

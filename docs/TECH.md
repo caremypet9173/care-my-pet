@@ -1,7 +1,7 @@
 # TECH — Stack i architektura
 
-**Wersja:** 0.2 (MVP)
-**Data:** 2026-09-15
+**Wersja:** 0.3 (MVP / pilotaż)
+**Data:** 2026-09-28
 **Status:** Aktywny
 **Powiązane:** PRD.md, ROADMAP.md, MONETIZATION.md, DESIGN.md
 
@@ -14,9 +14,9 @@ hosting i warstwa publiczna.
 
 | Warstwa | Technologia |
 |---|---|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, shadcn/ui |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Tabler Icons; komponenty Signature |
 | Backend / BaaS | Supabase — PostgreSQL + RLS, Auth, Storage, Edge Functions (Deno), Realtime |
-| Hosting | self-hosted (Next.js za Cloudflare); orkiestracja K8s — patrz §7 |
+| Hosting | Vercel (Next.js) + Supabase managed (backend i pliki) — patrz HOSTING.md |
 | PWA | @ducanh2912/next-pwa + Workbox |
 | Powiadomienia | VAPID Web Push (push) + Resend (email) |
 | Asystent AI | Claude Sonnet 4.5 |
@@ -32,7 +32,7 @@ motywy kolorystyczne są przełączalne.
 ## 2. Zasady architektury
 
 - **Cała logika biznesowa w Supabase Edge Functions.** Warstwa hostingu
-  (self-hosted Next.js) obsługuje wyłącznie UI i wyzwalacze Cron — nie trzyma
+  (Vercel lub własny Next.js) obsługuje wyłącznie UI i wyzwalacze Cron — nie trzyma
   logiki domenowej.
 - **Auth przez Supabase** (`@supabase/ssr`), Next.js Middleware jako bramka UI.
 - **Izolacja danych przez RLS.** Właściciele współdzielą jedną bazę; każdy wiersz
@@ -135,177 +135,65 @@ schematu jest w toku (domykana po ustaleniu warstwy wizualnej wyników).
 
 ---
 
-## 7. Hosting i infrastruktura
+## 7. Hosting i infrastruktura — Vercel + Supabase managed
 
-Warstwa aplikacji i danych stoi na własnej infrastrukturze (self-hosted), z Cloudflare
-jako zewnętrzną warstwą brzegową — zamiast Vercel + managed Supabase.
+**Decyzja 2026-09-28:** pilotaż na Vercel Hobby + Supabase Cloud Free.
+Własny serwer jest dopiero w planach. Dostępność potencjalnego administratora
+pozostaje atutem przy ewentualnej późniejszej migracji.
 
-| Warstwa | Rozwiązanie |
-|---|---|
-| Origin — aplikacja | Next.js self-hosted (`next start` / kontener) |
-| Origin — backend / dane | Supabase self-hosted (Postgres+RLS, Auth, Storage, Edge Functions) |
-| Brzeg / CDN / TLS / DDoS | Cloudflare (proxy przed origin) |
-| Orkiestracja / ops | Kubernetes — prowadzony przez dev-ops (patrz *Podział ról*) |
+Uzasadnienie i porównanie: [HOSTING.md](HOSTING.md). Wybór architektury nie oznacza
+jeszcze utworzenia usług ani zakupu płatnych planów.
 
-Uzasadnienie zmiany względem założeń pierwotnych: pełna kontrola nad lokalizacją danych
-medycznych (argument RODO), brak kosztów managed przy wczesnej skali oraz dostępność
-kompetencji dev-ops w zespole. Wcześniejsze „bez Dockera/Kubernetes" wynikało z założenia,
-że ops spada na jedną osobę bez tych kompetencji; to założenie już nie obowiązuje.
-Przenośność zostaje: pod spodem to Postgres + czyste, numerowane migracje + RLS, więc
-powrót na managed (lub inny hosting) pozostaje niskotarciowy.
+Next.js działa na Vercel; baza, Auth, Storage i Edge Functions w Supabase managed.
+AI i poczta są osobnymi usługami. Logika domenowa pozostaje w Edge Functions;
+konfigurację wyzwalaczy Cron ustalimy przy wdrożeniu.
 
-### Podział ról
+### Utrzymanie i ewentualny późniejszy self-host
 
-- **Aplikacja / produkt (Wojtek):** kod Next.js, logika w Edge Functions, model danych,
-  migracje, warstwa AI. Właściciel decyzji produktowych.
-- **Infrastruktura / ops (dev-ops):** klaster K8s, deploymenty, sieć, TLS, monitoring,
-  backupy, bezpieczeństwo serwerów.
+W pilotażu dostawcy utrzymują infrastrukturę usług; po naszej stronie pozostają
+kod, konfiguracja dostępu, kontrola kosztów i odtworzenie danych wraz z kopiami
+plików. Poniższy podział z administratorem dotyczy dopiero własnego hostingu.
 
-**Twarda zasada:** infrastruktura idzie za potrzebami produktu, nie odwrotnie. W konflikcie
-„dowieźć MVP" vs „rozbudować infra" rozstrzyga właściciel produktu.
+Wojtek odpowiada za produkt, kod, model danych i AI. Administrator za uzgodniony
+zakres aktualizacji, sieci, TLS, monitoringu, backupów i odtwarzania.
+Konfiguracja wersjonowana, sekrety poza repo; właściciel ma dostęp i instrukcję
+odtworzenia niezależną od dostępności administratora. Backup obejmuje bazę
+**i pliki badań**, z testem odtworzenia.
 
-### Zabezpieczenia (warunki wejścia w self-host na K8s)
+K8s nie jest wymaganiem. Propozycja dla jednego serwera: Docker Compose.
+Istniejący, utrzymywany klaster można wykorzystać po ocenie kosztu.
+Dostęp administratora i faktycznych dostawców uwzględniamy w dokumentach
+prywatności. Lokalizacja serwera nie opisuje przepływu danych do dostawców AI.
 
-Bus factor infrastruktury jest realny — poniższe są obowiązkowe, nie opcjonalne:
+### Cache
 
-- **Infra jako kod, w repo.** Manifesty K8s, konfiguracja klastra, IaC — w repozytorium,
-  nie na prywatnym dysku. Cała infrastruktura odtwarzalna bez dostępu do jednej osoby.
-- **Runbook odtworzeniowy.** Krótki dokument: gdzie to stoi, jak zrobić redeploy, jak
-  odtworzyć z backupu, gdzie są sekrety. Cel: brak bezradności w awarii i możliwość
-  przekazania ops komuś innemu.
-- **Backupy bazy weryfikowane przez właściciela.** Wojtek niezależnie potwierdza, że
-  backupy istnieją i dają się odtworzyć. Backup niezweryfikowany = nieistniejący.
-- **RODO / umowa powierzenia.** Dev-ops ma dostęp root do danych medycznych obywateli UE
-  → wymagana umowa powierzenia przetwarzania i jasny zakres odpowiedzialności
-  administrator / procesor.
+Panel, odpowiedzi sesyjne i badania nie trafiają do publicznego cache.
+Publiczne assety mogą być cache'owane. TTL linku nie oznacza jednorazowości.
+Self-host wymaga konfiguracji reverse proxy, TLS, obrazów i harmonogramów;
+wiele instancji wymaga uzgodnienia cache i rewalidacji.
+[Dokumentacja Next.js](https://nextjs.org/docs/app/guides/self-hosting).
 
-### Cache i warstwy (Cloudflare)
+## 8. Strona główna i późniejsza warstwa publiczna
 
-Domyślnie Cloudflare cache'uje tylko statyczne assety, **nie HTML** — bezpieczny punkt
-startu. Reguły jawne:
+Wybrana strona główna: „06 — Care My Pet Signature” ze Stitch (2026-10-01).
+Fundament frontendu i publiczne demo są wdrożone lokalnie w repo; logowanie
+i zaproszenia wymagają integracji backendu. Lista oczekujących, cennik i blog
+nie są wymagane. Zakres pierwszej implementacji opisuje `IMPLEMENTATION.md`.
+Ukrycie rejestracji lub noindex nie zastępuje kontroli dostępu w backendzie.
 
-| Ścieżka | Cache |
-|---|---|
-| `/_next/static/*` (assety z hashem) | Agresywnie, immutable |
-| `/`, `/blog/*`, `/cennik` (publiczne, statyczne) | Tak — ISR + jawna reguła |
-| `/app/*` (panel, za auth) | Nigdy — bypass |
-| Pliki badań (signed URLs, TTL) | Nigdy — prywatne, jednorazowe |
+Kierunek: jeden projekt Next.js, wspólne tokeny marki, osobne route groups dla
+strony głównej, logowania i panelu. Panel pod /app/*, za autoryzacją, z noindex.
+Route groups nie pojawiają się w URL.
 
-Dodatkowy pas bezpieczeństwa: bypass cache przy obecności cookie sesji.
-**Zasada nadrzędna:** domyślnie bypass, jawnie whitelistuj publiczne — nie odwrotnie.
+### Po decyzji o publicznym otwarciu
 
-Pliki z badaniami nie przechodzą przez publiczny cache. Serwowane przez signed URLs
-z krótkim TTL z Supabase Storage, wyłącznie zalogowanemu właścicielowi / weterynarzowi
-(read-only link z TTL z modelu danych, §4).
+- Landing pozostaje jedną z opcji; wtedy wraca temat bloga i SEO.
+- Sanity pozostaje dotychczasowym wyborem CMS dla osoby nietechnicznej.
+  Autor treści nie otrzymuje dostępu do bazy kartotek.
+- Metadane, sitemap, Article JSON-LD, podglądy społecznościowe oraz informacja,
+  że treści zdrowotne nie zastępują konsultacji z weterynarzem.
+- Artykuły jako szkice; publikacja po przeglądzie właściciela.
+- CMS wyzwala rewalidację; przy cache Cloudflare także unieważnienie na brzegu.
+- Zakres aplikacji bez zmian: właściciele prywatni, psy i koty.
 
-### Co spada na nas przy self-hoście Next (na managed było automatyczne)
-
-- **`next/image`** — wymaga `sharp` na origin (albo offloadu), inaczej optymalizacja
-  obrazów obciąża Node origin.
-- **ISR przy >1 instancji** — potrzebny współdzielony cache handler, żeby instancje się
-  nie rozjechały (przy 1 instancji nieistotne).
-- **Edge Middleware** — wykona się w runtime Node, nie na brzegu (funkcjonalnie OK).
-- **Cron** — deklaratywny cron zastąpiony systemowym / mechanizmem klastra.
-
----
-
-## 8. Warstwa publiczna (landing + blog)
-
-Domyka odwołanie do „zewnętrznego CMS" i webhooka z §7.
-
-### Rozdział warstw
-
-Produkt ma dwie warstwy w **jednym projekcie Next.js**, nie dwa osobne projekty:
-
-- **Warstwa publiczna** — landing + blog na `caremypet.pl`. Publiczna, statyczna,
-  indeksowana. Cel: pozyskanie organiczne (SEO) i zaufanie.
-- **Aplikacja** — panel opiekuna (`login → panel`). Prywatna, dynamiczna, za auth.
-
-Rozdział realizujemy przez **route groups**, nie przez osobny deployment. Next per-trasa
-dzieli kod sam — odwiedzający landing nie pobiera JS-a panelu (bez ręcznego lazy-loadingu).
-
-**Dlaczego content jest tu ważniejszy niż w typowym SaaS:** odbiorca to użytkownik
-okazjonalny (jeden zwierzak, 2–3 wizyty/rok), który nie szuka „aplikacji", ale wpisuje
-w Google objawy i wyniki badań pupila. Artykuły trafiają w moment potrzeby i prowadzą
-do produktu, który te wyniki interpretuje.
-
-### Struktura tras
-
-```
-app/
-  (marketing)/           # publiczne, statyczne, indeksowane
-    layout.tsx           #   nagłówek/stopka marki, nawigacja publiczna
-    page.tsx             #   "/"          → landing
-    blog/
-      page.tsx           #   "/blog"      → lista artykułów
-      [slug]/page.tsx    #   "/blog/..."  → pojedynczy artykuł
-    cennik/page.tsx      #   "/cennik"    → z MONETIZATION.md
-  (auth)/
-    login/page.tsx       #   "/login"
-  (app)/                 # prywatne, dynamiczne, za auth
-    layout.tsx           #   powłoka panelu, wymaga sesji Supabase
-    app/...              #   "/app/..."   → panel opiekuna
-```
-
-Nawiasy w nazwach folderów **nie** wchodzą do URL-a — grupują trasy i przypinają osobny
-`layout.tsx`. Jedno repo, jeden deploy, wspólne tokeny marki — trzy światy z osobnymi powłokami.
-
-### Strategia renderowania
-
-| Warstwa | Render | Indeksowanie |
-|---|---|---|
-| `(marketing)` — landing | Statycznie (SSG) | Tak |
-| `(marketing)` — blog | Statycznie + ISR (rewalidacja przy publikacji) | Tak |
-| `(app)` — panel | Dynamicznie, per-request, za auth | `noindex` |
-
-Warstwa publiczna cache'owana na brzegu Cloudflare (patrz §7): szybka, tania, crawlowalna.
-Panel nigdy nie trafia do cache brzegowego.
-
-### CMS bloga — Sanity
-
-Blog prowadzi **osoba nietechniczna**, więc treść nie może iść przez commity w Git
-(MDX w repo odpada). Zasilamy blog z zewnętrznego headless CMS.
-
-**Wybór: Sanity.** Hostowany, prawdziwy edytor, workflow draft → publish, role, CDN na
-obrazki, dobra integracja z Next.
-
-**Twarda zasada — izolacja danych.** Autor treści zostaje **całkowicie poza Supabase**.
-Dostaje wyłącznie login do CMS-a; nigdy nie ma konta w bazie z danymi medycznymi. To nie
-tylko wygoda pisania — to zawężenie powierzchni dostępu do danych wrażliwych (bezpieczeństwo
-i RODO). Trzymanie artykułów w Supabase wymagałoby dania autorowi konta do tej samej bazy —
-świadomie tego unikamy.
-
-**Alternatywa — Payload 3** (Next-native, self-hostowalny). Odrzucona dla MVP: podpięty pod
-*ten sam* Supabase traci argument izolacji (wymuszałby osobną bazę) i dokłada ops. Sanity
-daje izolację „za darmo" i zero utrzymania.
-
-### Publikacja treści a cache brzegowy
-
-Publikacja musi domknąć cache na brzegu — inaczej wpis nie pojawi się do wygaśnięcia TTL:
-
-```
-CMS publish → webhook → rewalidacja ISR na origin → purge cache Cloudflare dla ścieżki (API CF)
-```
-
-Blog pozostaje statyczny (ISR), a nowy artykuł jest live w kilka sekund po publikacji,
-bez redeployu i bez udziału programisty.
-
-**Workflow treści zdrowotnych:** autor tworzy **szkice**; publikacja wymaga akceptacji
-właściciela (lub powiadomienia). Merytorycznie błędny artykuł o wynikach badań nie może
-trafić na produkcję bez rewizji — to marka i odpowiedzialność właściciela, nie autora.
-
-### SEO i zgodność — do wbudowania od dnia pierwszego
-
-- `generateMetadata` per strona (tytuł, opis, OG).
-- `sitemap.ts` i `robots.ts` (panel wykluczony z indeksu).
-- Schema **JSON-LD `Article`** na wpisach bloga.
-- OG-image z assetów marki (`assets/brand/` — gotowe lockupy w trzech wariantach).
-- Reużywalny komponent `<Disclaimer>` pod artykuły zdrowotne („to nie zastępuje wizyty
-  u weterynarza"). Pozycjonujemy treść jako „pomożemy zrozumieć", nie „postawimy diagnozę".
-
-### Czego ta warstwa NIE zmienia
-
-- **Schemat Supabase — nietknięty.** CMS jest zewnętrzny; treść bloga nie ma reprezentacji
-  w bazie aplikacji (model danych §4 bez zmian).
-- **Zakres funkcjonalny aplikacji — bez zmian.** Warstwa publiczna to strumień
-  marketingowo-contentowy równoległy do MVP, nie nowa funkcja panelu.
+tmp/brief-zmian-landing.md to historyczna propozycja pre-launch, nie bieżący zakres.

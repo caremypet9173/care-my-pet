@@ -1,0 +1,47 @@
+:root {
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --radius-sm: 0.5rem;
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.5rem;
+  --radius-pill: 9999px;
+  --width-page: 80rem;
+  --width-demo: 56rem;
+  --width-prose: 42rem;
+  --header-height: 4rem;
+  --gutter: 1rem;
+  --text-caption: 0.75rem;
+  --text-small: 0.8125rem;
+  --text-body: 0.9375rem;
+  --text-title: 1rem;
+  --text-lead: 1.125rem;
+  --text-card: 1.25rem;
+  --text-heading: 1.625rem;
+  --text-hero: 2.125rem;
+  --shadow-card: 0 1px 3px rgb(20 34 29 / 0.04);
+  --shadow-panel:
+    0 4px 8px -2px rgb(20 34 29 / 0.08), 0 2px 4px -2px rgb(20 34 29 / 0.05);
+  --shadow-floating: 0 8px 16px rgb(20 34 29 / 0.12);
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --gutter: 2rem;
+  }
+}
+@media (min-width: 64rem) {
+  :root {
+    --gutter: 3rem;
+    --text-heading: 2rem;
+    --text-hero: 3rem;
+  }
+}

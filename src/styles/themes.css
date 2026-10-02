@@ -1,0 +1,35 @@
+/* Signature is the only shipped theme. Status meanings do not depend on branding. */
+:root,
+[data-theme="signature"] {
+  color-scheme: light;
+  --color-primary: #1d4a40;
+  --color-primary-hover: #163b33;
+  --color-primary-active: #102d27;
+  --color-accent: #d97448;
+  --color-accent-text: #a64725;
+  --color-action-accent: #ae4f2c;
+  --color-action-accent-hover: #963f21;
+  --color-surface: #f8f6f1;
+  --color-surface-raised: #ffffff;
+  --color-surface-sand: #f2ede4;
+  --color-text: #14221d;
+  --color-text-muted: #4e5e57;
+  --color-border: #eae3da;
+  --color-control-border: #7b8b84;
+  --color-on-action: #ffffff;
+  --color-success: #236b5b;
+  --color-success-surface: #e8f5f2;
+  --color-success-border: #b7e3d9;
+  --color-warning: #925411;
+  --color-warning-surface: #fff2dc;
+  --color-danger: #b2362a;
+  --color-danger-surface: #fff5f4;
+  --color-danger-border: #fcd3ce;
+  --color-focus: #1d4a40;
+  --color-info-surface: #eef0fb;
+  --color-info-text: #424b85;
+  --color-care-surface: #fff0e3;
+  --color-cover-glass: rgb(255 255 255 / 0.94);
+  --color-dialog-backdrop: rgb(20 34 29 / 0.6);
+  --hero-shade: linear-gradient(to top, rgb(20 34 29 / 0.28), transparent 60%);
+}

@@ -1,0 +1,16 @@
+FROM alpine:3.22
+
+RUN apk add --no-cache \
+    git \
+    github-cli \
+    openssh-client \
+    bash \
+    ca-certificates
+
+# Repozytorium jest bind-mountowane z hosta Windows.
+# Git musi traktować /workspace jako zaufany katalog.
+RUN git config --system --add safe.directory /workspace
+
+WORKDIR /workspace
+
+CMD ["/bin/bash"]

@@ -1,68 +1,56 @@
 # ROADMAP
 
-**Wersja:** 0.2 (MVP)
-**Data:** 2026-09-15
-**Powiązane:** PRD.md, TECH.md, MONETIZATION.md
+**Wersja:** 0.3 (cichy pilotaż)
+**Data:** 2026-09-28
+**Powiązane:** PRD.md, TECH.md, HOSTING.md, MONETIZATION.md
 
-Trzy kamienie milowe do launchu MVP, potem kierunki rozwoju. Kolejność jest
-celowa: najpierw pokazywalny rdzeń, potem AI, na końcu płatności.
+## Punkt wyjścia
 
----
+M1 jest opanowane w odrębnych PoC (informacja właściciela projektu).
+Pozostaje integracja i sprawdzenie docelowego wdrożenia.
+Start: cztery koty Wojtka i ich badania, następnie zaproszeni przyjaciele.
+Publiczny launch, lista oczekujących i kampania nie blokują pilotażu.
 
-## M1 — Core  *(pierwszy pokazywalny MVP)*
+## P1 — Integracja i własne użycie
 
-Fundament, który da się pokazać ludziom i zbierać feedback.
+- Połączyć sprawdzone elementy M1: logowanie, profile, wizyty, szczepienia,
+  profilaktykę, ręczne wyniki, konta rodzinne i powiadomienia.
+- Przygotować wybrane środowisko: Next.js na Vercel, backend i pliki w Supabase managed (HOSTING.md).
+- Dopracować UI; forma strony głównej pozostaje otwarta.
+- Wprowadzić cztery koty i reprezentatywną część ich dokumentacji.
+- Sprawdzić przepływ: dokument → kot i data → wpis → odnalezienie historii.
+- Zweryfikować backup i odtworzenie bazy razem z plikami.
 
-- Rejestracja i logowanie (Supabase Auth).
-- CRUD profili zwierząt, wizyt, szczepień i profilaktyki.
-- Ręczne wpisywanie wyników badań.
-- Konta rodzinne (zaproszenia, historia zmian).
-- Powiadomienia email + push (7 i 1 dzień przed terminem).
+## P2 — AI na rzeczywistych badaniach
 
-## M2 — AI
+- Ekstrakcja i interpretacja, korekta oraz zatwierdzenie przed zapisem.
+- Pomiar błędów wartości, jednostek, dat i przypisania do kota; osobna ocena USG.
+- Interpretacja generowana raz i zapisywana po zatwierdzeniu.
+- Pomiar czasu i kosztów analiz, ponowień oraz asystenta.
+- Ustalenie budżetu pilotażu i limitów przed szerszym udostępnieniem AI.
 
-Warstwa, która odróżnia produkt od zwykłego notatnika.
+## P3 — Przyjaciele
 
-- Asystent konwersacyjny (pytania o historię, pomoc w uzupełnianiu profilu).
-- Pipeline odczytu wyników: Gemini (ekstrakcja) → Claude (interpretacja).
-- Zasada zatwierdzania — nic nie zapisuje się bez potwierdzenia użytkownika.
-- Interpretacja generowana raz przy skanie i zapisywana (offline, zero tokenów per klik).
+- Dostęp na zaproszenie; kontrola rejestracji w backendzie.
+- Osobne gospodarstwa; sprawdzenie izolacji danych.
+- Feedback z samodzielnego dodawania pupila i badań oraz odnajdywania historii.
+- Weryfikacja powiadomień i możliwość zgłaszania błędów.
+- Link/QR dla weterynarza według potrzeb pilotażu.
 
-## M3 — Płatności i udostępnianie
+## P4 — Decyzja o szerszym otwarciu
 
-Domknięcie modelu i funkcji, które monetyzujemy.
+- Zakres publicznego MVP na podstawie użycia i kosztów.
+- Prepaid i Stripe przed uruchomieniem płatnych usług.
+- Publiczna strona główna, ewentualny blog z Sanity i kampania.
+- Dokumenty serwisu dopasowane do działania i rzeczywistych dostawców.
 
-- Udostępnianie kartoteki weterynarzowi (link / QR read-only, TTL, unieważnianie).
-- Saldo prepaid i egzekwowanie kosztu analiz AI.
-- Stripe — doładowania salda.
+## Mapowanie wcześniejszych kamieni milowych
 
----
+M1 → integracja P1; M2 → AI w P2; M3 → udostępnianie według potrzeb P3,
+płatności przy P4. PoC nie oznacza zweryfikowanego wdrożenia całego serwisu.
 
-## Po MVP (kierunki, nie zobowiązania)
+## Późniejsze kierunki
 
-- Śledzenie trendów parametrów badań w czasie (potencjalny upsell).
-- Aplikacje natywne iOS/Android (jeśli PWA okaże się niewystarczające).
-- **Segment organizacyjny (v2):** fundacje i schroniska — role zespołowe, domy
-  tymczasowe, adopcje, publiczne profile, ewidencja i raporty dla Inspekcji
-  Weterynaryjnej, integracja z KROPiK. Szczegóły w `IDEAS.md`.
-
----
-
-## Marketing przedlaunchowy (równolegle do M1–M2)
-
-- Landing page + zapis na listę oczekujących. To ta sama warstwa publiczna, która
-  po launchu rozrasta się o blog (patrz niżej) — nie budujemy dwóch osobnych landingów.
-- Grupy na Facebooku dla właścicieli psów i kotów.
-- TikTok / Instagram — krótkie video pokazujące odczyt wyników przez AI
-  (efektowne i łatwe do pokazania); formaty z kotami, napisy, lektor AI, montaż w CapCut.
-
----
-
-## Warstwa publiczna — blog (równolegle, po M1)
-
-Blog na `caremypet.pl` prowadzony przez osobę contentową z zewnętrznego CMS (Sanity),
-poza Supabase. Szczegóły techniczne w `TECH.md` (§8 „Warstwa publiczna").
-
-**Kolejność:** rdzeń aplikacji (M1) ma pierwszeństwo. Blog nie może wyprzedzić ani
-opóźnić MVP — infrastruktura contentowa wchodzi, gdy panel stoi. W konflikcie
-priorytetów rozstrzyga dowiezienie MVP.
+Trendy badań, aplikacje natywne według potrzeb, fundacje i schroniska w IDEAS.md.
+Dawne pomysły marketingowe (grupy właścicieli zwierząt, filmy z odczytem badań,
+treści edukacyjne) pozostają opcjami po pilotażu.

@@ -15,13 +15,20 @@ poza MVP.
 
 ## Źródło prawdy
 
+**Aktualny etap:** cichy pilotaż — najpierw cztery koty Wojtka i ich badania,
+potem zaproszeni przyjaciele. M1 opanowane w odrębnych PoC; nie zakładaj, że
+zintegrowany serwis jest już wdrożony. Landing, lista oczekujących i kampania
+nie są wymagane. Wybrana strona główna: „06 — Care My Pet Signature” ze Stitch.
+Fundament frontendu i publiczne demo są w repo; integracja PoC pozostaje kolejnym etapem.
+
 Decyzje produktowe i techniczne żyją w `docs/`. Przed pracą nad funkcją przeczytaj
 odpowiedni dokument, nie zgaduj:
 
 - `docs/PRD.md` — zakres, funkcje, user stories, co poza zakresem
 - `docs/TECH.md` — stack, architektura, pipeline AI, model danych, hosting, warstwa publiczna
+- `docs/HOSTING.md` — wybrany Vercel + Supabase managed, uzasadnienie i alternatywy
 - `docs/MONETIZATION.md` — model płatności (prepaid) i cennik
-- `docs/ROADMAP.md` — kolejność prac (M1 → M3)
+- `docs/ROADMAP.md` — integracja PoC, własny pilotaż, przyjaciele i szersze otwarcie (P1 → P4)
 - `docs/IDEAS.md` — zakres odłożony na v2+ (nie implementować bez decyzji)
 
 Jeśli zadanie jest sprzeczne z którymś z tych dokumentów, zgłoś sprzeczność
@@ -29,16 +36,16 @@ zamiast działać na nieaktualnym założeniu.
 
 ## Stack
 
-- Frontend: Next.js 15 (App Router), React 19, TypeScript, Tailwind, shadcn/ui
+- Frontend: Next.js 16 (App Router), React 19, TypeScript, Tailwind 4, Tabler; komponenty Signature
 - Backend: Supabase — PostgreSQL + RLS, Auth, Storage, Edge Functions (Deno), Realtime
-- Hosting: self-hosted Next.js (origin) za Cloudflare; orkiestracja K8s (dev-ops)
-- Treść publiczna: landing + blog jako route groups w tej samej apce; blog z zewnętrznego CMS (Sanity), poza Supabase
+- Hosting pilotażu: Vercel Hobby (Next.js) + Supabase Cloud Free; własny serwer dopiero w planach
+- Treść publiczna: Signature, bez naboru i rejestracji; blog i Sanity odłożone
 - PWA: next-pwa + Workbox; powiadomienia: Web Push (VAPID) + Resend (email)
 - AI: Gemini (ekstrakcja) → Claude Sonnet 4.5 (interpretacja/asystent), Claude Haiku (odczyt plików)
 
 ## Reguły architektoniczne
 
-- **Logika biznesowa w Supabase Edge Functions.** Warstwa hostingu (self-hosted
+- **Logika biznesowa w Supabase Edge Functions.** Warstwa hostingu (Vercel lub własny
   Next.js) obsługuje wyłącznie UI i wyzwalacze Cron — nie umieszczaj tam logiki
   domenowej.
 - **Izolacja danych przez RLS.** Każdy wiersz nosi `gospodarstwo_id`; polityki RLS
@@ -54,7 +61,8 @@ zamiast działać na nieaktualnym założeniu.
   halucynacją przy danych medycznych.
 - Interpretacja wyników generowana **raz przy skanie** i zapisywana, nie liczona
   per otwarcie.
-- Asystent konwersacyjny: darmowy do 20 wiadomości/dzień, nadwyżka 0,01 EUR z salda.
+- Docelowy asystent: darmowy do 20 wiadomości/dzień, nadwyżka 0,01 EUR z salda.
+  Rozliczanie pilotażu pozostaje do ustalenia; Stripe nie blokuje jego startu.
 - **Cap wejścia** (długość wiadomości) musi być twardą walidacją w kodzie, przed
   wysłaniem do modelu — nie instrukcją w promptcie. Odpowiedź ograniczona `max_tokens`.
 
@@ -69,11 +77,12 @@ zamiast działać na nieaktualnym założeniu.
 
 ## Komendy
 
-> Uzupełnić wraz z pierwszym scaffoldingiem (M1). Oczekiwane:
+Node.js 24 LTS (minimum 22). Publiczny frontend nie wymaga sekretów.
 
 ```
-# dev:   npm run dev
-# build: npm run build
-# lint:  npm run lint
-# db:    supabase start / supabase db push
+npm run dev
+npm run build
+npm run lint
+npm run typecheck
+npm run test:e2e
 ```

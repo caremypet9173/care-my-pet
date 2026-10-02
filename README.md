@@ -6,10 +6,22 @@ badań, z asystentem AI, który odczytuje wyniki z PDF-ów i zdjęć oraz odpowi
 pytania o historię pupila.
 
 - **Domena:** [caremypet.pl](https://caremypet.pl)
-- **Status:** MVP w budowie
+- **Status:** przygotowanie cichego pilotażu; M1 sprawdzone w odrębnych PoC
 - **Zakres MVP:** wyłącznie właściciel prywatny (fundacje i schroniska → `docs/IDEAS.md`, v2)
 
 ---
+
+## Sposób startu
+
+Najpierw własne użycie: cztery koty Wojtka i ich rzeczywista, obszerna dokumentacja
+badań. Następnie dostęp dla zaproszonych przyjaciół, z osobnymi gospodarstwami.
+M1 jest opanowane w odrębnych PoC; kolejnym krokiem jest integracja i sprawdzenie
+całego serwisu. Publiczny launch, kampania i lista oczekujących nie są warunkiem
+pilotażu. Publiczna strona główna jest implementowana według wybranego projektu
+Stitch „06 — Care My Pet Signature”; bez zapisów i naboru do pilotażu.
+
+Hosting pilotażu: **Vercel Hobby + Supabase Cloud Free**. Własny serwer jest dopiero
+w planach i pozostaje opcją na później. Uzasadnienie: `docs/HOSTING.md`.
 
 ## Czym to jest
 
@@ -35,9 +47,9 @@ potwierdzenia przez użytkownika**.
 
 | Warstwa | Technologia |
 |---|---|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, shadcn/ui |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Tabler Icons; własne komponenty Signature |
 | Backend / BaaS | Supabase — PostgreSQL + RLS, Auth, Storage, Edge Functions, Realtime |
-| Hosting | Vercel (UI + Cron) |
+| Hosting | Vercel (Next.js) + Supabase managed (backend i pliki); patrz `docs/HOSTING.md` |
 | PWA | next-pwa + Workbox |
 | Powiadomienia | Web Push (VAPID) + Resend (email) |
 | AI | Gemini (ekstrakcja) → Claude Sonnet 4.5 (interpretacja/asystent), Claude Haiku (odczyt plików) |
@@ -52,26 +64,40 @@ Szczegóły i uzasadnienia decyzji: `docs/TECH.md`.
 |---|---|
 | `docs/PRD.md` | Zakres produktu, funkcje, user stories, co poza zakresem |
 | `docs/TECH.md` | Stack, architektura, pipeline AI, model danych |
+| `docs/HOSTING.md` | Porównanie hostingu dla pilotażu i status decyzji |
+| `docs/DESIGN.md` | Identyfikacja wizualna i tokeny UI |
 | `docs/MONETIZATION.md` | Model płatności (prepaid) i podstawa kosztowa |
-| `docs/ROADMAP.md` | Kamienie milowe M1 → M3 i kierunki po MVP |
+| `docs/ROADMAP.md` | Etapy P1 → P4: od integracji PoC do szerszego otwarcia |
 | `docs/IDEAS.md` | Worek koncepcji i zakres odłożony na v2+ |
 
 ---
 
 ## Uruchomienie lokalne
 
-> Szczegółowe instrukcje pojawią się wraz z pierwszym kodem (kamień milowy M1).
+Wymagany **Node.js 24 LTS** (minimum 22) i npm 10+. Systemowy Node 18 jest za stary.
+Przy menedżerze wersji można użyć `.nvmrc`.
 
-Aplikacja będzie wymagać zmiennych środowiskowych (`.env.local`, nie commitować):
+```sh
+npm ci
+npm run dev
+```
 
+Podgląd: http://127.0.0.1:3000. Publiczne strony i demo działają bez `.env.local`.
+Fonty i zdjęcia są lokalne. Logowanie i integracja PoC nie są jeszcze podłączone;
+`/app` przekierowuje do `/login`. Nie dodawaj kluczy dostawców AI ani service role
+do frontendu — ich przyszłym miejscem są sekrety backendu.
+
+```sh
+npm run lint
+npm run typecheck
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
-GEMINI_API_KEY=
-RESEND_API_KEY=
-```
+
+Testy E2E uruchamiają produkcyjny serwer po buildzie; sprawdzają nawigację,
+zakładki, responsywność i automatyczne reguły dostępności. Raport: `playwright-report/`.
+Architektura i granice aktualnego etapu: `docs/IMPLEMENTATION.md`.
 
 ---
 

@@ -1,0 +1,29 @@
+services:
+  git:
+    build:
+      context: .
+      dockerfile: Dockerfile.git
+
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+    volumes:
+      # Repozytorium CareMyPet
+      - .:/workspace
+
+      # Dane logowania GitHub
+      - caremypet-github-auth:/root/.config/gh
+
+      # Globalna konfiguracja Git
+      - caremypet-git-config:/root/.gitconfig.d
+
+    environment:
+      GIT_CONFIG_GLOBAL: /root/.gitconfig.d/.gitconfig
+
+volumes:
+  caremypet-github-auth:
+    name: caremypet-github-auth
+
+  caremypet-git-config:
+    name: caremypet-git-config
