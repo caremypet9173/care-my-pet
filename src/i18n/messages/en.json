@@ -1,5 +1,6 @@
 {
   "copy": {
+    "legalProcessingTableLabel": "Purposes and legal bases for processing data",
     "previewDocument": "Preview: {title}",
     "petPortrait": "Portrait: {name}",
     "outsideRangeCount": "{count} outside range",

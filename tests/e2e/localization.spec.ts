@@ -75,6 +75,26 @@ test("all public English pages render translated content and titles", async ({
     expect((await page.goto(`/en${path}`))?.status()).toBe(200);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
+    if (path === "/prywatnosc" || path === "/regulamin") {
+      const article = page.locator("article.legal-content");
+      await expect(article).toHaveAttribute("lang", "en");
+      await expect(article.getByRole("heading", { level: 2 })).toHaveText(
+        path === "/prywatnosc"
+          ? "Privacy Policy for the Care My Pet Application"
+          : "Terms and Conditions for the Provision of Electronic Services",
+      );
+      await expect(article).toContainText("caremypet9173@gmail.com");
+      await expect(article).toContainText(
+        path === "/prywatnosc"
+          ? "9. Changes to the Privacy Policy and a change of Controller"
+          : "Section 12. Final provisions",
+      );
+      await chooseLanguage(page, "Polski");
+      await expect(article).toHaveAttribute("lang", "pl");
+      await chooseLanguage(page, "English");
+      await expect(article).toHaveAttribute("lang", "en");
+      await expect(page).toHaveURL(new RegExp(`/en${path}$`));
+    }
     await expect(page.locator("title")).not.toContainText(
       /Możliwości|Prywatność|Regulamin|Logowanie/,
     );
