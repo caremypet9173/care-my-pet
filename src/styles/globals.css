@@ -102,6 +102,44 @@
   }
 }
 
+.cookie-notice {
+  position: fixed;
+  inset-inline: var(--gutter);
+  bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  z-index: 40;
+  max-width: 44rem;
+  margin-inline: auto;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-floating);
+  max-height: 60dvh;
+  overflow-y: auto;
+}
+.cookie-notice h2 {
+  font-size: var(--text-title);
+  margin-bottom: var(--space-2);
+}
+.cookie-notice p {
+  font-size: var(--text-small);
+}
+.cookie-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.cookie-notice-actions a {
+  color: var(--color-primary);
+  font-size: var(--text-small);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding-block: var(--space-3);
+}
+
 .container {
   width: 100%;
   margin-inline: auto;

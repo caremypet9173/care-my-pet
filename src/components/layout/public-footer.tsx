@@ -12,6 +12,7 @@ export function PublicFooter() {
           <BrandLogo />
           <nav aria-label={t("footerNavigation")}>
             <Link href="/prywatnosc">{t("privacy")}</Link>
+            <Link href="/prywatnosc#cookies">{t("cookieNoticeDetails")}</Link>
             <Link href="/regulamin">{t("terms")}</Link>
             <Link href="/login">{t("signIn100")}</Link>
           </nav>

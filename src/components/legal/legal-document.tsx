@@ -30,7 +30,11 @@ export async function LegalDocument({ document }: { document: keyof typeof docum
             skipHtml
             components={{
               h1: ({ children }) => <h2>{children}</h2>,
-              h2: ({ children }) => <h3>{children}</h3>,
+              h2: ({ children }) => (
+                <h3 id={String(children).startsWith("8. ") && document === "privacy" ? "cookies" : undefined}>
+                  {children}
+                </h3>
+              ),
               h3: ({ children }) => <h3>{children}</h3>,
               table: ({ children }) => (
                 <div className="legal-table-scroll" role="region"

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import type { Metadata } from "next";
 import { inter, jakarta } from "@/lib/fonts";
+import { CookieNotice } from "@/components/legal/cookie-notice";
 import "@/styles/globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -42,7 +43,10 @@ export default async function RootLayout({
         <a className="skip-link" href="#main-content">
           {t("skipToContent")}
         </a>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          {children}
+          <CookieNotice />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

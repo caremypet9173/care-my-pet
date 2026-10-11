@@ -8,7 +8,7 @@ Version: 1.0
 
 ### Section 1. General provisions and Service Provider details
 
-1. These Terms and Conditions set out the rules for using the **Care My Pet** web and mobile application (the "Application"), available at the domain [twojadomena.app / caremypet.app], including the rights and obligations of the Service Provider and Users.
+1. These Terms and Conditions set out the rules for using the **Care My Pet** web and mobile application (the "Application"), available at the domain [care-my-pet-flax.vercel.app](https://care-my-pet-flax.vercel.app), including the rights and obligations of the Service Provider and Users.
 2. The Service Provider operating the Application is:
    * **Wojciech Dobrowolski**, operating a sole proprietorship under the name **DOBROWOLSKI WOJCIECH**,
    * Registered business / correspondence address: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Poland**,

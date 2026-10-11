@@ -8,7 +8,7 @@ Wersja: 1.0
 
 ### § 1. Postanowienia ogólne i dane Usługodawcy
 
-1. Niniejszy Regulamin określa zasady korzystania z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [twojadomena.app / caremypet.app], w tym prawa i obowiązki Usługodawcy oraz Użytkowników.
+1. Niniejszy Regulamin określa zasady korzystania z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [care-my-pet-flax.vercel.app](https://care-my-pet-flax.vercel.app), w tym prawa i obowiązki Usługodawcy oraz Użytkowników.
 2. Usługodawcą prowadzącym Aplikację jest:
    * **Wojciech Dobrowolski**, prowadzący jednoosobową działalność gospodarczą pod firmą **DOBROWOLSKI WOJCIECH**,
    * Adres siedziby / doręczeń: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Polska**,

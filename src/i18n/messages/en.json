@@ -1,5 +1,9 @@
 {
   "copy": {
+    "cookieNoticeTitle": "Cookies and your privacy",
+    "cookieNoticeBody": "We do not use advertising or analytics tools. Browser storage remembers that you have dismissed this notice.",
+    "cookieNoticeDetails": "Cookie information",
+    "cookieNoticeDismiss": "Got it",
     "legalProcessingTableLabel": "Purposes and legal bases for processing data",
     "previewDocument": "Preview: {title}",
     "petPortrait": "Portrait: {name}",

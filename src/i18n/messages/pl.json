@@ -1,5 +1,9 @@
 {
   "copy": {
+    "cookieNoticeTitle": "Cookies i Twoja prywatność",
+    "cookieNoticeBody": "Nie korzystamy z narzędzi reklamowych ani analitycznych. Pamięć przeglądarki służy do zapamiętania zamknięcia tej informacji.",
+    "cookieNoticeDetails": "Informacje o cookies",
+    "cookieNoticeDismiss": "Rozumiem",
     "legalProcessingTableLabel": "Cele i podstawy prawne przetwarzania danych",
     "previewDocument": "Podgląd: {title}",
     "petPortrait": "Portret: {name}",

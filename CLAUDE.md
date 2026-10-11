@@ -68,6 +68,8 @@ zamiast działać na nieaktualnym założeniu.
 
 ## Konwencje pracy
 
+- Wszystkie operacje Git wykonuj przez `.\git-shell.ps1` (Git w Dockerze),
+  zgodnie z `AGENTS.md`. Nie używaj hostowego `git.exe`.
 - Język roboczy: polski. Commit messages: conventional commits (`feat:`, `fix:`,
   `docs:`, `chore:`…).
 - Odpowiadaj wprost, wskazuj przyczynę źródłową — bez owijania.
