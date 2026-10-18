@@ -27,7 +27,7 @@ test("catalogs cover the same messages and legacy links default to Polish", asyn
   await page.goto("/en/app");
   await expect(page).toHaveURL(/\/en\/login$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Just a little longer.",
+    "Sign in",
   );
   await page.goto("/");
   await expect(page).toHaveURL(/\/pl$/);
@@ -69,7 +69,7 @@ test("all public English pages render translated content and titles", async ({
     ["/jak-to-dziala", "You decide what to save."],
     ["/prywatnosc", "Your data privacy"],
     ["/regulamin", "Terms of use"],
-    ["/login", "Just a little longer. We’re preparing Care My Pet."],
+    ["/login", "Sign in"],
   ];
   for (const [path, heading] of pages) {
     expect((await page.goto(`/en${path}`))?.status()).toBe(200);

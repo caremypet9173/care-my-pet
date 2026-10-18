@@ -6,7 +6,7 @@ badań, z asystentem AI, który odczytuje wyniki z PDF-ów i zdjęć oraz odpowi
 pytania o historię pupila.
 
 - **Domena:** [caremypet.pl](https://caremypet.pl)
-- **Status:** przygotowanie cichego pilotażu; M1 sprawdzone w odrębnych PoC
+- **Status:** przygotowanie cichego pilotażu; nowa implementacja zaczyna się od Auth
 - **Zakres MVP:** wyłącznie właściciel prywatny (fundacje i schroniska → `docs/IDEAS.md`, v2)
 
 ---
@@ -15,8 +15,10 @@ pytania o historię pupila.
 
 Najpierw własne użycie: cztery koty Wojtka i ich rzeczywista, obszerna dokumentacja
 badań. Następnie dostęp dla zaproszonych przyjaciół, z osobnymi gospodarstwami.
-M1 jest opanowane w odrębnych PoC; kolejnym krokiem jest integracja i sprawdzenie
-całego serwisu. Publiczny launch, kampania i lista oczekujących nie są warunkiem
+Stare PoC potwierdziły użyteczność Gemini w Edge Functions i wykorzystanie
+pgvector do ograniczania kontekstu asystenta. Zgodnie z decyzją 2026-10-14
+aplikację budujemy od nowa, zaczynając od rejestracji e-mail/hasło i Google.
+Publiczny launch, kampania i lista oczekujących nie są warunkiem
 pilotażu. Publiczna strona główna jest implementowana według wybranego projektu
 Stitch „06 — Care My Pet Signature”; bez zapisów i naboru do pilotażu.
 
@@ -83,8 +85,9 @@ npm run dev
 ```
 
 Podgląd: http://127.0.0.1:3000. Publiczne strony i demo działają bez `.env.local`.
-Fonty i zdjęcia są lokalne. Logowanie i integracja PoC nie są jeszcze podłączone;
-`/app` przekierowuje do `/login`. Nie dodawaj kluczy dostawców AI ani service role
+Fonty i zdjęcia są lokalne. Kod rejestracji e-mail/hasło, Google i sesji Supabase
+jest przygotowany; konfigurację usług i status testów opisuje `docs/AUTH.md`.
+`/app` wymaga sesji zweryfikowanej na serwerze. Nie dodawaj kluczy dostawców AI ani service role
 do frontendu — ich przyszłym miejscem są sekrety backendu.
 
 ```sh

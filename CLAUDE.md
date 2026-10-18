@@ -15,11 +15,17 @@ poza MVP.
 
 ## Źródło prawdy
 
-**Aktualny etap:** cichy pilotaż — najpierw cztery koty Wojtka i ich badania,
-potem zaproszeni przyjaciele. M1 opanowane w odrębnych PoC; nie zakładaj, że
-zintegrowany serwis jest już wdrożony. Landing, lista oczekujących i kampania
+**Aktualny etap:** przygotowanie cichego pilotażu — najpierw cztery koty Wojtka i ich badania,
+potem zaproszeni przyjaciele. Decyzja 2026-10-14: budujemy od nowa, zaczynając
+od rejestracji e-mail/hasło i Google. Stare PoC potwierdziły użyteczność Gemini
+w Supabase Edge Functions oraz zastosowanie pgvector do ograniczania kontekstu;
+nie są bazą implementacji. Model JSONB wymaga przeprojektowania.
+Nie zakładaj, że zintegrowany serwis jest już wdrożony. Landing, lista oczekujących i kampania
 nie są wymagane. Wybrana strona główna: „06 — Care My Pet Signature” ze Stitch.
-Fundament frontendu i publiczne demo są w repo; integracja PoC pozostaje kolejnym etapem.
+Fundament frontendu, publiczne demo i Auth są w repo. W projekcie
+`lrlnqmciarjvngvquchu` skonfigurowano Gmail SMTP i Google OAuth. Użytkownik
+potwierdził działanie logowania, sesji i wylogowania; granice testów w docs/AUTH.md.
+Następny etap: model gospodarstwa, członkostwa i zwierząt oraz RLS.
 
 Decyzje produktowe i techniczne żyją w `docs/`. Przed pracą nad funkcją przeczytaj
 odpowiedni dokument, nie zgaduj:
@@ -68,6 +74,8 @@ zamiast działać na nieaktualnym założeniu.
 
 ## Konwencje pracy
 
+- Użytkownik pracuje w **Codex CLI**, nie w aplikacji desktopowej. Instrukcje
+  konfiguracji dostosowuj do terminala; Supabase konfiguruj przez CLI lub MCP.
 - Wszystkie operacje Git wykonuj przez `.\git-shell.ps1` (Git w Dockerze),
   zgodnie z `AGENTS.md`. Nie używaj hostowego `git.exe`.
 - Język roboczy: polski. Commit messages: conventional commits (`feat:`, `fix:`,

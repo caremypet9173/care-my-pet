@@ -88,10 +88,10 @@ test("navigation works and the private app stays closed", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Jeszcze chwila. Przygotowujemy Care My Pet.",
+      name: "Zaloguj się",
     }),
   ).toBeVisible();
-  await expect(page.locator("input")).toHaveCount(0);
+  await expect(page.getByLabel("Adres e-mail")).toBeVisible();
 });
 
 test("public routes have no broken destination", async ({ page }) => {

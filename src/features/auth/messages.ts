@@ -1,0 +1,41 @@
+import type { Locale } from "@/i18n/types";
+
+const pl = {
+  login: "Zaloguj się", register: "Utwórz konto", google: "Kontynuuj z Google",
+  intro: "Jedno konto dla Ciebie i zdrowia Twoich pupili.",
+  email: "Adres e-mail", password: "Hasło", repeat: "Powtórz hasło",
+  hint: "Co najmniej 12 znaków.", or: "lub użyj adresu e-mail",
+  noAccount: "Nie masz jeszcze konta?", hasAccount: "Masz już konto?",
+  mismatch: "Hasła muszą być takie same.",
+  credentials: "Nie udało się zalogować. Sprawdź e-mail, hasło i potwierdzenie adresu.",
+  failed: "Nie udało się wykonać tej operacji. Spróbuj ponownie za chwilę.",
+  rateLimit: "Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.",
+  unavailable: "Rejestracja i logowanie są chwilowo niedostępne.",
+  checkEmail: "Sprawdź skrzynkę e-mail",
+  sent: "Jeśli adres może zostać zarejestrowany, otrzymasz wiadomość z linkiem potwierdzającym. Sprawdź również spam. Jeśli masz już konto, przejdź do logowania.",
+  callback: "Nie udało się dokończyć logowania. Spróbuj ponownie, korzystając z przycisku Google.",
+  confirmation: "Link potwierdzający jest nieprawidłowy lub wygasł. Spróbuj zalogować się, a jeśli adres nie został potwierdzony — ponów rejestrację.",
+  legal: "Zapoznaj się z", terms: "regulaminem", and: "oraz", privacy: "polityką prywatności",
+  account: "Twoje konto", signedIn: "Zalogowano jako", signOut: "Wyloguj się",
+  next: "Konto jest gotowe. Dodawanie pupili i dokumentów przygotujemy w kolejnym etapie.",
+};
+const en: typeof pl = {
+  login: "Sign in", register: "Create account", google: "Continue with Google",
+  intro: "One account for you and your pets’ health.",
+  email: "Email address", password: "Password", repeat: "Repeat password",
+  hint: "At least 12 characters.", or: "or use your email address",
+  noAccount: "New here?", hasAccount: "Already have an account?",
+  mismatch: "Passwords must match.",
+  credentials: "Could not sign in. Check your email, password and email confirmation.",
+  failed: "This action could not be completed. Please try again shortly.",
+  rateLimit: "Too many attempts. Please wait and try again.",
+  unavailable: "Registration and sign-in are temporarily unavailable.",
+  checkEmail: "Check your inbox",
+  sent: "If this address is eligible for registration, you will receive a confirmation link. Check your spam folder too. If you already have an account, sign in.",
+  callback: "Could not complete sign-in. Please try the Google button again.",
+  confirmation: "This confirmation link is invalid or expired. Try signing in, or register again if your email has not been confirmed.",
+  legal: "Please read our", terms: "terms", and: "and", privacy: "privacy policy",
+  account: "Your account", signedIn: "Signed in as", signOut: "Sign out",
+  next: "Your account is ready. Pet profiles and documents will follow in the next stage.",
+};
+export const authMessages: Record<Locale, typeof pl> = { pl, en };

@@ -1,5 +1,12 @@
 # Fundament aplikacji — 2026-10-01
 
+> Aktualizacja 2026-10-14: poniższy opis pierwszego etapu jest historyczny.
+> Dodano kod rejestracji e-mail/hasło i Google, potwierdzania adresu, logowania,
+> sesji i wylogowania. `/app` pokazuje konto po weryfikacji użytkownika na serwerze.
+> Aktualizacja 2026-10-18: skonfigurowano Gmail SMTP i Google OAuth; użytkownik
+> potwierdził logowanie, sesję i wylogowanie. Granice testów: [AUTH.md](AUTH.md).
+> Stare PoC nie będą integrowane; aplikację budujemy od nowa.
+
 ## Zakres pierwszego etapu
 
 Strona główna według „06 — Care My Pet Signature”, tokeny, wspólne komponenty,

@@ -6,15 +6,20 @@
 
 ## Punkt wyjścia
 
-M1 jest opanowane w odrębnych PoC (informacja właściciela projektu).
-Pozostaje integracja i sprawdzenie docelowego wdrożenia.
+Decyzja 2026-10-14: aplikację budujemy od nowa. Stare PoC potwierdziły
+użyteczność Gemini w Supabase Edge Functions i wykorzystanie pgvector do
+ograniczania kontekstu asystenta. Model oparty na JSONB nie sprawdził się
+dostatecznie; nie przenosimy implementacji PoC.
+Pierwszy krok: rejestracja e-mail/hasło i Google, logowanie oraz sesja.
 Start: cztery koty Wojtka i ich badania, następnie zaproszeni przyjaciele.
 Publiczny launch, lista oczekujących i kampania nie blokują pilotażu.
 
-## P1 — Integracja i własne użycie
+## P1 — Podstawy i własne użycie
 
-- Połączyć sprawdzone elementy M1: logowanie, profile, wizyty, szczepienia,
-  profilaktykę, ręczne wyniki, konta rodzinne i powiadomienia.
+- Auth skonfigurowane i sprawdzone lokalnie 2026-10-18: e-mail/hasło,
+  Gmail SMTP, Google OAuth, sesja i wylogowanie (granice testów: docs/AUTH.md).
+- Następnie zbudować profile, wizyty, szczepienia, profilaktykę, ręczne wyniki,
+  konta rodzinne i powiadomienia na nowym modelu danych.
 - Przygotować wybrane środowisko: Next.js na Vercel, backend i pliki w Supabase managed (HOSTING.md).
 - Dopracować UI; forma strony głównej pozostaje otwarta.
 - Wprowadzić cztery koty i reprezentatywną część ich dokumentacji.

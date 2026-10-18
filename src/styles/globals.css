@@ -2,6 +2,17 @@
 @import "./tokens.css";
 @import "./themes.css";
 
+.auth-content { display: grid; gap: 1.25rem; text-align: left; }
+.auth-content h1, .auth-content p { margin: 0; }
+.auth-form { display: grid; gap: .6rem; }
+.auth-form label { font-weight: 600; }
+.auth-form input { width: 100%; min-width: 0; padding: .8rem 1rem; border: 1px solid var(--color-text-muted); border-radius: .75rem; background: var(--color-surface); color: var(--color-text); font: inherit; }
+.auth-form .button { margin-top: .75rem; }
+.auth-divider, .auth-legal { font-size: .875rem; }
+.auth-divider { text-align: center; }
+.auth-content a { text-decoration: underline; text-underline-offset: .2em; }
+.auth-message { border-left: 3px solid currentColor; padding: .75rem; }
+
 @theme inline {
   --font-sans: var(--font-jakarta), sans-serif;
   --font-label: var(--font-inter), sans-serif;

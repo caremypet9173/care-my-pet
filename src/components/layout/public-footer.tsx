@@ -2,8 +2,9 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Container } from "./container";
+import { AccountLink } from "@/features/auth/account-link";
 
-export function PublicFooter() {
+export function PublicFooter({ signedIn = false }: { signedIn?: boolean }) {
   const t = useTranslations("copy");
   return (
     <footer className="site-footer">
@@ -14,7 +15,7 @@ export function PublicFooter() {
             <Link href="/prywatnosc">{t("privacy")}</Link>
             <Link href="/prywatnosc#cookies">{t("cookieNoticeDetails")}</Link>
             <Link href="/regulamin">{t("terms")}</Link>
-            <Link href="/login">{t("signIn100")}</Link>
+            <AccountLink initialSignedIn={signedIn} />
           </nav>
         </div>
         <div className="footer-bottom">

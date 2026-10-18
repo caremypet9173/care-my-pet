@@ -9,6 +9,7 @@ import { IconMenu2, IconUser, IconX } from "@tabler/icons-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Container } from "./container";
 import { LanguageSwitch } from "./language-switch";
+import { AccountLink } from "@/features/auth/account-link";
 
 function getLinks(t: Translator) {
   return [
@@ -17,7 +18,7 @@ function getLinks(t: Translator) {
   ];
 }
 
-export function PublicHeader() {
+export function PublicHeader({ signedIn = false }: { signedIn?: boolean }) {
   const t = useTranslations("copy");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -49,16 +50,16 @@ export function PublicHeader() {
           <div className="desktop-language">
             <LanguageSwitch />
           </div>
-          <Link
+          <AccountLink
             className="login-link"
-            href="/login"
+            labelClassName="login-label"
+            initialSignedIn={signedIn}
             onClick={() => setOpen(false)}
           >
-            <span className="login-label">{t("signIn100")}</span>
             <span className="user-icon">
               <IconUser size={18} aria-hidden="true" />
             </span>
-          </Link>
+          </AccountLink>
           <button
             ref={toggle}
             type="button"

@@ -1,31 +1,23 @@
-import { useTranslations } from "next-intl";
-import { getTranslations } from "next-intl/server";
-import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import { Container } from "@/components/layout/container";
 import { Card } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
+import { AuthForm } from "@/features/auth/auth-form";
+import { authMessages } from "@/features/auth/messages";
+import { getSupabaseConfig } from "@/lib/supabase/config";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("copy");
+export async function generateMetadata() {
   return {
-    title: t("signIn"),
+    title: authMessages[await getLocale()].login,
     robots: { index: false, follow: false },
   };
 }
 
-export default function LoginPage() {
-  const t = useTranslations("copy");
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   return (
     <Container width="prose">
       <Card className="login-panel" padding="lg">
-        <h1>
-          {t("justALittleLongerWerePreparing")}{" "}
-          <span className="whitespace-nowrap">Care My Pet.</span>
-        </h1>
-        <p>{t("wereCreatingAPlaceWhereYourPets")}</p>
-        <ButtonLink href="/demo/luna">
-          {t("exploreASamplePetRecord")}
-        </ButtonLink>
+        <AuthForm mode="login" configured={!!getSupabaseConfig()} initialError={error} />
       </Card>
     </Container>
   );
