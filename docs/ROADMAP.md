@@ -18,10 +18,20 @@ Publiczny launch, lista oczekujących i kampania nie blokują pilotażu.
 
 - Auth skonfigurowane i sprawdzone lokalnie 2026-10-18: e-mail/hasło,
   Gmail SMTP, Google OAuth, sesja i wylogowanie (granice testów: docs/AUTH.md).
-- Następnie zbudować profile, wizyty, szczepienia, profilaktykę, ręczne wyniki,
+- Profile podstawowe, gospodarstwa i RLS wdrożone 2026-10-18; lista,
+  dodawanie i edycja zweryfikowane z rzeczywistym Supabase na desktopie i mobile
+  (zakres i ograniczenia: PETS.md).
+- Formularz „Poznajmy Twojego pupila” według Stitch, prywatne awatary
+  z kadrowaniem i przybliżona data urodzenia wdrożone 2026-10-18.
+- Wyniki badań i ekran weryfikacji według wskazanego Split-Screen 2 wdrożone
+  2026-10-18: ręczny zapis, prywatne źródła, PDF.js, zatwierdzenie parametrów.
+  Rzeczywisty odczyt Gemini przeszedł test na syntetycznym PDF po doładowaniu
+  Google i korekcie schematu odpowiedzi; następnie ocenić prawdziwe badania.
+  Zakres i ograniczenia: MEDICAL_REPORTS.md.
+- Następnie zbudować wizyty, szczepienia, profilaktykę, ręczne wyniki,
   konta rodzinne i powiadomienia na nowym modelu danych.
 - Przygotować wybrane środowisko: Next.js na Vercel, backend i pliki w Supabase managed (HOSTING.md).
-- Dopracować UI; forma strony głównej pozostaje otwarta.
+- Dopracować UI według projektu Stitch 1963478756572071889; strona główna Signature.
 - Wprowadzić cztery koty i reprezentatywną część ich dokumentacji.
 - Sprawdzić przepływ: dokument → kot i data → wpis → odnalezienie historii.
 - Zweryfikować backup i odtworzenie bazy razem z plikami.

@@ -1,0 +1,105 @@
+import {test,expect} from "@playwright/test";
+import {readFile,writeFile,appendFile} from "node:fs/promises";
+import {parseEnv} from "node:util";
+import {createClient} from "@supabase/supabase-js";
+import AxeBuilder from "@axe-core/playwright";
+test.use({trace:"off",screenshot:"off",video:"off"});
+function syntheticPdf(){
+  const lines=["SYNTHETIC TEST DOCUMENT - NOT A REAL MEDICAL REPORT","Patient: TEST CAT","Date: 2026-09-15","Laboratory: Test Lab","Title: Blood test","CREA 1.7 mg/dl Reference: 0.8-1.6","HGB 12.4 g/dl Reference: 8.0-15.0"];
+  const stream=`BT /F1 12 Tf 40 780 Td ${lines.map((line,i)=>`${i?"0 -25 Td ":""}(${line}) Tj`).join("\n")} ET`;
+  const objects=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>","<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>","<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
+  let pdf="%PDF-1.4\n";const offsets=[0];for(const [i,obj] of objects.entries()){offsets.push(pdf.length);pdf+=`${i+1} 0 obj\n${obj}\nendobj\n`;}
+  const xref=pdf.length;pdf+=`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(offset=>`${String(offset).padStart(10,"0")} 00000 n \n`).join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf,"ascii");
+}
+test("medical document review, confirmation, retry and private source",async({page},testInfo)=>{
+  test.setTimeout(180000);page.setDefaultTimeout(15000);test.skip(!process.env.PETS_TEST_CREDENTIALS,"Requires an explicitly supplied test account");
+  const credentials=JSON.parse(await readFile(process.env.PETS_TEST_CREDENTIALS!,"utf8"));
+  const env=parseEnv(await readFile(".env.local","utf8"));
+  const client=createClient(env.NEXT_PUBLIC_SUPABASE_URL!,env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{auth:{persistSession:false,autoRefreshToken:false}});
+  const {error:loginError}=await client.auth.signInWithPassword(credentials);expect(loginError).toBeNull();
+  const {data:created,error:createError}=await client.functions.invoke("pets",{body:{action:"create",pet:{imie:`TEST MEDICAL ${testInfo.project.name}`,gatunek:"cat",rasa:null,data_urodzenia:null,plec:"unknown",kastracja:null,identyfikacja:"unknown",numer_id:null,notatki:null}}});
+  expect(createError).toBeNull();const pet=created.pet;const fixture={pet_id:pet.id,gospodarstwo_id:pet.gospodarstwo_id,report_id:"",source_path:""};
+  const saveFixture=async()=>{await writeFile(`tmp/medical-test-${testInfo.project.name}.json`,JSON.stringify(fixture));await appendFile("tmp/medical-test-fixtures.jsonl",JSON.stringify(fixture)+"\n");};await saveFixture();
+  await page.goto("/pl/login");await page.getByLabel("Adres e-mail").fill(credentials.email);await page.getByLabel("Hasło",{exact:true}).fill(credentials.password);await page.getByRole("button",{name:"Zaloguj się",exact:true}).click();await expect(page).toHaveURL(/\/pl\/app$/,{timeout:15000});
+  await page.getByRole("button",{name:"Rozumiem",exact:true}).click();
+  await page.goto(`/pl/app/zwierzeta/${pet.id}?tab=results`);await expect(page.getByText("Nie ma jeszcze badań",{exact:true})).toBeVisible();
+  await page.getByRole("link",{name:"Dodaj badanie",exact:true}).click();
+  await page.getByLabel("Wybierz dokument",{exact:true}).setInputFiles({name:"test.pdf",mimeType:"application/pdf",buffer:syntheticPdf()});
+  await expect(page.locator(".medical-pdf-text")).toContainText("SYNTHETIC TEST DOCUMENT");
+  let extracted=false;
+  if(testInfo.project.name==="desktop"&&["1","mock"].includes(process.env.MEDICAL_TEST_AI??"")){
+    if(process.env.MEDICAL_TEST_AI==="mock")await page.route("**/functions/v1/medical-reports",async route=>{
+      if(route.request().postDataJSON()?.action!=="extract")return route.continue();
+      return route.fulfill({json:{patient_name:"TEST CAT",report:{title:"Blood test",test_date:"2026-09-15",laboratory:"Test Lab",doctor:"",notes:"",rows:[{name:"CREA",value:"1.7",unit:"mg/dl",reference:"0.8-1.6",category:"renal"},{name:"HGB",value:"12.4",unit:"g/dl",reference:"8.0-15.0",category:"blood"}]}}});
+    });
+    await expect(page.getByRole("button",{name:"Odczytaj z Gemini"})).toBeEnabled();
+    const readResponse=page.waitForResponse(r=>r.url().includes("/functions/v1/medical-reports")&&r.request().postDataJSON()?.action==="extract",{timeout:120000});
+    await page.getByRole("button",{name:"Odczytaj z Gemini"}).click();const response=await readResponse;
+    expect(response.status(),JSON.stringify(await response.json())).toBe(200);
+    await expect(page.getByLabel("Data badania",{exact:false})).toHaveValue("2026-09-15");
+    await expect(page.locator(".medical-parameter")).toHaveCount(2);extracted=true;
+    for(const row of await page.locator(".medical-parameter").all()){
+      const value=row.getByRole("textbox",{name:"Wynik *",exact:true});const original=await value.inputValue();
+      await value.fill("abc");await expect(value).toHaveValue(original);
+      await value.fill("");await value.fill("abc");await expect(value).toHaveValue("");
+      await value.fill(original);
+    }
+  }else await page.getByRole("button",{name:"Uzupełnij ręcznie"}).click();
+  await page.getByLabel("Nazwa badania",{exact:false}).fill("TEST Blood report");await page.getByLabel("Data badania",{exact:false}).fill("2026-09-15");
+  if(!extracted){await page.getByRole("button",{name:"Dodaj parametr",exact:true}).click();const row=page.locator(".medical-parameter");await row.getByRole("textbox",{name:"Parametr *",exact:true}).fill("CREA");await row.getByLabel("Wynik",{exact:false}).fill("1,7");await row.getByLabel("Jednostka",{exact:true}).fill("mg/dl");await row.getByLabel("Zakres z dokumentu").fill("0,8–1,6");}
+  expect((await client.from("wynik_badania").select("id").eq("zwierze_id",pet.id)).data).toEqual([]);
+  await page.getByRole("button",{name:"Zatwierdź i zapisz w kartotece"}).click();await expect(page.getByRole("alert").filter({hasText:"Uzupełnij wymagane pola"})).toBeVisible();
+  for(const checkbox of await page.getByLabel("Sprawdzone z oryginałem",{exact:true}).all())await checkbox.check();
+  const firstRow=page.locator(".medical-parameter").first();await firstRow.getByLabel("Wynik",{exact:false}).fill("1,8");await expect(firstRow.getByLabel("Sprawdzone z oryginałem")).not.toBeChecked();await firstRow.getByLabel("Sprawdzone z oryginałem").check();
+  await page.getByLabel("Potwierdzam pupila",{exact:false}).check();
+  expect((await new AxeBuilder({page}).include("main").exclude("iframe").analyze()).violations).toEqual([]);
+  await page.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();window.scrollTo(0,0);});
+  await page.screenshot({path:`tmp/medical-review-${testInfo.project.name}.png`,fullPage:true});
+  let savedBody:Record<string,unknown>|null=null;
+  const responsePromise=page.waitForResponse(r=>r.url().includes("/functions/v1/medical-reports")&&r.request().postDataJSON()?.action==="confirm");
+  await page.getByRole("button",{name:"Zatwierdź i zapisz w kartotece"}).click();const response=await responsePromise;savedBody=response.request().postDataJSON();expect(response.status(),await response.text()).toBe(201);
+  fixture.report_id=(await response.json()).id;
+  fixture.source_path=(await client.from("wynik_badania").select("source_path").eq("id",fixture.report_id).single()).data!.source_path;await saveFixture();
+  await expect(page).toHaveURL(new RegExp(`/zwierzeta/${pet.id}\\?tab=results&report=${fixture.report_id}$`));await page.reload();await expect(page.getByRole("heading",{name:"Wyniki laboratoryjne"})).toBeVisible();
+  await expect(page.getByRole("cell",{name:"Powyżej zakresu",exact:false})).toBeVisible();
+  const retry=await client.functions.invoke("medical-reports",{body:savedBody!});expect(retry.error).toBeNull();expect(retry.data.id).toBe(fixture.report_id);
+  const changedRetry=await client.functions.invoke("medical-reports",{body:{...savedBody,report:{...(savedBody!.report as object),title:"Changed after confirmation"}}});expect(changedRetry.error?.context?.status).toBe(409);
+  const reports=await client.from("wynik_badania").select("id").eq("zwierze_id",pet.id);expect(reports.data).toHaveLength(1);
+  const deletion=await client.storage.from("medical-documents").remove([fixture.source_path]);expect(deletion.error).toBeNull();expect(deletion.data).toHaveLength(0);
+  await page.getByRole("button",{name:"Pokaż oryginał"}).click();await expect(page.locator(".medical-saved-source .medical-pdf-text")).toContainText("SYNTHETIC TEST DOCUMENT");
+  const signed=await page.locator(".medical-saved-source a").getAttribute("href");expect((await page.request.get(signed!)).status()).toBe(200);
+  const edit=page.getByRole("button",{name:"Edytuj",exact:true}).first();
+  await edit.click();const dialog=page.getByRole("dialog");
+  await expect(dialog.getByText("liczba dziesiętna",{exact:true})).toBeVisible();
+  await dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true}).fill("dowolny tekst");
+  await expect(dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true})).toHaveValue("1,8");
+  await dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true}).fill("1,");
+  await dialog.getByRole("button",{name:"Zapisz zmiany",exact:true}).click();
+  await expect(dialog.getByRole("alert")).toContainText("Wpisz poprawną liczbę");
+  await dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true}).fill("2,1");
+  await dialog.getByRole("button",{name:"Anuluj",exact:true}).click();await expect(dialog).not.toBeVisible();
+  await edit.click();await expect(dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true})).toHaveValue("1,8");
+  await dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true}).fill("2,1");
+  await dialog.getByRole("textbox",{name:"Notatka do wyniku / zalecenie lekarza",exact:true}).fill("Synthetic correction note");
+  await dialog.getByLabel("Oznacz jako kluczowy parametr",{exact:false}).check();
+  expect((await new AxeBuilder({page}).include(".medical-edit-dialog").analyze()).violations).toEqual([]);
+  await page.screenshot({path:`tmp/medical-edit-${testInfo.project.name}.png`,fullPage:false});
+  const corrected=page.waitForResponse(r=>r.url().includes("/functions/v1/medical-reports")&&r.request().postDataJSON()?.action==="correct");
+  await dialog.getByRole("button",{name:"Zapisz zmiany",exact:true}).click();const correctionResponse=await corrected;expect(correctionResponse.status()).toBe(200);
+  const stale=await client.functions.invoke("medical-reports",{body:correctionResponse.request().postDataJSON()});expect(stale.error?.context?.status).toBe(409);
+  const invalidBody=correctionResponse.request().postDataJSON();
+  const invalid=await client.functions.invoke("medical-reports",{body:{...invalidBody,revision:1,correction:{...invalidBody.correction,value:"dowolny tekst"}}});expect(invalid.error?.context?.status).toBe(400);
+  const invalidRpc=await client.rpc("correct_measurement",{p_pet_id:pet.id,p_measurement_id:invalidBody.measurement_id,p_revision:1,p_value:"dowolny tekst",p_unit:"mg/dl",p_reference:"0.8-1.6",p_note:"",p_is_key:false});expect(invalidRpc.error?.code).toBe("22023");
+  await expect(dialog).not.toBeVisible();await page.reload();await edit.click();
+  await expect(dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true})).toHaveValue("2,1");
+  await expect(dialog.getByRole("textbox",{name:"Notatka do wyniku / zalecenie lekarza",exact:true})).toHaveValue("Synthetic correction note");
+  await expect(dialog.getByLabel("Oznacz jako kluczowy parametr",{exact:false})).toBeChecked();
+  await dialog.getByRole("button",{name:"Przywróć pierwotny odczyt",exact:false}).click();await expect(dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true})).toHaveValue("1,8");
+  await dialog.getByRole("button",{name:"Zapisz zmiany",exact:true}).click();await expect(dialog).not.toBeVisible();
+  await page.reload();await edit.click();await expect(dialog.getByRole("textbox",{name:"Wartość wyniku *",exact:true})).toHaveValue("1,8");await page.keyboard.press("Escape");await expect(dialog).not.toBeVisible();
+  expect((await new AxeBuilder({page}).include("main").exclude("iframe").analyze()).violations).toEqual([]);
+  await page.setViewportSize({width:320,height:780});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:`tmp/medical-results-${testInfo.project.name}.png`,fullPage:true});
+  await client.auth.signOut();
+});

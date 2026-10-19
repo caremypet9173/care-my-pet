@@ -1,0 +1,42 @@
+/* Shared hero: the same composition on every record tab. */
+.household-record {
+ .household-cover { padding:2rem; border:0; border-radius:1.5rem; box-shadow:0 1px 3px #0000000d; }
+ .household-cover::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,#faf8f5e6,#faf8f5cc,#faf8f5a6); backdrop-filter:blur(2px); }
+ .household-cover-top { z-index:1; justify-content:space-between; align-items:center; gap:.75rem; margin-bottom:1rem; }
+ .household-cover-top > span { display:inline-flex; align-items:center; gap:.5rem; padding:.25rem .75rem; background:#eaf3ee; color:#164d34; font-size:.75rem; font-weight:600; line-height:1rem; }
+ .household-cover-top > span::before { content:""; width:.5rem; height:.5rem; border-radius:50%; background:#10b981; }
+ .household-cover-top small { color:#4d6d5c; font-size:.75rem; }
+ .household-profile-glass { z-index:1; display:flex; flex-direction:row; justify-content:space-between; align-items:center; gap:1.5rem; padding:1.5rem; border:0; border-radius:1.5rem; background:#ffffffd9; backdrop-filter:blur(12px); box-shadow:0 1px 3px #0000000d; }
+ .household-profile-identity { display:flex; align-items:center; gap:1.25rem; min-width:0; flex:1; }
+ .household-portrait { position:relative; width:7rem; height:7rem; min-height:0; border:0; overflow:hidden; border-radius:1rem; display:block; box-shadow:0 4px 6px #0000001a; }
+ .household-portrait .household-pet-avatar { width:100%; height:100%; min-height:0; border-radius:1rem; }
+ .household-portrait small { position:absolute; bottom:.25rem; inset-inline:0; text-align:center; font-size:.625rem; }
+ .household-profile-details { display:block; min-width:0; flex:1; }
+ .household-profile-name { gap:.5rem; }
+ .household-profile-name h1 { font-size:1.875rem; line-height:2.25rem; letter-spacing:-.025em; color:#0f3d28; }
+ .household-profile-name > .household-tag { border:0; border-radius:.375rem; background:#f0f5f2; color:#1d7a4f; font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:.125rem .5rem; }
+ .household-profile-details > p { margin-top:.25rem; font-size:.875rem; line-height:1.25rem; font-weight:500; color:#4d6d5c; }
+ .household-profile-tags { gap:.375rem; margin:.75rem 0 0; }
+ .household-profile-tags .household-tag { border:0; padding:.25rem .625rem; font-size:.75rem; line-height:1rem; background:#f4efea; color:#5a4b3c; }
+ .household-profile-tags .household-tag:first-child { background:#e8f3ed; color:#164d34; }
+ .household-guardian-note { display:flex; flex:0 1 20rem; gap:.75rem; padding:1rem; border-radius:1rem; background:#fef9ee; color:#6a4b1a; font-size:.75rem; line-height:1.625; }
+ .household-guardian-note svg { color:#ba7517; margin-top:.125rem; }
+ .household-guardian-note strong { color:#4b3412; }
+ .household-guardian-note p { margin:.125rem 0 0; color:#6a4b1a; }
+ @media (max-width:767px) {
+  .household-cover { padding:1.75rem; }
+  .household-profile-glass { flex-direction:column; align-items:stretch; }
+  .household-profile-identity { align-items:flex-start; }
+  .household-guardian-note { flex:auto; width:100%; }
+ }
+ @media (max-width:639px) {
+  .household-cover { padding:1rem; }
+  .household-cover-top small { display:none; }
+  .household-profile-glass { padding:1.25rem; }
+  .household-profile-identity { flex-direction:column; align-items:center; text-align:center; }
+  .household-portrait { width:6rem; height:6rem; }
+  .household-profile-name, .household-profile-tags { justify-content:center; }
+  .household-profile-name h1 { font-size:1.5rem; line-height:2rem; }
+  .household-guardian-note { padding:.875rem; }
+ }
+}

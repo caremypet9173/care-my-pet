@@ -22,6 +22,7 @@
 
 # production
 /build
+/public/pdf-worker/
 
 # misc
 .DS_Store

@@ -25,7 +25,25 @@ nie są wymagane. Wybrana strona główna: „06 — Care My Pet Signature” ze
 Fundament frontendu, publiczne demo i Auth są w repo. W projekcie
 `lrlnqmciarjvngvquchu` skonfigurowano Gmail SMTP i Google OAuth. Użytkownik
 potwierdził działanie logowania, sesji i wylogowania; granice testów w docs/AUTH.md.
-Następny etap: model gospodarstwa, członkostwa i zwierząt oraz RLS.
+Profile zwierząt, gospodarstwa i RLS wdrożono 2026-10-18. Lokalny frontend
+obsługuje listę, dodawanie i edycję; zapis przez Edge Function `pets`.
+Formularz „Poznajmy Twojego pupila” odwzorowuje wskazane ekrany Stitch
+(mapowanie w `docs/stitch/DESIGN.md`), z kadrowaniem prywatnego awatara
+i przybliżoną datą urodzenia. Awatary działają na liście i w profilu.
+Zakres, testy i ograniczenia: `docs/PETS.md`. Następny etap: wprowadzenie
+czterech kotów i dokumentacji medycznej.
+Wyniki badań i weryfikacja Split-Screen 2 wdrożone 2026-10-18:
+`docs/MEDICAL_REPORTS.md`. Działa ręczny zapis z prywatnym oryginałem PDF/JPG/PNG.
+Klucz Gemini skonfigurowany, model `gemini-3.1-pro-preview`. Po doładowaniu Google
+i usunięciu odrzucanego przez dostawcę `maxItems` ze schematu odpowiedzi przeszedł
+rzeczywisty test PDF → Gemini → weryfikacja → zapis (2026-10-18).
+Jakość odczytu na prawdziwych badaniach użytkownika pozostaje do oceny.
+Projekt Stitch: https://stitch.withgoogle.com/projects/1963478756572071889.
+Nie wybieraj innego projektu na podstawie domyślnej konfiguracji gcloud.
+Jeśli nie wiadomo, którego szablonu Stitch użyć, zapytaj użytkownika przed
+implementacją. Nie zastępuj wskazanego ekranu podobnym wariantem ani własną interpretacją.
+Logowanie i rejestracja: „Forest — Ekran logowania i rejestracji”,
+ekran `3ba83b4082ce4583ae27cbc1ea89c97f`.
 
 Decyzje produktowe i techniczne żyją w `docs/`. Przed pracą nad funkcją przeczytaj
 odpowiedni dokument, nie zgaduj:

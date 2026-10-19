@@ -39,3 +39,13 @@ content_path = "./supabase/templates/confirmation.html"
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+
+# The handler verifies every user JWT with Auth before using the user's RLS client.
+[functions.pets]
+verify_jwt = false
+
+[functions.medical-reports]
+verify_jwt = false
+
+[functions.pet-weight]
+verify_jwt = false

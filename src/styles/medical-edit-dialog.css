@@ -1,0 +1,45 @@
+.medical-edit-dialog { margin:auto; width:calc(100% - 2rem); max-width:512px; max-height:calc(100dvh - 2rem); padding:0; border:1px solid #e7e5e4; border-radius:1rem; background:white; color:#292524; box-shadow:0 25px 50px #0004; overflow:auto; }
+.medical-edit-dialog::backdrop { background:#1c191780; backdrop-filter:blur(4px); }
+.medical-edit-dialog header { display:flex; align-items:flex-start; justify-content:space-between; padding:1.25rem 1.5rem; border-bottom:1px solid #f5f5f4; background:#faf8f5b3; gap:.5rem; }
+.medical-edit-dialog h2 { display:flex; align-items:center; gap:.5rem; font-size:1.125rem; font-weight:700; line-height:1.5; }
+.edit-status-dot { width:.5rem; height:.5rem; border-radius:50%; background:#a8a29e; flex-shrink:0; }
+.edit-status-dot--above,.edit-status-dot--below { background:#f59e0b; }
+.edit-status-dot--within { background:#10b981; }
+.medical-edit-dialog header p { margin-top:.25rem; font-size:.75rem; color:#78716c; }
+.medical-edit-dialog button { cursor:pointer; }
+.medical-edit-dialog button:disabled { opacity:.5; cursor:wait; }
+.edit-close { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border-radius:50%; color:#78716c; }
+.edit-close:hover { background:#e7e5e4; }
+.edit-parameter-body { border:0; padding:1.5rem; display:grid; gap:1rem; min-width:0; }
+.edit-source { display:flex; gap:.75rem; padding:.875rem; border:1px solid #d8e5de; border-radius:.75rem; background:#f0f5f2; font-size:.75rem; line-height:1.625; color:#385a48; }
+.edit-source svg { color:#1d7a4f; flex-shrink:0; margin-top:.125rem; }
+.edit-source span { font-weight:600; text-decoration:underline dashed; overflow-wrap:anywhere; }
+.edit-two-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.edit-parameter-body label { display:grid; gap:.375rem; font-size:.75rem; font-weight:700; }
+.edit-parameter-body input:not([type=checkbox]),.edit-parameter-body select,.edit-parameter-body textarea { width:100%; min-width:0; min-height:44px; border:1px solid #d6d3d1; border-radius:.75rem; padding:.625rem .875rem; background:white; color:#292524; font:inherit; font-weight:500; }
+.edit-parameter-body :is(input,select,textarea):focus-visible { outline:2px solid #1d7a4f; outline-offset:2px; }
+.edit-value { position:relative; display:block; }
+.edit-value > span { position:absolute; right:.75rem; top:50%; transform:translateY(-50%); font-size:.75rem; color:#78716c; max-width:4rem; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
+.edit-parameter-body .edit-value input { padding-right:5rem; font-size:.875rem; font-weight:700; }
+.edit-reference > p { margin-bottom:.375rem; font-size:.75rem; font-weight:700; }
+.edit-value-validation { font-size:.6875rem; color:#57534e; margin-top:-.5rem; }
+.edit-value-validation [role=alert] { color:#b42318; margin-top:.375rem; }
+.edit-parameter-body input[aria-invalid=true] { border-color:#b42318; }
+.edit-reference label { font-size:.6875rem; font-weight:500; color:#78716c; }
+.edit-reference input { background:#fafaf9 !important; }
+.edit-range-status { display:flex; align-items:center; gap:.5rem; padding:.75rem; background:#fef9ee; border:1px solid #fde68a; border-radius:.75rem; color:#78350f; font-size:.75rem; }
+.edit-range-status svg { flex-shrink:0; }
+.edit-range-status > span { margin-left:auto; font-size:.625rem; border:1px solid #fcd34d; border-radius:1rem; padding:.125rem .5rem; white-space:nowrap; }
+.edit-range-status--within { background:#f0f5f2; color:#164d34; border-color:#d8e5de; }
+.edit-range-status--unknown { background:#fafaf9; color:#57534e; border-color:#e7e5e4; }
+.edit-parameter-body textarea { resize:vertical; }
+.edit-parameter-body .edit-key { display:flex; align-items:center; gap:.625rem; font-weight:500; }
+.edit-key input { accent-color:#1d7a4f; width:1rem; height:1rem; flex-shrink:0; }
+.medical-edit-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:1rem 1.5rem; background:#faf8f5; border-top:1px solid #e7e5e4; }
+.medical-edit-dialog footer > div { display:flex; gap:.625rem; flex-shrink:0; }
+.medical-edit-dialog footer button { display:flex; align-items:center; justify-content:center; gap:.375rem; font-size:.75rem; font-weight:600; min-height:40px; padding:.5rem 1rem; border:1px solid #e7e5e4; border-radius:.75rem; background:white; }
+.medical-edit-dialog footer button[type=submit] { background:#0f3d28; color:white; border-color:#0f3d28; }
+.medical-edit-dialog footer .edit-restore { border:0; background:transparent; color:#78716c; padding:0; text-align:left; font-size:.6875rem; font-weight:500; }
+.edit-restore svg { flex-shrink:0; }
+.medical-row-edit { display:inline-flex; align-items:center; gap:.25rem; font-size:.75rem; min-height:44px; cursor:pointer; color:var(--color-primary); margin-left:.5rem; }
+@media(max-width:540px) { .edit-two-columns { grid-template-columns:1fr; } .edit-reference .edit-two-columns { grid-template-columns:repeat(2,minmax(0,1fr)); } .medical-edit-dialog footer { flex-direction:column-reverse; align-items:stretch; } .medical-edit-dialog footer > div { justify-content:flex-end; } }

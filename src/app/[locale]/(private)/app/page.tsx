@@ -1,19 +1,22 @@
 import { getLocale } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/layout/container";
-import { Card } from "@/components/ui/card";
-import { SignOut } from "@/features/auth/sign-out";
-import { authMessages } from "@/features/auth/messages";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { listPets } from "@/features/pets/data";
+import { petMessages } from "@/features/pets/messages";
+import { HouseholdDashboard } from "@/features/pets/household-dashboard";
+import { dashboardMessages } from "@/features/pets/dashboard-messages";
+import { IconPlus, IconUpload } from "@tabler/icons-react";
+import "@/styles/pets.css";
 
 export default async function AppPage() {
   const locale = await getLocale();
-  const t = authMessages[locale];
-  const supabase = await createClient();
-  const result = supabase ? await supabase.auth.getUser() : null;
-  if (!result?.data.user || result.error) return redirect({ href: "/login", locale });
-  return <Container width="prose"><Card className="login-panel" padding="lg">
-    <h1>{t.account}</h1><p>{t.signedIn} <strong>{result.data.user.email}</strong></p>
-    <p>{t.next}</p><SignOut />
-  </Card></Container>;
+  const t = petMessages[locale];
+  const pets = await listPets();
+  const d = dashboardMessages[locale];
+  const empty = pets?.length === 0;
+  const firstPet = locale === "pl" ? "Dodaj pierwszego pupila" : "Add your first pet";
+  return <Container className="pets-page">
+    <div className="pets-heading"><div><span className="pets-eyebrow">{d.dashboard}</span><h1>{t.title}</h1><p>{t.intro}</p></div><div className="household-heading-actions"><ButtonLink variant={empty ? "primary" : "secondary"} size="sm" href="/app/zwierzeta/nowe"><IconPlus size={16} aria-hidden="true" />{empty ? firstPet : t.add}</ButtonLink><div><Button size="sm" disabled><IconUpload size={16} aria-hidden="true" />{d.upload}</Button><small>{d.upcoming}</small></div></div></div>
+    {pets === null ? <p role="alert">{t.loadFailed}</p> : <HouseholdDashboard pets={pets} locale={locale} />}
+  </Container>;
 }

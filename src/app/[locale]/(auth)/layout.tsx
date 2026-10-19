@@ -1,18 +1,23 @@
-import { PublicHeader } from "@/components/layout/public-header";
-import { PublicFooter } from "@/components/layout/public-footer";
+import { getLocale } from "next-intl/server";
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { Link } from "@/i18n/navigation";
+import { authDesignMessages } from "@/features/auth/design-messages";
+import "@/styles/auth.css";
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const t = authDesignMessages[locale];
   return (
-    <>
-      <PublicHeader />
+    <div className="auth-page">
+      <header className="auth-header"><div><BrandLogo /><span>{t.tagline}</span></div><Link href="/">← {t.back}</Link></header>
       <main id="main-content" tabIndex={-1}>
         {children}
       </main>
-      <PublicFooter />
-    </>
+      <footer className="auth-footer"><span>© {new Date().getFullYear()} Care My Pet</span><nav aria-label={locale === "pl" ? "Informacje prawne" : "Legal information"}><Link href="/prywatnosc">{locale === "pl" ? "Prywatność" : "Privacy"}</Link><Link href="/regulamin">{locale === "pl" ? "Regulamin" : "Terms"}</Link></nav></footer>
+    </div>
   );
 }

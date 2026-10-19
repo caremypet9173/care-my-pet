@@ -17,3 +17,12 @@ export type PetProfile = {
   };
   report: LabReport;
 };
+
+export type Pet = {
+  id: string; gospodarstwo_id: string; imie: string; gatunek: "cat" | "dog";
+  rasa: string | null; data_urodzenia: string | null; plec: "female" | "male" | "unknown";
+  kastracja: boolean | null; identyfikacja: "chip" | "tattoo" | "none" | "unknown";
+  numer_id: string | null; notatki: string | null; updated_at: string;
+  data_urodzenia_przyblizona: boolean; avatar_path: string | null; avatar_url?: string | null;
+  report_count?: number;
+};

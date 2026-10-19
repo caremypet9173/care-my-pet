@@ -78,9 +78,20 @@ test("invalid callbacks stay local and private routes require a verified session
   await expect(page).toHaveURL(/\/en\/login$/);
 });
 
-test("registration is accessible and fits a narrow screen", async ({ page }) => {
+test("registration is accessible and fits a narrow screen", async ({ page }, testInfo) => {
   await page.goto("/pl/register");
+  await page.getByRole("button", { name: "Rozumiem", exact: true }).click();
+  await expect(page.locator(".auth-mode-switch a[aria-current]")).toHaveAttribute("href", "/pl/register");
+  await page.getByLabel("Hasło", { exact: true }).fill("example-password-only");
+  await page.getByRole("button", { name: "Pokaż hasło", exact: true }).click();
+  await expect(page.getByLabel("Hasło", { exact: true })).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Ukryj hasło", exact: true }).click();
+  await page.getByLabel("Hasło", { exact: true }).fill("");
+  await page.screenshot({ path: `tmp/auth-register-${testInfo.project.name}.png`, fullPage: true });
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.locator(".auth-mode-switch").getByRole("link", { name: "Zaloguj się" }).click();
+  await expect(page.getByRole("heading", { name: "Witaj z powrotem" })).toBeVisible();
+  await page.screenshot({ path: `tmp/auth-login-${testInfo.project.name}.png`, fullPage: true });
   await page.setViewportSize({ width: 320, height: 740 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

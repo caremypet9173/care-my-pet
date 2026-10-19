@@ -1,0 +1,52 @@
+import {test,expect} from '@playwright/test';
+import {readFile,appendFile} from 'node:fs/promises';
+import {parseEnv} from 'node:util';
+import {createHash,randomUUID} from 'node:crypto';
+import {createClient} from '@supabase/supabase-js';
+import AxeBuilder from '@axe-core/playwright';
+test.use({trace:'off',screenshot:'off',video:'off'});
+test('identical renamed file is detected before AI and concurrent saves are deduplicated',async({page},info)=>{
+ test.setTimeout(120000);test.skip(!process.env.PETS_TEST_CREDENTIALS,'Requires test credentials');
+ const credentials=JSON.parse(await readFile(process.env.PETS_TEST_CREDENTIALS!,'utf8'));
+ const env=parseEnv(await readFile('.env.local','utf8'));
+ const client=createClient(env.NEXT_PUBLIC_SUPABASE_URL!,env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{auth:{persistSession:false}});
+ const login=await client.auth.signInWithPassword(credentials);expect(login.error).toBeNull();
+ const created=await client.functions.invoke('pets',{body:{action:'create',pet:{imie:`TEST DUPLICATE ${info.project.name}`,gatunek:'cat',rasa:null,data_urodzenia:null,plec:'unknown',kastracja:null,identyfikacja:'unknown',numer_id:null,notatki:null}}});expect(created.error).toBeNull();const pet=created.data.pet;
+ const bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=','base64');
+ const sha256=createHash('sha256').update(bytes).digest('hex');
+ const fixture={pet_id:pet.id,paths:[] as string[],ids:[] as string[],sha256};
+ const journal=()=>appendFile('tmp/duplicate-fixtures.jsonl',JSON.stringify(fixture)+'\n');await journal();
+ const check=()=>client.functions.invoke('medical-reports',{body:{action:'check_duplicate',pet_id:pet.id,sha256}});
+ const first=await check();expect(first.error).toBeNull();expect(first.data.duplicate).toBeNull();
+ const bodies=[];
+ for(let i=0;i<2;i++){
+  const id=randomUUID(),path=`${pet.gospodarstwo_id}/${login.data.user!.id}/${id}.png`;fixture.ids.push(id);fixture.paths.push(path);await journal();
+  expect((await client.storage.from('medical-documents').upload(path,bytes,{contentType:'image/png'})).error).toBeNull();
+  bodies.push({action:'confirm',id,pet_id:pet.id,source_name:`synthetic-${i}.png`,source_mime:'image/png',report:{title:'Synthetic duplicate test',test_date:'2026-09-15',laboratory:'',doctor:'',notes:'',rows:[]},confirmed:true});
+ }
+ const saves=await Promise.all(bodies.map(body=>client.functions.invoke('medical-reports',{body})));expect(saves.filter(r=>!r.error)).toHaveLength(1);expect(saves.find(r=>r.error)?.error?.context.status).toBe(409);
+ const winner=saves.findIndex(r=>!r.error),id=bodies[winner].id;
+ expect((await client.functions.invoke('medical-reports',{body:bodies[winner]})).error).toBeNull();
+ expect((await check()).data.duplicate.id).toBe(id);
+ const extract=await client.functions.invoke('medical-reports',{body:{action:'extract',pet_id:pet.id,mime:'image/png',file:bytes.toString('base64')}});expect(extract.error?.context.status).toBe(409);expect((await extract.error!.context.json()).duplicate.id).toBe(id);
+ const other=await client.functions.invoke('medical-reports',{body:{action:'check_duplicate',pet_id:pet.id,sha256:createHash('sha256').update('different bytes').digest('hex')}});expect(other.data.duplicate).toBeNull();
+ await page.goto('/pl/login');await page.getByLabel('Adres e-mail').fill(credentials.email);await page.getByLabel('Hasło',{exact:true}).fill(credentials.password);await page.getByRole('button',{name:'Zaloguj się',exact:true}).click();await expect(page).toHaveURL(/\/pl\/app$/,{timeout:20000});await page.getByRole('button',{name:'Rozumiem',exact:true}).click();
+ let aiCalls=0;page.on('request',r=>{if(r.url().includes('/functions/v1/medical-reports')&&r.method()==='POST'&&r.postDataJSON()?.action==='extract')aiCalls++;});
+ await page.goto(`/pl/app/zwierzeta/${pet.id}/badania/nowe`);
+ await page.route('**/functions/v1/medical-reports',route=>{
+  if(route.request().postDataJSON()?.action==='check_duplicate')return route.fulfill({status:503,json:{error:'unavailable'}});
+  return route.continue();
+ });
+ await page.getByLabel('Wybierz dokument',{exact:true}).setInputFiles({name:'RENAMED.png',mimeType:'image/png',buffer:bytes});
+ const failure=page.getByRole('alert').filter({hasText:'Nie udało się sprawdzić pliku'});
+ await expect(failure).toBeFocused();await expect(failure).toBeInViewport();
+ await page.unroute('**/functions/v1/medical-reports');
+ await failure.getByRole('button',{name:'Spróbuj ponownie'}).click();
+ await expect(page.locator('.review-duplicate')).toBeFocused();await expect(page.locator('.review-duplicate')).toBeInViewport();
+ await page.getByLabel('Wybierz dokument',{exact:true}).setInputFiles({name:'RENAMED.png',mimeType:'image/png',buffer:bytes});
+ await expect(page.getByRole('heading',{name:'Ten dokument jest już w kartotece'})).toBeVisible();expect(aiCalls).toBe(0);
+ expect((await new AxeBuilder({page}).include('.review-duplicate').analyze()).violations).toEqual([]);
+ await page.screenshot({path:`tmp/duplicate-${info.project.name}.png`,fullPage:true});
+ await page.getByRole('link',{name:'Otwórz istniejące badanie'}).click();await expect(page.locator('.medical-report-picker select')).toHaveValue(id);
+ expect((await client.from('wynik_badania').select('id').eq('zwierze_id',pet.id)).data).toHaveLength(1);
+});
