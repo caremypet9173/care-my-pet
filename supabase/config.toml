@@ -49,3 +49,7 @@ verify_jwt = false
 
 [functions.pet-weight]
 verify_jwt = false
+
+[functions.pet-history]
+verify_jwt = false
+

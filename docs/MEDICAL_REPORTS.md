@@ -141,8 +141,11 @@ Po tej korekcie przeszły testy desktop i mobile, Axe, typecheck oraz lint.
 
 Lista pokazuje maks. 100 najnowszych badań. Interpretacja Claude, automatyczne
 powiązanie z wizytą, szkice na serwerze, wieloplikowy import i sortowanie
-synonimów nie są częścią tego wdrożenia. Osobna zakładka Dokumenty pozostaje
-w przygotowaniu; dostęp do źródeł badań działa z zakładki Wyniki badań.
+synonimów nie są częścią tego wdrożenia. Zakładka Dokumenty (`?tab=documents`,
+`?tab=documents&document=UUID`) prezentuje listę źródeł zapisanych badań
+z wyszukiwaniem po nazwie badania, pliku, laboratorium i dacie, podglądem PDF.js
+lub obrazu w dialogu, metadanymi, nawigacją między dokumentami oraz przejściem
+do szczegółów badania.
 # Identyczne pliki
 
 Przed odczytem Gemini formularz liczy SHA-256 zawartości i sprawdza dokumenty

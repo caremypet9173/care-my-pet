@@ -252,3 +252,179 @@
 }
 
 .medical-trend-point{cursor:pointer;outline:none}.medical-trend-point:focus .medical-trend-hit,.medical-trend-point:hover .medical-trend-hit{stroke:#164d34;stroke-width:2;fill:#164d3410}.medical-trend-point:focus .medical-trend-hit{stroke-dasharray:4 2}@media(max-width:600px){.medical-trend-hit{r:40}}
+
+/* Documents tab and preview modal */
+.medical-documents{display:grid;gap:1.5rem}
+.medical-documents-toolbar.pet-panel{padding:1.5rem;border-radius:1.5rem}
+.medical-documents-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;padding-bottom:1.25rem;border-bottom:1px solid var(--color-border)}
+.medical-documents-header h2{font-size:1.375rem;margin-bottom:.25rem}
+.medical-documents-header p{font-size:.8125rem;color:var(--color-text-muted)}
+.medical-documents-search{margin-top:1.25rem}
+.medical-documents-search>label{display:block;font-size:.8125rem;font-weight:600;margin-bottom:.4rem}
+.medical-documents-search-box{display:flex;align-items:center;gap:.6rem;max-width:36rem;padding:0 .85rem;border:1px solid #718b80;border-radius:.75rem;background:var(--color-surface-raised)}
+.medical-documents-search-box:focus-within{outline:2px solid #32766c;outline-offset:2px}
+.medical-documents-search-box svg{flex-shrink:0;color:var(--color-text-muted)}
+.medical-documents-search-box input{width:100%;min-width:0;min-height:44px;border:0;background:transparent;font:inherit;font-size:.9375rem;color:var(--color-text);outline:none}
+.medical-documents-count{margin-block:1rem;font-size:.8125rem;color:var(--color-text-muted)}
+.medical-documents-empty,.medical-documents-empty-search{text-align:center;padding:2.5rem 1rem;border:1px dashed var(--color-border);border-radius:1rem;background:var(--color-surface)}
+.medical-documents-empty svg{margin:0 auto .75rem;color:var(--color-primary)}
+.medical-documents-empty h3{font-size:1rem;margin-bottom:.35rem}
+.medical-documents-empty p,.medical-documents-empty-search p{font-size:.8125rem;color:var(--color-text-muted);margin-bottom:.75rem}
+.medical-documents-list{list-style:none;margin:0;padding:0;display:grid;gap:.75rem}
+.medical-document-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;border:1px solid var(--color-border);border-radius:1rem;background:var(--color-surface-raised);transition:border-color .15s,box-shadow .15s}
+.medical-document-card:hover{border-color:#c5ddd1;box-shadow:var(--shadow-card)}
+.medical-document-main{display:flex;align-items:flex-start;gap:.875rem;min-width:0;flex:1}
+.medical-document-badge{width:2.75rem;height:2.75rem;border-radius:.75rem;display:grid;place-items:center;flex-shrink:0;border:1px solid transparent}
+.medical-document-badge--pdf{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+.medical-document-badge--image{background:#eef6f2;color:#164d34;border-color:#cfe3d8}
+.medical-document-info{min-width:0;flex:1}
+.medical-document-title-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.medical-document-title-row h3{font-size:.9375rem;margin:0;min-width:0}
+.medical-document-title-row h3 button{text-align:left;font:inherit;font-weight:600;color:var(--color-text);cursor:pointer;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.medical-document-title-row h3 button:hover{color:var(--color-primary)}
+.medical-document-tag{display:inline-flex;align-items:center;padding:.15rem .55rem;border-radius:999px;font-size:.6875rem;font-weight:600;background:#f0f5f2;color:#164d34;border:1px solid #d8e5de}
+.medical-document-meta{font-size:.75rem;color:#526462;margin-top:.35rem;overflow-wrap:anywhere}
+.medical-document-actions{display:flex;align-items:center;gap:.5rem;flex-shrink:0;flex-wrap:wrap}
+.medical-document-preview-btn,.medical-document-report-link{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;padding:.5rem .85rem;border-radius:.6rem;font-size:.75rem;font-weight:600;cursor:pointer;text-decoration:none;transition:background-color .15s}
+.medical-document-preview-btn{background:#f7f5f0;color:var(--color-text);border:1px solid #718b80}
+.medical-document-preview-btn:hover{background:#ece8df}
+.medical-document-report-link{background:var(--color-surface-raised);color:#164d34;border:1px solid #164d34}
+.medical-document-report-link:hover{background:#eaf3ee}
+.medical-documents-limit{margin-top:1rem;font-size:.75rem;color:var(--color-text-muted)}
+.medical-document-dialog{width:min(1152px,calc(100% - 2rem));max-height:calc(100dvh - 2rem);margin:auto;padding:0;border:1px solid var(--color-border);border-radius:1.5rem;background:var(--color-surface-raised);color:var(--color-text);box-shadow:0 24px 48px #00000033;overflow:hidden}
+.medical-document-dialog::backdrop{background:#1c191799;backdrop-filter:blur(4px)}
+.medical-document-dialog-shell{display:flex;flex-direction:column;max-height:calc(100dvh - 2rem)}
+.medical-document-dialog-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.5rem;border-bottom:1px solid var(--color-border);background:var(--color-surface-raised);flex-shrink:0}
+.medical-document-dialog-heading{display:flex;align-items:center;gap:.75rem;min-width:0}
+.medical-document-format-pill{padding:.25rem .6rem;border-radius:.5rem;font-size:.75rem;font-weight:700;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;flex-shrink:0}
+.medical-document-dialog-heading h2{font-size:1rem;margin:0;overflow-wrap:anywhere}
+.medical-document-dialog-controls{display:flex;align-items:center;gap:.65rem;flex-shrink:0}
+.medical-document-external{display:inline-flex;align-items:center;gap:.4rem;min-height:44px;padding:.5rem .85rem;border-radius:.65rem;background:#164d34;color:#fff;font-size:.75rem;font-weight:600;text-decoration:none}
+.medical-document-external:hover{background:#1d7a4f}
+.medical-document-close{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;color:var(--color-text-muted);cursor:pointer}
+.medical-document-close:hover{background:var(--color-surface-sand);color:var(--color-text)}
+.medical-document-dialog-body{display:grid;grid-template-columns:minmax(0,1fr) 20rem;flex:1;min-height:0;overflow-y:auto;background:#f4f2ed}
+.medical-document-viewer{padding:1.25rem;min-width:0;overflow-y:auto}
+.medical-document-viewer .medical-pdf{background:var(--color-surface-raised);padding:1rem;border-radius:.75rem;border:1px solid var(--color-border)}
+.medical-document-image-frame{background:var(--color-surface-raised);padding:1rem;border-radius:.75rem;border:1px solid var(--color-border);display:grid;place-items:center}
+.medical-document-image-frame img{max-width:100%;max-height:68vh;object-fit:contain;display:block}
+.medical-document-status,.medical-document-error{background:var(--color-surface-raised);padding:2rem;border-radius:.75rem;border:1px solid var(--color-border);text-align:center;font-size:.875rem}
+.medical-document-error p{color:#a82424;margin-bottom:.75rem}
+.medical-document-sidebar{background:var(--color-surface-raised);border-left:1px solid var(--color-border);padding:1.25rem;display:flex;flex-direction:column;gap:1.25rem;overflow-y:auto}
+.medical-document-sidebar h3{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:#526462;margin-bottom:.65rem}
+.medical-document-dl{display:grid;gap:.5rem;margin:0;font-size:.75rem}
+.medical-document-dl>div{display:flex;justify-content:space-between;gap:.75rem;padding-block:.35rem;border-bottom:1px solid var(--color-border)}
+.medical-document-dl dt{color:#526462}
+.medical-document-dl dd{margin:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
+.medical-document-notes p{font-size:.75rem;line-height:1.6;white-space:pre-wrap;color:var(--color-text);background:var(--color-surface);padding:.75rem;border-radius:.6rem;border:1px solid var(--color-border)}
+.medical-document-related{padding:.85rem;border-radius:.75rem;background:#f6faf7;border:1px solid #d8e5de}
+.medical-document-related-link{display:inline-flex;align-items:center;min-height:44px;font-size:.8125rem;font-weight:600;color:#164d34;text-decoration:underline;text-underline-offset:3px}
+.medical-document-dialog-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.75rem 1.5rem;border-top:1px solid var(--color-border);background:var(--color-surface);font-size:.75rem;color:#526462;flex-shrink:0}
+.medical-document-nav-btn{display:inline-flex;align-items:center;gap:.35rem;min-height:44px;padding:.4rem .65rem;border-radius:.5rem;font-weight:600;color:#164d34;cursor:pointer}
+.medical-document-nav-btn:hover{background:#eaf3ee}
+.medical-documents :focus-visible,.medical-document-dialog :focus-visible{outline:2px solid #32766c;outline-offset:3px}
+@media(max-width:860px){
+  .medical-document-dialog-body{grid-template-columns:minmax(0,1fr)}
+  .medical-document-sidebar{border-left:0;border-top:1px solid var(--color-border)}
+}
+@media(max-width:600px){
+  .medical-documents-toolbar.pet-panel{padding:1rem}
+  .medical-documents-header>.button{width:100%}
+  .medical-document-card{flex-direction:column;align-items:stretch}
+  .medical-document-actions{width:100%}
+  .medical-document-preview-btn,.medical-document-report-link{flex:1}
+  .medical-document-dialog{width:calc(100% - 1rem);max-height:calc(100dvh - 1rem)}
+  .medical-document-dialog-header{padding:.85rem 1rem;flex-wrap:wrap}
+  .medical-document-viewer,.medical-document-sidebar{padding:1rem}
+  .medical-document-dialog-footer{padding:.65rem 1rem;flex-wrap:wrap}
+}
+
+/* Health History tab and modal */
+.history-panel{display:grid;gap:1.5rem}
+.history-header-card.pet-panel{padding:1.5rem;border-radius:1.5rem}
+.history-header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1.25rem;flex-wrap:wrap;padding-bottom:1.25rem;border-bottom:1px solid var(--color-border)}
+.history-header-top h2{font-size:1.375rem;margin-bottom:.25rem}
+.history-subtitle{font-size:.8125rem;color:var(--color-text-muted);margin:0}
+.history-header-actions{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.history-search{min-width:17rem;max-width:24rem;margin:0}
+.history-filter-pills{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:1.15rem}
+.history-filter-pill{display:inline-flex;align-items:center;gap:.5rem;min-height:40px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-muted);font-size:.8125rem;font-weight:600;cursor:pointer;transition:all .15s}
+.history-filter-pill:hover{border-color:#b8d4c5;color:var(--color-text)}
+.history-filter-pill.is-active{background:#164d34;border-color:#164d34;color:#fff}
+.history-filter-pill small{display:inline-flex;align-items:center;justify-content:center;min-width:1.35rem;height:1.35rem;padding:0 .35rem;border-radius:999px;background:#00000012;font-size:.6875rem;font-weight:700}
+.history-filter-pill.is-active small{background:#ffffff29;color:#fff}
+
+.history-timeline{display:grid;gap:2rem;position:relative}
+.history-month-group{display:grid;gap:1rem}
+.history-month-badge span{display:inline-flex;align-items:center;padding:.3rem .85rem;border-radius:999px;background:#e6ede9;color:#164d34;font-size:.6875rem;font-weight:700;letter-spacing:.06em;border:1px solid #cfe0d6}
+.history-timeline-list{list-style:none;margin:0;padding:0 0 0 1.25rem;display:grid;gap:1.15rem;position:relative;border-left:2px solid #d5e2da;margin-left:1.25rem}
+.history-timeline-item{position:relative;padding-left:1.25rem}
+.history-node-icon{position:absolute;left:-2.35rem;top:1.25rem;width:2.2rem;height:2.2rem;border-radius:999px;display:grid;place-items:center;background:var(--color-surface-raised);border:2px solid #164d34;color:#164d34;box-shadow:0 2px 6px #00000012}
+.history-node-icon.is-visit{background:#eef7f2;border-color:#164d34;color:#164d34}
+.history-node-icon.is-vaccination{background:#eef2ff;border-color:#4338ca;color:#4338ca}
+.history-node-icon.is-lab{background:#f0f9ff;border-color:#0369a1;color:#0369a1}
+.history-node-icon.is-prevention{background:#fffbeb;border-color:#b45309;color:#b45309}
+
+.history-card.pet-panel{padding:1.25rem 1.5rem;border-radius:1.25rem;display:grid;gap:.85rem;transition:border-color .15s,box-shadow .15s}
+.history-card.pet-panel:hover{border-color:#c5ddd1;box-shadow:var(--shadow-card)}
+.history-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.history-card-heading{display:grid;gap:.35rem;min-width:0;flex:1}
+.history-card-badges{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.history-category-tag{display:inline-flex;align-items:center;padding:.15rem .6rem;border-radius:999px;font-size:.6875rem;font-weight:700;letter-spacing:.02em}
+.history-category-tag.is-visit{background:#eef7f2;color:#164d34;border:1px solid #cfe3d8}
+.history-category-tag.is-vaccination{background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}
+.history-category-tag.is-lab{background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd}
+.history-category-tag.is-prevention{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+.history-date-tag{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;color:#526462;font-weight:500}
+.history-card-heading h3{font-size:1.0625rem;margin:0;color:var(--color-text);overflow-wrap:anywhere}
+
+.history-status-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .7rem;border-radius:999px;font-size:.75rem;font-weight:600;white-space:nowrap}
+.history-status-pill.is-done{background:#eef7f2;color:#164d34;border:1px solid #cfe3d8}
+.history-status-pill.is-due{background:#f5f3ff;color:#4338ca;border:1px solid #ddd6fe}
+.history-status-pill.is-warning{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+
+.history-card-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.8125rem;color:#526462}
+.history-card-meta span{display:inline-flex;align-items:center;gap:.35rem}
+.history-card-desc{font-size:.875rem;line-height:1.6;color:var(--color-text);margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+
+.history-lab-highlights{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.65rem;padding:.75rem;border-radius:.85rem;background:var(--color-surface);border:1px solid var(--color-border)}
+.history-lab-chip{display:grid;gap:.15rem;padding:.5rem .7rem;border-radius:.65rem;background:var(--color-surface-raised);border:1px solid var(--color-border)}
+.history-lab-chip.is-above,.history-lab-chip.is-below{border-color:#e9c46b;background:#fff9eb}
+.history-lab-chip-name{font-size:.6875rem;font-weight:600;color:#526462}
+.history-lab-chip strong{font-size:.875rem;color:var(--color-text)}
+.history-lab-chip small{font-size:.6875rem;color:var(--color-text-muted)}
+
+.history-card-footer{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding-top:.65rem;border-top:1px solid var(--color-border)}
+.history-card-tags{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.history-product-pill{display:inline-flex;align-items:center;padding:.2rem .65rem;border-radius:.5rem;background:var(--color-surface);border:1px solid var(--color-border);font-size:.75rem;font-weight:600;color:#526462}
+.history-card-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-left:auto}
+.history-action-btn,.history-action-link{display:inline-flex;align-items:center;gap:.35rem;min-height:38px;padding:.35rem .75rem;border-radius:.55rem;font-size:.75rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);cursor:pointer;text-decoration:none;transition:background-color .15s,border-color .15s}
+.history-action-btn:hover,.history-action-link:hover{background:#ece8df;border-color:#718b80}
+.history-action-btn.is-danger{color:#a82424}
+.history-action-btn.is-danger:hover{background:#fff5f4;border-color:#a82424}
+.history-action-link.is-primary{background:#eef7f2;color:#164d34;border-color:#b8d4c5}
+.history-action-link.is-primary:hover{background:#dfeee6;border-color:#164d34}
+
+.history-dialog{width:min(38rem,calc(100% - 2rem))}
+.history-dialog-icon.is-vaccination{background:#eef2ff;color:#4338ca}
+.history-dialog-icon.is-prevention{background:#fffbeb;color:#b45309}
+.history-category-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;margin-bottom:.35rem}
+.history-category-option{display:flex;align-items:center;justify-content:center;gap:.45rem;min-height:44px;padding:.5rem .65rem;border-radius:.75rem;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-muted);font-size:.8125rem;font-weight:600;cursor:pointer;transition:all .15s;text-align:center}
+.history-category-option:hover{border-color:#718b80;color:var(--color-text)}
+.history-category-option.is-active.is-visit{background:#eef7f2;border-color:#164d34;color:#164d34;box-shadow:0 0 0 1px #164d34}
+.history-category-option.is-active.is-vaccination{background:#eef2ff;border-color:#4338ca;color:#4338ca;box-shadow:0 0 0 1px #4338ca}
+.history-category-option.is-active.is-prevention{background:#fffbeb;border-color:#b45309;color:#b45309;box-shadow:0 0 0 1px #b45309}
+.history-dialog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+
+@media(max-width:640px){
+  .history-header-card.pet-panel{padding:1rem}
+  .history-header-actions{width:100%}
+  .history-search{min-width:0;max-width:none;width:100%}
+  .history-header-actions>.button{width:100%}
+  .history-timeline-list{margin-left:.65rem;padding-left:.85rem}
+  .history-timeline-item{padding-left:.65rem}
+  .history-node-icon{left:-1.95rem;width:1.95rem;height:1.95rem}
+  .history-card.pet-panel{padding:1rem}
+  .history-category-picker,.history-dialog-grid{grid-template-columns:minmax(0,1fr)}
+}
+
