@@ -130,6 +130,80 @@ export async function indexPetKnowledgeChunk(
   }
 }
 
+export async function embedTextQuery(
+  client: SupabaseClient,
+  petId: string,
+  text: string,
+): Promise<string | null> {
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key) return null;
+
+  const query = text.trim().slice(0, 1000);
+  if (!query) return null;
+
+  const modelsToTry = ["gemini-embedding-2", "gemini-embedding-001"];
+  for (const model of modelsToTry) {
+    const startedAt = performance.now();
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": key,
+          },
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({
+            content: {
+              parts: [{ text: query }],
+            },
+            outputDimensionality: 768,
+          }),
+        },
+      );
+      const durationMs = Math.round(performance.now() - startedAt);
+
+      if (!response.ok) {
+        if (model === modelsToTry[0] && (response.status === 404 || response.status === 400)) {
+          continue;
+        }
+        return null;
+      }
+
+      const result = await response.json();
+      const rawValues: number[] | undefined =
+        result?.embedding?.values ?? result?.embeddings?.[0]?.values;
+
+      if (!Array.isArray(rawValues) || rawValues.length !== 768) {
+        return null;
+      }
+
+      const vector = normalizeVector(rawValues);
+      const estimatedTokens = Math.max(1, Math.ceil(query.length / 4));
+      await client.rpc("log_ai_usage", {
+        p_pet_id: petId,
+        p_feature: "embedding",
+        p_model: model,
+        p_mime_type: "text/plain",
+        p_file_size_bytes: new TextEncoder().encode(query).byteLength,
+        p_prompt_tokens: estimatedTokens,
+        p_output_tokens: 0,
+        p_thoughts_tokens: 0,
+        p_total_tokens: estimatedTokens,
+        p_duration_ms: durationMs,
+        p_status: "ok",
+        p_http_status: 200,
+      });
+
+      return `[${vector.join(",")}]`;
+    } catch {
+      // Fallback to next embedding model or keyword context
+    }
+  }
+  return null;
+}
+
 export function formatReportKnowledgeContent(report: {
   title: string | null;
   test_date: string;
