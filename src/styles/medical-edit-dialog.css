@@ -16,7 +16,7 @@
 .edit-source span { font-weight:600; text-decoration:underline dashed; overflow-wrap:anywhere; }
 .edit-two-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
 .edit-parameter-body label { display:grid; gap:.375rem; font-size:.75rem; font-weight:700; }
-.edit-parameter-body input:not([type=checkbox]),.edit-parameter-body select,.edit-parameter-body textarea { width:100%; min-width:0; min-height:44px; border:1px solid #d6d3d1; border-radius:.75rem; padding:.625rem .875rem; background:white; color:#292524; font:inherit; font-weight:500; }
+.edit-parameter-body input:not([type=checkbox]),.edit-parameter-body select,.edit-parameter-body textarea { width:100%; min-width:0; min-height:44px; border:1px solid #d6d3d1; border-radius:.75rem; padding:.5rem .875rem; background:white; color:#292524; font:inherit; font-size:.8125rem; line-height:1.25; font-weight:500; }
 .edit-parameter-body :is(input,select,textarea):focus-visible { outline:2px solid #1d7a4f; outline-offset:2px; }
 .edit-value { position:relative; display:block; }
 .edit-value > span { position:absolute; right:.75rem; top:50%; transform:translateY(-50%); font-size:.75rem; color:#78716c; max-width:4rem; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }

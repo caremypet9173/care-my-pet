@@ -73,8 +73,7 @@ przechowywania wyników. Typu nie można zmienić przesłanym payloadem korekty.
 
 Sekrety wyłącznie w Supabase: `GEMINI_API_KEY`, `GEMINI_MODEL`.
 Klucz użytkownika przeniesiono z ignorowanego `.env` bez wypisywania wartości.
-Model ustawiony na `gemini-3.1-pro-preview`: rzeczywiste API odrzuciło 2.5 Pro
-jako niedostępny dla nowych użytkowników i wskazało ten zamiennik.
+Model ustawiony na `gemini-3.5-flash-lite` (wcześniej `gemini-3.1-pro-preview`, zmieniony ze względu na optymalizację kosztów ekstrakcji dokumentów i odpisów wizyt).
 [Gemini 3](https://ai.google.dev/gemini-api/docs/generate-content/gemini-3).
 
 Wywołanie REST `generateContent`, JSON Schema, maks. 8192 tokeny wyjścia,
@@ -165,3 +164,34 @@ Kontrola wykrywa identyczne bajty, nie podobne skany ani ponownie wygenerowane P
 Test `medical-duplicate.spec.ts`: zmieniona nazwa, brak wywołania AI, konflikt
 równoczesnych zapisów, retry i otwieranie istniejącego badania na desktop/mobile.
 
+# Historia zdrowia, koszty AI i baza wektorowa RAG — 2026-10-19
+
+## Zakładka Historia (`?tab=history`) i ekstrakcja odpisów wizyt
+- Tabela `public.pet_health_event` przechowuje wpisy z kategorii `visit` (wizyta), `vaccination` (szczepienie) oraz `prevention` (leki / profilaktyka) wraz z opcjonalnym załącznikiem źródłowym (`source_path`, `source_name`, `source_mime`, `source_sha256` w buckecie `medical-documents`).
+- Edge Function `pet-history` obsługuje operacje `extract`, `create`, `update`, `delete` z walidacją RLS po `gospodarstwo_id`.
+- W modalu dodawania wpisu użytkownik może załączyć PDF/JPG/PNG i kliknąć „Odczytaj z pliku (AI)” — model `gemini-3.5-flash-lite` wypełnia pola formularza, a po zapisie załącznik jest również widoczny w zakładce **Dokumenty** (`?tab=documents`).
+
+## Statystyki i koszty zapytań Gemini API (`private.ai_usage_log`)
+- Tabela `private.ai_usage_log` (migracje `20261019170000_ai_usage_log.sql`, `20261019190000_fix_ai_usage_log_visibility.sql`, `20261019190500_fix_log_ai_usage_rls.sql`) rejestruje każde wywołanie AI (`medical_report`, `health_event`, `embedding`, `ai_assistant`): liczbę tokenów (`prompt_tokens`, `output_tokens`, `thoughts_tokens`, `total_tokens`), czas odpowiedzi (`duration_ms`), status oraz wyliczony koszt w USD (`estimated_cost_usd` przez `private.calculate_gemini_cost_usd`).
+- Widok `private.ai_cost_summary` agreguje miesięczne zużycie tokenów i koszty wg funkcji i modelu (dostępny bezpośrednio z Supabase SQL Editor).
+
+## Baza wektorowa RAG (`pgvector`) pod Asystenta AI
+- Włączono rozszerzenie `vector` (`pgvector`) i utworzono tabelę `public.pet_knowledge_chunk` z indeksem HNSW (`vector_cosine_ops`, wymiar `768`, model `gemini-embedding-001` / `gemini-embedding-2`).
+- Przy każdym zatwierdzeniu badania (`medical-reports` → `confirm`) oraz utworzeniu/edycji wpisu historii (`pet-history` → `create`/`update`) moduł `supabase/functions/_shared/rag.ts` buduje ustrukturyzowany tekst kliniczny, generuje znormalizowany wektor 768D i zapisuje go przez `public.upsert_pet_knowledge_chunk`.
+- Funkcja `public.match_pet_knowledge(p_pet_id, p_query_embedding, p_match_count)` realizuje wyszukiwanie semantyczne (cosine similarity) w obrębie kartoteki pojedynczego pupila z zachowaniem RLS.
+
+# Badania obrazowe i opisowe (USG, TK, RTG, ECHO) — 2026-10-20
+
+Wdrożono **Opcję A — obsługa w zakładce „Wyniki badań” (`/badania/nowe` + `MedicalResults`) z automatyczną widocznością w „Historii” i „Dokumentach”**:
+
+1. **Prompt, walidacja i baza danych (`supabase/functions/medical-reports/index.ts`, `validation.mjs`, migracja `20261020150000_increase_medical_report_notes_limit.sql`)**:
+   - Zwiększono limit długości pola `wynik_badania.notes` z `4000` do `12000` znaków (w bazie danych, walidacji backendu oraz formularzu frontendu), aby pomieścić wielostronicowe opisy badań TK/USG.
+   - Rozszerzono instrukcję systemową Gemini: dla badań obrazowych/opisowych (TK/CT, USG, RTG, ECHO, MRI, endoskopia, histopatologia, cytologia) bez tabeli parametrów laboratoryjnych model zwraca `rows: []`, konwertuje jednoznaczne daty (w tym `DD/MM/YYYY` i `DD.MM.YYYY`) do `YYYY-MM-DD`, wyodrębnia imię zwierzęcia z pola pacjenta oraz kopiuje pełny ustrukturyzowany opis (`Stwierdzono:`, opis narządów, `Wnioski:`) do pola `notes`.
+   - W module indeksowania RAG (`supabase/functions/_shared/rag.ts`) badania bez wierszy parametrów są oznaczane nagłówkiem `Badanie obrazowe / opisowe`.
+2. **Formularz weryfikacji (`src/features/medical/review-form.tsx`)**:
+   - Gdy `draft.rows.length === 0`, sekcja parametrów wyświetla informację o badaniu opisowym/obrazowym (z zachowaniem przycisku „Dodaj parametr”), a sekcja **Opis badania obrazowego / wnioski z dokumentu** (`notes`) jest automatycznie rozwinięta i powiększona (`rows={14}`).
+3. **Widok listy i szczegółów badania (`src/features/medical/report-list.tsx` i `src/features/medical/results.tsx`)**:
+   - Na liście badań oraz w selektorze badań zamiast `0 parametrów` wyświetlane jest oznaczenie `Badanie opisowe / obrazowe` (`opisowe`).
+   - W szczegółach badania dla `report.rows.length === 0` ukryto pustą kartę wykresu trendu oraz filtry kategorii, eksponując kartę **Opis badania obrazowego / specjalistycznego** z pełną treścią `report.notes` oraz podglądem źródłowego pliku PDF/obrazu.
+4. **Oś czasu w zakładce Historia (`src/features/history/history-panel.tsx`)**:
+   - Dla badań opisowych (`rep.rows.length === 0`) karta na osi czasu prezentuje odznakę `Badanie obrazowe / opisowe`, status `Opis badania`, skrót opisu z `rep.notes` oraz linki do pełnego opisu i dokumentu źródłowego.

@@ -34,7 +34,7 @@ Zakres, testy i ograniczenia: `docs/PETS.md`. Następny etap: wprowadzenie
 czterech kotów i dokumentacji medycznej.
 Wyniki badań i weryfikacja Split-Screen 2 wdrożone 2026-10-18:
 `docs/MEDICAL_REPORTS.md`. Działa ręczny zapis z prywatnym oryginałem PDF/JPG/PNG.
-Klucz Gemini skonfigurowany, model `gemini-3.1-pro-preview`. Po doładowaniu Google
+Klucz Gemini skonfigurowany, model `gemini-3.5-flash-lite` (zmieniony z `gemini-3.1-pro-preview` pod kątem szybkości i optymalizacji kosztów). Po doładowaniu Google
 i usunięciu odrzucanego przez dostawcę `maxItems` ze schematu odpowiedzi przeszedł
 rzeczywisty test PDF → Gemini → weryfikacja → zapis (2026-10-18).
 Jakość odczytu na prawdziwych badaniach użytkownika pozostaje do oceny.
@@ -77,6 +77,11 @@ zamiast działać na nieaktualnym założeniu.
   uwzględniać polityki RLS.
 - **Migracje SQL numerowane i odtwarzalne** — każda zmiana schematu to osobny,
   kolejno numerowany plik migracji.
+- **Zasada krytyczna: Supabase Data API Grants dla nowych tabel (od 30.10.2026)** —
+  nowe tabele w schemacie `public` nie otrzymują automatycznych uprawnień dla Data API.
+  Każde `CREATE TABLE public.<tabela>` w migracji SQL musi mieć jawne `GRANT`
+  (dla `anon`, `authenticated` i `service_role`) przed `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
+  i politykami RLS (pełny szablon w `AGENTS.md`).
 
 ## Reguły AI
 

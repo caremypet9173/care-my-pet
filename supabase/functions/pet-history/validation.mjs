@@ -1,3 +1,24 @@
+export const MAX_FILE = 6 * 1024 * 1024;
+export const mimeExtensions = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+};
+
+export function fileMatches(bytes, mime) {
+  if (!bytes.length || bytes.length > MAX_FILE) return false;
+  if (mime === "application/pdf") {
+    return new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
+  }
+  if (mime === "image/jpeg") {
+    return bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+  }
+  if (mime === "image/png") {
+    return [137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => bytes[i] === v);
+  }
+  return false;
+}
+
 export function today() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Warsaw",
@@ -7,7 +28,7 @@ export function today() {
   }).format(new Date());
 }
 
-function isValidIsoDate(date) {
+export function isValidIsoDate(date) {
   return (
     typeof date === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(date) &&

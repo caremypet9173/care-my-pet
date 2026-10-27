@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import {
   IconChevronLeft,
@@ -9,6 +9,7 @@ import {
   IconFiles,
   IconFileTypePdf,
   IconFlask,
+  IconHistory,
   IconPhoto,
   IconPlus,
   IconSearch,
@@ -18,43 +19,69 @@ import {
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { HealthEvent } from "@/features/history/types";
+import { FormattedMedicalText } from "./formatted-text";
 import { PdfPreview } from "./pdf-preview";
 import type { MedicalReport } from "./types";
+
+type UnifiedDocument = {
+  id: string;
+  kind: "report" | "history";
+  title: string;
+  date: string;
+  confirmed_at: string;
+  laboratory: string;
+  doctor: string;
+  notes: string;
+  source_path: string;
+  source_name: string;
+  source_mime: string;
+  badgeText: string;
+  targetHref: string;
+  targetButtonLabel: string;
+  targetLinkLabel: string;
+  parameterCount?: number;
+};
 
 const copy = {
   pl: {
     heading: "Dokumenty i załączniki medyczne",
-    intro: "Oryginalne pliki zapisanych badań w jednym miejscu.",
+    intro: "Oryginalne pliki zapisanych badań, wypisów z wizyt i szczepień w jednym miejscu.",
     add: "Dodaj badanie",
-    searchLabel: "Szukaj dokumentu po nazwie badania, pliku, laboratorium lub dacie",
-    searchPlaceholder: "Np. morfologia, VetLab lub 2026-10",
+    searchLabel: "Szukaj dokumentu po nazwie badania/wizyty, pliku, klinice lub dacie",
+    searchPlaceholder: "Np. morfologia, wypis, VetLab lub 2026-10",
     count: "Liczba dokumentów",
     noMatches: "Brak pasujących dokumentów. Zmień wyszukiwanie.",
     clearSearch: "Wyczyść wyszukiwanie",
     emptyTitle: "Nie ma jeszcze dokumentów",
-    emptyBody: "Dodaj pierwsze badanie z załącznikiem PDF, JPG lub PNG.",
-    labNotSpecified: "Nie podano laboratorium",
+    emptyBody: "Dodaj badanie lub wpis w historii zdrowia z załącznikiem PDF, JPG lub PNG.",
+    labNotSpecified: "Nie podano placówki",
     parameters: "Liczba parametrów",
     descriptive: "Dokument opisowy",
+    visitTag: "Wizyta kontrolna",
+    vaccinationTag: "Szczepienie",
+    preventionTag: "Leki i profilaktyka",
     preview: "Podgląd",
     previewAria: "Podgląd dokumentu",
     openReport: "Szczegóły badania",
+    openHistory: "Oś czasu historii",
     close: "Zamknij podgląd",
     openNewTab: "Otwórz w nowej karcie",
     loading: "Ładowanie oryginału…",
     loadError: "Nie udało się wczytać pliku źródłowego. Spróbuj ponownie.",
     retry: "Spróbuj ponownie",
     metadataHeading: "Metadane dokumentu",
-    testDate: "Data badania",
-    confirmedAt: "Zatwierdzono w kartotece",
+    testDate: "Data dokumentu",
+    confirmedAt: "Zapisano w kartotece",
     laboratory: "Laboratorium / klinika",
     doctor: "Lekarz prowadzący",
     notSpecified: "Nie podano",
     fileName: "Nazwa pliku",
     fileFormat: "Format oryginału",
     notesHeading: "Opis / uwagi z dokumentu",
-    relatedHeading: "Powiązane badanie",
+    relatedHeading: "Powiązany wpis",
     goToReport: "Przejdź do wyników badania →",
+    goToHistory: "Przejdź do osi czasu historii →",
     previous: "Poprzedni dokument",
     next: "Następny dokument",
     position: (current: number, total: number) => `Dokument ${current} z ${total}`,
@@ -62,42 +89,47 @@ const copy = {
     securityBody:
       "Pliki źródłowe są dostępne wyłącznie dla domowników Twojego gospodarstwa. Podgląd generuje tymczasowy, podpisany link ważny przez 15 minut.",
     latest100:
-      "Pokazano 100 najnowszych dokumentów oraz dokument otwarty z bezpośredniego odnośnika.",
+      "Pokazano najnowsze dokumenty oraz dokument otwarty z bezpośredniego odnośnika.",
     originalAlt: "Oryginał dokumentu",
   },
   en: {
     heading: "Medical documents and attachments",
-    intro: "Original files of confirmed reports in one place.",
+    intro: "Original files of confirmed lab reports, visit summaries, and vaccinations in one place.",
     add: "Add report",
-    searchLabel: "Search documents by report title, file name, laboratory or date",
-    searchPlaceholder: "E.g. blood count, VetLab or 2026-10",
+    searchLabel: "Search documents by title, file name, clinic or date",
+    searchPlaceholder: "E.g. blood count, visit summary, VetLab or 2026-10",
     count: "Documents",
     noMatches: "No matching documents. Try another search.",
     clearSearch: "Clear search",
     emptyTitle: "No documents yet",
-    emptyBody: "Add your first report with a PDF, JPG or PNG attachment.",
-    labNotSpecified: "Laboratory not specified",
+    emptyBody: "Add a lab report or health history entry with a PDF, JPG or PNG attachment.",
+    labNotSpecified: "Clinic not specified",
     parameters: "Parameters",
     descriptive: "Descriptive document",
+    visitTag: "Check-up visit",
+    vaccinationTag: "Vaccination",
+    preventionTag: "Meds & prevention",
     preview: "Preview",
     previewAria: "Preview document",
     openReport: "Report details",
+    openHistory: "Health timeline",
     close: "Close preview",
     openNewTab: "Open in new tab",
     loading: "Loading original file…",
     loadError: "Could not load the source file. Please try again.",
     retry: "Try again",
     metadataHeading: "Document metadata",
-    testDate: "Test date",
-    confirmedAt: "Confirmed in record",
+    testDate: "Document date",
+    confirmedAt: "Saved in record",
     laboratory: "Laboratory / clinic",
     doctor: "Veterinarian",
     notSpecified: "Not specified",
     fileName: "File name",
     fileFormat: "Original format",
     notesHeading: "Description / notes from document",
-    relatedHeading: "Related report",
+    relatedHeading: "Related entry",
     goToReport: "Go to report results →",
+    goToHistory: "Go to health history timeline →",
     previous: "Previous document",
     next: "Next document",
     position: (current: number, total: number) => `Document ${current} of ${total}`,
@@ -105,7 +137,7 @@ const copy = {
     securityBody:
       "Source files are accessible only to members of your household. Previewing generates a temporary signed link valid for 15 minutes.",
     latest100:
-      "Showing the latest 100 documents and any document opened via direct link.",
+      "Showing the latest documents and any document opened via direct link.",
     originalAlt: "Original document",
   },
 } as const;
@@ -120,18 +152,78 @@ function formatMimeLabel(mime: string) {
 export function MedicalDocuments({
   petId,
   reports,
+  healthEvents = [],
   initialDocumentId,
 }: {
   petId: string;
   reports: MedicalReport[];
+  healthEvents?: HealthEvent[];
   initialDocumentId?: string;
 }) {
   const locale = useLocale();
   const t = copy[locale];
   const searchId = useId();
   const [query, setQuery] = useState("");
+
+  const documents = useMemo<UnifiedDocument[]>(() => {
+    const reportDocs: UnifiedDocument[] = reports
+      .filter((r) => Boolean(r.source_path))
+      .map((r) => ({
+        id: r.id,
+        kind: "report",
+        title: r.title,
+        date: r.test_date,
+        confirmed_at: r.confirmed_at,
+        laboratory: r.laboratory,
+        doctor: r.doctor,
+        notes: r.notes,
+        source_path: r.source_path,
+        source_name: r.source_name,
+        source_mime: r.source_mime,
+        badgeText: r.rows.length
+          ? `${t.parameters}: ${r.rows.length}`
+          : t.descriptive,
+        targetHref: `/app/zwierzeta/${petId}?tab=results&report=${r.id}`,
+        targetButtonLabel: t.openReport,
+        targetLinkLabel: t.goToReport,
+        parameterCount: r.rows.length,
+      }));
+
+    const eventDocs: UnifiedDocument[] = healthEvents
+      .filter(
+        (ev): ev is HealthEvent & { source_path: string; source_name: string; source_mime: string } =>
+          Boolean(ev.source_path && ev.source_name && ev.source_mime),
+      )
+      .map((ev) => ({
+        id: ev.id,
+        kind: "history",
+        title: ev.title,
+        date: ev.event_date,
+        confirmed_at: ev.updated_at,
+        laboratory: ev.clinic,
+        doctor: ev.doctor,
+        notes: ev.description,
+        source_path: ev.source_path,
+        source_name: ev.source_name,
+        source_mime: ev.source_mime,
+        badgeText:
+          ev.category === "vaccination"
+            ? t.vaccinationTag
+            : ev.category === "prevention"
+              ? t.preventionTag
+              : t.visitTag,
+        targetHref: `/app/zwierzeta/${petId}?tab=history`,
+        targetButtonLabel: t.openHistory,
+        targetLinkLabel: t.goToHistory,
+      }));
+
+    return [...reportDocs, ...eventDocs].sort(
+      (a, b) => b.date.localeCompare(a.date) || b.confirmed_at.localeCompare(a.confirmed_at),
+    );
+  }, [reports, healthEvents, petId, t]);
+
   const initialActive =
-    initialDocumentId && reports.some((r) => r.id === initialDocumentId)
+    initialDocumentId && documents.some((d) => d.id === initialDocumentId)
       ? initialDocumentId
       : null;
   const [activeId, setActiveId] = useState<string | null>(initialActive);
@@ -148,20 +240,20 @@ export function MedicalDocuments({
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/ł/g, "l");
 
-  const filtered = reports.filter((report) =>
+  const filtered = documents.filter((doc) =>
     normalize(
-      `${report.title} ${report.source_name} ${report.laboratory} ${report.doctor} ${report.test_date}`,
+      `${doc.title} ${doc.source_name} ${doc.laboratory} ${doc.doctor} ${doc.date} ${doc.badgeText}`,
     ).includes(normalize(query.trim())),
   );
 
   const navigationList =
     activeId && filtered.some((item) => item.id === activeId)
       ? filtered
-      : reports;
+      : documents;
   const activeIndex = activeId
     ? navigationList.findIndex((item) => item.id === activeId)
     : -1;
-  const activeReport = activeIndex >= 0 ? navigationList[activeIndex] : null;
+  const activeDocument = activeIndex >= 0 ? navigationList[activeIndex] : null;
 
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat(locale, {
@@ -169,27 +261,27 @@ export function MedicalDocuments({
       timeZone: "UTC",
     }).format(new Date(value));
 
-  async function ensureSignedUrl(report: MedicalReport, force = false) {
-    if (!force && signedUrls[report.id]) return;
-    setLoadingId(report.id);
+  async function ensureSignedUrl(doc: UnifiedDocument, force = false) {
+    if (!force && signedUrls[doc.id]) return;
+    setLoadingId(doc.id);
     setErrorId(null);
     try {
       const { data, error } = await createClient()
         .storage.from("medical-documents")
-        .createSignedUrl(report.source_path, 900);
+        .createSignedUrl(doc.source_path, 900);
       if (error || !data?.signedUrl) throw error ?? new Error("Missing URL");
-      setSignedUrls((prev) => ({ ...prev, [report.id]: data.signedUrl }));
+      setSignedUrls((prev) => ({ ...prev, [doc.id]: data.signedUrl }));
     } catch {
-      setErrorId(report.id);
+      setErrorId(doc.id);
     } finally {
-      setLoadingId((current) => (current === report.id ? null : current));
+      setLoadingId((current) => (current === doc.id ? null : current));
     }
   }
 
-  function openDocument(report: MedicalReport) {
-    triggerIdRef.current = report.id;
-    setActiveId(report.id);
-    void ensureSignedUrl(report);
+  function openDocument(doc: UnifiedDocument) {
+    triggerIdRef.current = doc.id;
+    setActiveId(doc.id);
+    void ensureSignedUrl(doc);
   }
 
   function closeDocument() {
@@ -202,15 +294,15 @@ export function MedicalDocuments({
     }
   }
 
-  function stepDocument(nextReport: MedicalReport) {
-    triggerIdRef.current = nextReport.id;
-    setActiveId(nextReport.id);
-    void ensureSignedUrl(nextReport);
+  function stepDocument(nextDoc: UnifiedDocument) {
+    triggerIdRef.current = nextDoc.id;
+    setActiveId(nextDoc.id);
+    void ensureSignedUrl(nextDoc);
   }
 
   useEffect(() => {
     if (!initialActive) return;
-    const initial = reports.find((item) => item.id === initialActive);
+    const initial = documents.find((item) => item.id === initialActive);
     if (!initial) return;
     let cancelled = false;
     createClient()
@@ -235,12 +327,12 @@ export function MedicalDocuments({
     return () => {
       cancelled = true;
     };
-  }, [initialActive, reports]);
+  }, [initialActive, documents]);
 
   useEffect(() => {
     const element = dialogRef.current;
     if (!element) return;
-    if (activeReport) {
+    if (activeDocument) {
       if (!element.open) {
         element.showModal();
       }
@@ -253,11 +345,11 @@ export function MedicalDocuments({
     if (element.open) {
       element.close();
     }
-  }, [activeReport]);
+  }, [activeDocument]);
 
-  const activeUrl = activeReport ? signedUrls[activeReport.id] : undefined;
-  const isLoading = activeReport ? loadingId === activeReport.id && !activeUrl : false;
-  const hasError = activeReport ? errorId === activeReport.id && !activeUrl : false;
+  const activeUrl = activeDocument ? signedUrls[activeDocument.id] : undefined;
+  const isLoading = activeDocument ? loadingId === activeDocument.id && !activeUrl : false;
+  const hasError = activeDocument ? errorId === activeDocument.id && !activeUrl : false;
 
   return (
     <div className="medical-documents">
@@ -289,7 +381,7 @@ export function MedicalDocuments({
           {t.count}: {filtered.length}
         </p>
         {!filtered.length ? (
-          reports.length ? (
+          documents.length ? (
             <div className="medical-documents-empty-search">
               <p>{t.noMatches}</p>
               <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
@@ -305,11 +397,12 @@ export function MedicalDocuments({
           )
         ) : (
           <ul className="medical-documents-list">
-            {filtered.map((report) => {
-              const isPdf = report.source_mime === "application/pdf";
-              const formatLabel = formatMimeLabel(report.source_mime);
+            {filtered.map((doc) => {
+              const isPdf = doc.source_mime === "application/pdf";
+              const formatLabel = formatMimeLabel(doc.source_mime);
+              const TargetIcon = doc.kind === "report" ? IconFlask : IconHistory;
               return (
-                <li key={report.id} className="medical-document-card">
+                <li key={doc.id} className="medical-document-card">
                   <div className="medical-document-main">
                     <span
                       className={`medical-document-badge ${isPdf ? "medical-document-badge--pdf" : "medical-document-badge--image"}`}
@@ -320,43 +413,39 @@ export function MedicalDocuments({
                     <div className="medical-document-info">
                       <div className="medical-document-title-row">
                         <h3>
-                          <button type="button" onClick={() => openDocument(report)}>
-                            {report.title}
+                          <button type="button" onClick={() => openDocument(doc)}>
+                            {doc.title}
                           </button>
                         </h3>
                         <span className="medical-document-tag">{formatLabel}</span>
-                        <span className="medical-document-tag">
-                          {report.rows.length
-                            ? `${t.parameters}: ${report.rows.length}`
-                            : t.descriptive}
-                        </span>
+                        <span className="medical-document-tag">{doc.badgeText}</span>
                       </div>
                       <p className="medical-document-meta">
-                        <time dateTime={report.test_date}>{formatDate(report.test_date)}</time>
+                        <time dateTime={doc.date}>{formatDate(doc.date)}</time>
                         {" · "}
-                        <span>{report.laboratory || t.labNotSpecified}</span>
+                        <span>{doc.laboratory || t.labNotSpecified}</span>
                         {" · "}
-                        <span>{report.source_name}</span>
+                        <span>{doc.source_name}</span>
                       </p>
                     </div>
                   </div>
                   <div className="medical-document-actions">
                     <button
-                      id={`preview-document-${report.id}`}
+                      id={`preview-document-${doc.id}`}
                       type="button"
                       className="medical-document-preview-btn"
-                      onClick={() => openDocument(report)}
-                      aria-label={`${t.previewAria}: ${report.title}, ${report.test_date}`}
+                      onClick={() => openDocument(doc)}
+                      aria-label={`${t.previewAria}: ${doc.title}, ${doc.date}`}
                     >
                       <IconEye size={17} aria-hidden="true" />
                       {t.preview}
                     </button>
                     <Link
                       className="medical-document-report-link"
-                      href={`/app/zwierzeta/${petId}?tab=results&report=${report.id}`}
+                      href={doc.targetHref}
                     >
-                      <IconFlask size={17} aria-hidden="true" />
-                      {t.openReport}
+                      <TargetIcon size={17} aria-hidden="true" />
+                      {doc.targetButtonLabel}
                     </Link>
                   </div>
                 </li>
@@ -364,7 +453,7 @@ export function MedicalDocuments({
             })}
           </ul>
         )}
-        {reports.length >= 100 && <p className="medical-documents-limit">{t.latest100}</p>}
+        {documents.length >= 100 && <p className="medical-documents-limit">{t.latest100}</p>}
       </section>
 
       <aside className="medical-results-disclaimer">
@@ -383,14 +472,14 @@ export function MedicalDocuments({
           closeDocument();
         }}
       >
-        {activeReport ? (
+        {activeDocument ? (
           <div className="medical-document-dialog-shell">
             <header className="medical-document-dialog-header">
               <div className="medical-document-dialog-heading">
                 <span className="medical-document-format-pill">
-                  {formatMimeLabel(activeReport.source_mime)}
+                  {formatMimeLabel(activeDocument.source_mime)}
                 </span>
-                <h2 id="medical-document-dialog-title">{activeReport.title}</h2>
+                <h2 id="medical-document-dialog-title">{activeDocument.title}</h2>
               </div>
               <div className="medical-document-dialog-controls">
                 {activeUrl && (
@@ -427,13 +516,13 @@ export function MedicalDocuments({
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => void ensureSignedUrl(activeReport, true)}
+                      onClick={() => void ensureSignedUrl(activeDocument, true)}
                     >
                       {t.retry}
                     </Button>
                   </div>
                 ) : activeUrl ? (
-                  activeReport.source_mime === "application/pdf" ? (
+                  activeDocument.source_mime === "application/pdf" ? (
                     <PdfPreview key={activeUrl} url={activeUrl} />
                   ) : (
                     <div className="medical-document-image-frame">
@@ -441,7 +530,7 @@ export function MedicalDocuments({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={activeUrl}
-                        alt={`${t.originalAlt}: ${activeReport.title}`}
+                        alt={`${t.originalAlt}: ${activeDocument.title}`}
                       />
                     </div>
                   )
@@ -455,46 +544,50 @@ export function MedicalDocuments({
                     <div>
                       <dt>{t.testDate}</dt>
                       <dd>
-                        <time dateTime={activeReport.test_date}>
-                          {formatDate(activeReport.test_date)}
+                        <time dateTime={activeDocument.date}>
+                          {formatDate(activeDocument.date)}
                         </time>
                       </dd>
                     </div>
                     <div>
                       <dt>{t.laboratory}</dt>
-                      <dd>{activeReport.laboratory || t.notSpecified}</dd>
+                      <dd>{activeDocument.laboratory || t.notSpecified}</dd>
                     </div>
                     <div>
                       <dt>{t.doctor}</dt>
-                      <dd>{activeReport.doctor || t.notSpecified}</dd>
+                      <dd>{activeDocument.doctor || t.notSpecified}</dd>
                     </div>
                     <div>
                       <dt>{t.fileName}</dt>
-                      <dd>{activeReport.source_name}</dd>
+                      <dd>{activeDocument.source_name}</dd>
                     </div>
                     <div>
                       <dt>{t.fileFormat}</dt>
-                      <dd>{formatMimeLabel(activeReport.source_mime)}</dd>
+                      <dd>{formatMimeLabel(activeDocument.source_mime)}</dd>
                     </div>
-                    <div>
-                      <dt>{t.parameters}</dt>
-                      <dd>{activeReport.rows.length}</dd>
-                    </div>
+                    {activeDocument.parameterCount !== undefined && (
+                      <div>
+                        <dt>{t.parameters}</dt>
+                        <dd>{activeDocument.parameterCount}</dd>
+                      </div>
+                    )}
                     <div>
                       <dt>{t.confirmedAt}</dt>
                       <dd>
-                        <time dateTime={activeReport.confirmed_at}>
-                          {formatDate(activeReport.confirmed_at)}
+                        <time dateTime={activeDocument.confirmed_at}>
+                          {formatDate(activeDocument.confirmed_at)}
                         </time>
                       </dd>
                     </div>
                   </dl>
                 </section>
 
-                {activeReport.notes && (
+                {activeDocument.notes && (
                   <section className="medical-document-notes">
                     <h3>{t.notesHeading}</h3>
-                    <p>{activeReport.notes}</p>
+                    <div className="medical-document-notes-box">
+                      <FormattedMedicalText text={activeDocument.notes} />
+                    </div>
                   </section>
                 )}
 
@@ -502,12 +595,12 @@ export function MedicalDocuments({
                   <h3>{t.relatedHeading}</h3>
                   <Link
                     className="medical-document-related-link"
-                    href={`/app/zwierzeta/${petId}?tab=results&report=${activeReport.id}`}
+                    href={activeDocument.targetHref}
                     onClick={() => {
                       document.body.style.overflow = "";
                     }}
                   >
-                    {t.goToReport}
+                    {activeDocument.targetLinkLabel}
                   </Link>
                 </section>
               </aside>

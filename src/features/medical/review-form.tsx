@@ -1,8 +1,8 @@
 "use client";
 import {measurementValueType,validMeasurementValue} from "../../../supabase/functions/medical-reports/value-type.mjs";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { useLocale } from "next-intl";
-import { IconFileText, IconPlus, IconArrowLeft, IconSparkles, IconAlertTriangle, IconClipboardText } from "@tabler/icons-react";
+import { IconFileText, IconPlus, IconArrowLeft, IconSparkles, IconAlertTriangle, IconClipboardText, IconBold, IconList, IconHeading, IconEye } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +12,7 @@ import type { Measurement, ReportDraft } from "./types";
 import { PdfPreview } from "./pdf-preview";
 import { ReviewParameter } from "./review-parameter";
 import { rangeStatus } from "./comparison";
+import { FormattedMedicalText } from "./formatted-text";
 const blank = ():ReportDraft => ({title:"",test_date:"",laboratory:"",doctor:"",notes:"",rows:[]});
 const maxFile=6*1024*1024;
 const extensions:Record<string,string>={"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png"};
@@ -34,8 +35,47 @@ export function ReviewForm({pet}:{pet:Pet}) {
   const duplicateNotice=useRef<HTMLElement>(null);
   const checkingNotice=useRef<HTMLParagraphElement>(null);
   const [candidate,setCandidate]=useState<File|null>(null);
+  const [notesPreview,setNotesPreview]=useState(false);
+  const [dragging,setDragging]=useState(false);
+  const dragDepth=useRef(0);
   const choosing=useRef(false);
-  const fileInput=useRef<HTMLInputElement>(null);const form=useRef<HTMLFormElement>(null);
+  const fileInput=useRef<HTMLInputElement>(null);const form=useRef<HTMLFormElement>(null);const notesInput=useRef<HTMLTextAreaElement>(null);
+  function handleDragEnter(event:DragEvent<HTMLElement>){
+    if(busy||!event.dataTransfer.types.includes("Files"))return;
+    event.preventDefault();event.stopPropagation();
+    dragDepth.current+=1;setDragging(true);
+  }
+  function handleDragOver(event:DragEvent<HTMLElement>){
+    if(busy||!event.dataTransfer.types.includes("Files"))return;
+    event.preventDefault();event.stopPropagation();
+    event.dataTransfer.dropEffect="copy";
+  }
+  function handleDragLeave(event:DragEvent<HTMLElement>){
+    if(!event.dataTransfer.types.includes("Files"))return;
+    event.preventDefault();event.stopPropagation();
+    dragDepth.current=Math.max(0,dragDepth.current-1);
+    if(dragDepth.current===0)setDragging(false);
+  }
+  function handleDrop(event:DragEvent<HTMLElement>){
+    event.preventDefault();event.stopPropagation();
+    dragDepth.current=0;setDragging(false);
+    if(busy)return;
+    const dropped=event.dataTransfer.files?.[0];
+    if(dropped)void choose(dropped);
+  }
+  function insertMarkdown(kind:"bold"|"heading"|"list"){
+    const el=notesInput.current;if(!el)return;
+    const start=el.selectionStart??draft.notes.length;
+    const end=el.selectionEnd??draft.notes.length;
+    const selected=draft.notes.slice(start,end);
+    let replacement="";let cursorOffset=0;
+    if(kind==="bold"){replacement=`**${selected||(pl?"pogrubiony tekst":"bold text")}**`;cursorOffset=selected?replacement.length:2;}
+    else if(kind==="heading"){const prefix=start>0&&draft.notes[start-1]!=="\n"?"\n### ":"### ";replacement=`${prefix}${selected||(pl?"Nagłówek sekcji:":"Section heading:")}`;cursorOffset=replacement.length;}
+    else{const prefix=start>0&&draft.notes[start-1]!=="\n"?"\n- ":"- ";replacement=`${prefix}${selected||(pl?"punkt opisu":"bullet item")}`;cursorOffset=replacement.length;}
+    const nextValue=draft.notes.slice(0,start)+replacement+draft.notes.slice(end);
+    update("notes",nextValue.slice(0,12000));
+    requestAnimationFrame(()=>{el.focus();const pos=Math.min(start+cursorOffset,12000);el.setSelectionRange(pos,pos);});
+  }
   const back=`/app/zwierzeta/${pet.id}?tab=results`;
   useEffect(()=>{
     const notice=duplicate?duplicateNotice.current:error&&error!==t.validation?feedback.current:busy==='check'?checkingNotice.current:null;
@@ -64,7 +104,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
       if(data.duplicate){setDuplicate(data.duplicate);return;}
     // Clean up only a pending unlinked source. RLS prevents deleting a confirmed source.
     if(upload.current?.uploaded)await createClient().storage.from("medical-documents").remove([upload.current.path]);
-    upload.current=null;setFile(next);setPreview(URL.createObjectURL(next));setDraft(blank());setSubmitted(false);setChecked([]);setConfirmed(false);setPatient("");setReadAutomatically(false);setReviewing(false);setError("");setZoom(100);setCandidate(null);
+    upload.current=null;setFile(next);setPreview(URL.createObjectURL(next));setDraft(blank());setSubmitted(false);setChecked([]);setConfirmed(false);setPatient("");setReadAutomatically(false);setReviewing(false);setNotesPreview(false);setError("");setZoom(100);setCandidate(null);
     }catch{setError(t===medicalMessages.pl?"Nie udało się sprawdzić pliku. Nie został dodany. Spróbuj ponownie. To nie oznacza, że dokument jest duplikatem.":"Could not check the file. It has not been added. Please retry. This does not mean it is a duplicate.");}
     finally{choosing.current=false;setBusy(null);}
   }
@@ -78,7 +118,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
       const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=reject;reader.readAsDataURL(file);});
       const {data,error}=await createClient().functions.invoke("medical-reports",{body:{action:"extract",pet_id:pet.id,mime:file.type,file:base64}});
       if(error){const details=await error.context?.json?.().catch(()=>null);if(details?.duplicate){setDuplicate(details.duplicate);return;}throw new Error(details?.error??"extraction_failed");}
-      setDraft({...data.report,rows:data.report.rows.map((row:Measurement)=>({...row,value_type:measurementValueType(row)}))});setPatient(data.patient_name);setChecked(data.report.rows.map(()=>false));setConfirmed(false);setReadAutomatically(true);setReviewing(true);
+      setDraft({...data.report,rows:data.report.rows.map((row:Measurement)=>({...row,value_type:measurementValueType(row)}))});setPatient(data.patient_name);setChecked(data.report.rows.map(()=>false));setConfirmed(false);setReadAutomatically(true);setNotesPreview(Boolean(data.report.notes?.trim()));setReviewing(true);
     }catch(error){setError(error instanceof Error&&error.message==="daily_limit"?t.limit:error instanceof Error&&error.message==="ai_billing"?t.aiBilling:t.aiError);}finally{setBusy(null);}
   }
   async function save(event:FormEvent){
@@ -119,8 +159,8 @@ export function ReviewForm({pet}:{pet:Pet}) {
     {error&&error!==t.validation&&<div ref={feedback} tabIndex={-1} role="alert" className="medical-error"><p>{error}</p>{candidate&&<Button variant="secondary" disabled={!!busy} onClick={()=>void choose(candidate??undefined)}>{pl?"Spróbuj ponownie":"Try again"}</Button>}</div>}
     {busy==="check"&&<p ref={checkingNotice} tabIndex={-1} className="review-save-note" role="status">{pl?"Sprawdzanie, czy dokument jest już w kartotece…":"Checking for an existing document…"}</p>}
     {duplicate&&<section ref={duplicateNotice} tabIndex={-1} className="review-duplicate" role="alert"><IconFileText size={24} aria-hidden="true"/><div><h2>{pl?"Ten dokument jest już w kartotece":"This document is already in the record"}</h2><p>{duplicate.title} · {duplicate.test_date}</p><p>{pl?"Nie ma potrzeby ponownego odczytu ani dodawania tego samego pliku.":"There is no need to read or add the same file again."}</p><div className="review-duplicate-actions"><Link href={`${back}&report=${duplicate.id}`} onClick={()=>{saved.current=true;}}>{pl?"Otwórz istniejące badanie":"Open existing report"}</Link><button type="button" onClick={()=>fileInput.current?.click()} disabled={!!busy}>{t.changeFile}</button></div></div></section>}
-    {!file?<section className="medical-upload"><IconFileText size={40} aria-hidden="true"/><h2>{t.add}</h2><p>{t.fileHint}</p><Button onClick={()=>fileInput.current?.click()} disabled={!!busy} loading={busy==="check"}>{busy==="check"?(pl?"Sprawdzanie pliku…":"Checking file…"):t.choose}</Button></section>:<div className="medical-split">
-      <section className="medical-original" aria-label={t.original}><header><strong>{file.name}</strong><a href={preview||undefined} target="_blank" rel="noopener noreferrer">{t.open}</a></header>
+    {!file?<section className={`medical-upload${dragging?" is-dragging":""}`} onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}><IconFileText size={40} aria-hidden="true"/><h2>{t.add}</h2><p>{t.fileHint}</p><p className="medical-drop-hint">{pl?"Przeciągnij i upuść plik PDF, JPG lub PNG tutaj albo wybierz go z dysku.":"Drag and drop a PDF, JPG or PNG file here or choose it from your device."}</p><Button onClick={()=>fileInput.current?.click()} disabled={!!busy} loading={busy==="check"}>{busy==="check"?(pl?"Sprawdzanie pliku…":"Checking file…"):t.choose}</Button></section>:<div className="medical-split">
+      <section className={`medical-original${dragging?" is-dragging":""}`} aria-label={t.original} onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}><header><strong>{file.name}</strong><a href={preview||undefined} target="_blank" rel="noopener noreferrer">{t.open}</a></header>
         {file.type==="application/pdf"?(preview&&<PdfPreview key={preview} url={preview}/>):<><label className="medical-zoom">{t.zoom}<input type="range" min={50} max={200} value={zoom} onChange={event=>setZoom(Number(event.target.value))}/></label><div className="medical-image-scroll" tabIndex={0} role="region" aria-label={t.zoom}>{/* Private local blob, never passed to an image optimization service. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {preview&&<img src={preview} alt={t.original} style={{width:`${zoom}%`,maxWidth:"none"}}/>}</div></>}
@@ -131,9 +171,19 @@ export function ReviewForm({pet}:{pet:Pet}) {
         {outside.length>0&&<aside className="review-attention"><IconAlertTriangle size={23} aria-hidden="true"/><div><strong>{pl?`Wskaźniki poza zakresem z dokumentu: ${outside.length}.`:`${outside.length} parameters outside the document range.`}</strong><p>{pl?"Sprawdź, czy wartość i jednostka na skanie po lewej stronie odpowiadają odczytowi. Możesz ręcznie skorygować dowolne pole.":"Check the value and unit against the original on the left. You can correct any field."}</p></div><span>{pl?"Wymaga uwagi":"Needs review"}</span></aside>}
         <section className="medical-metadata"><header className="review-section-heading"><h2><IconClipboardText size={17}/>{t.metadata}</h2><span className="review-source-badge">{readAutomatically?(pl?"Odczytane automatycznie":"Automatically extracted"):(pl?"Wpisywane ręcznie":"Manual entry")}</span></header><div className="medical-fields">{([['test_date',t.date,10],['laboratory',t.lab,160],['doctor',t.doctor,160],['title',t.title,160]] as const).map(([key,label,max])=><label key={key}>{label}{(key==="title"||key==="test_date")&&" *"}<input id={`review-${key}`} type={key==="test_date"?"date":"text"} value={draft[key]} aria-invalid={submitted&&(key==="title"?titleInvalid:key==="test_date"?dateInvalid:false)} aria-describedby={submitted&&(key==="title"?titleInvalid:key==="test_date"?dateInvalid:false)?`review-error-${key}`:undefined} required={key==="title"||key==="test_date"} maxLength={max} min={key==="test_date"?"1900-01-01":undefined} max={key==="test_date"?new Date().toISOString().slice(0,10):undefined} onChange={event=>update(key,event.target.value)}/>{submitted&&((key==="title"&&titleInvalid)||(key==="test_date"&&dateInvalid))&&<span className="review-field-error" id={`review-error-${key}`}>{key==="title"?(pl?"Uzupełnij nazwę badania.":"Enter the report title."):(pl?"Podaj poprawną datę, nie późniejszą niż dzisiaj.":"Enter a valid date, no later than today.")}</span>}</label>)}</div><p className="review-patient-line">{t.patientHint} <strong>{pet.imie}</strong>{patient&&<> · {t.patient}: <strong>{patient}</strong></>}</p></section>
         <section className="medical-parameters"><header className="review-section-heading"><div><h2>{pl?"Wyodrębnione parametry laboratoryjne":t.parameters} <small>({draft.rows.length})</small></h2><span className="review-species">{pet.gatunek==="cat"?"Felis catus":"Canis familiaris"}</span></div><Button variant="ghost" disabled={draft.rows.length>=100} onClick={()=>{setDraft(current=>({...current,rows:[...current.rows,{name:"",value:"",unit:"",reference:"",category:"other"}]}));setChecked(current=>[...current,false]);setConfirmed(false);}}><IconPlus size={16}/>{t.addRow}</Button></header>
+          {draft.rows.length===0&&<p className="review-descriptive-empty">{pl?"Badanie opisowe / obrazowe (np. USG, TK, RTG, ECHO) — brak parametrów tabelarycznych. Sprawdź i edytuj treść opisu poniżej lub dodaj parametr ręcznie.":"Descriptive / imaging report (e.g. ultrasound, CT, X-ray) — no tabular parameters. Review the description below or add a parameter manually."}</p>}
           {draft.rows.map((row,index)=><ReviewParameter key={index} row={row} index={index} checked={checked[index]??false} submitted={submitted} onChange={(field,value)=>updateRow(index,field,value)} onCheck={value=>{setChecked(current=>current.map((v,i)=>i===index?value:v));setConfirmed(false);}} onRemove={()=>{setDraft(current=>({...current,rows:current.rows.filter((_,i)=>i!==index)}));setChecked(current=>current.filter((_,i)=>i!==index));setConfirmed(false);}}/>)}
         </section>
-        <details className="review-source-notes" open={draft.notes?true:undefined}><summary><IconClipboardText size={18}/>{t.notes}</summary><label><span className="sr-only">{t.notes}</span><textarea maxLength={4000} rows={3} value={draft.notes} onChange={event=>update("notes",event.target.value)}/></label></details>
+        <details className={`review-source-notes${draft.rows.length===0?" is-descriptive":""}`} open={draft.notes||draft.rows.length===0?true:undefined}><summary><IconClipboardText size={18}/>{draft.rows.length===0?(pl?"Opis badania obrazowego / wnioski z dokumentu":"Imaging / descriptive findings and conclusions"):t.notes}</summary>
+          <div className="review-notes-toolbar" role="toolbar" aria-label={pl?"Formatowanie opisu":"Description formatting"}>
+            <button type="button" className="review-md-btn" onClick={()=>insertMarkdown("heading")} disabled={notesPreview} title={pl?"Nagłówek sekcji (###)":"Section heading (###)"}><IconHeading size={15} aria-hidden="true"/>{pl?"Nagłówek":"Heading"}</button>
+            <button type="button" className="review-md-btn" onClick={()=>insertMarkdown("bold")} disabled={notesPreview} title={pl?"Pogrubienie (**tekst**)":"Bold (**text**)"}><IconBold size={15} aria-hidden="true"/>{pl?"Pogrubienie":"Bold"}</button>
+            <button type="button" className="review-md-btn" onClick={()=>insertMarkdown("list")} disabled={notesPreview} title={pl?"Lista punktowana (- )":"Bullet list (- )"}><IconList size={15} aria-hidden="true"/>{pl?"Lista":"List"}</button>
+            <button type="button" className={`review-md-btn is-preview${notesPreview?" is-active":""}`} aria-pressed={notesPreview} onClick={()=>setNotesPreview(v=>!v)}><IconEye size={15} aria-hidden="true"/>{notesPreview?(pl?"Edytuj tekst":"Edit text"):(pl?"Podgląd formatowania":"Preview formatting")}</button>
+          </div>
+          {notesPreview?(<div className="review-notes-preview-box">{draft.notes.trim()?<FormattedMedicalText text={draft.notes}/>:<p>{pl?"Brak wpisanego opisu badania.":"No description entered."}</p>}</div>):(<label><span className="sr-only">{t.notes}</span><textarea ref={notesInput} maxLength={12000} rows={draft.rows.length===0?14:4} value={draft.notes} onChange={event=>update("notes",event.target.value)}/></label>)}
+          <small className="review-md-hint">{pl?"Obsługiwane formatowanie: ### Nagłówek sekcji, **pogrubienie**, *kursywa* oraz listy punktowane (- lub •).":"Supported formatting: ### Section heading, **bold**, *italic*, and bullet lists (- or •)."}</small>
+        </details>
         <label className="medical-confirm"><input id="review-confirm" type="checkbox" aria-invalid={submitted&&!confirmed} aria-describedby={submitted&&!confirmed?"review-confirm-error":undefined} checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>{t.confirm}</label>
         {submitted&&!confirmed&&<p className="review-field-error" id="review-confirm-error">{pl?"Potwierdź pupila, datę i poprawność danych przed zapisaniem.":"Confirm the pet, date and data before saving."}</p>}
         <p className="review-save-note"><IconFileText size={18}/>{t.notSaved}</p>

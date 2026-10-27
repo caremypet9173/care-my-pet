@@ -1,21 +1,33 @@
 "use client";
 
-import {useEffect, useRef, useState, type FormEvent} from 'react';
+import {useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent} from 'react';
 import {useLocale} from 'next-intl';
 import {
+  IconAlertTriangle,
+  IconCheck,
   IconDeviceFloppy,
-  IconInfoCircle,
+  IconFileText,
   IconPill,
+  IconSparkles,
   IconStethoscope,
+  IconTrash,
+  IconUpload,
   IconVaccine,
   IconX,
 } from '@tabler/icons-react';
 import {createClient} from '@/lib/supabase/client';
-import {today, validateHealthEvent} from '../../../supabase/functions/pet-history/validation.mjs';
+import {
+  fileMatches,
+  MAX_FILE,
+  mimeExtensions,
+  today,
+  validateHealthEvent,
+} from '../../../supabase/functions/pet-history/validation.mjs';
 import type {HealthEvent, HealthEventCategory} from './types';
 
 type Props = {
   petId: string;
+  householdId: string;
   petName: string;
   event: HealthEvent | null;
   defaultCategory?: HealthEventCategory;
@@ -25,6 +37,7 @@ type Props = {
 
 export function HistoryDialog({
   petId,
+  householdId,
   petName,
   event,
   defaultCategory = 'visit',
@@ -33,6 +46,10 @@ export function HistoryDialog({
 }: Props) {
   const pl = useLocale() === 'pl';
   const dialog = useRef<HTMLDialogElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const uploadRef = useRef<{id: string; path: string; uploaded: boolean} | null>(null);
+  const savedRef = useRef(false);
+
   const [id] = useState(() => event?.id ?? crypto.randomUUID());
   const [category, setCategory] = useState<HealthEventCategory>(event?.category ?? defaultCategory);
   const [title, setTitle] = useState(event?.title ?? '');
@@ -42,9 +59,20 @@ export function HistoryDialog({
   const [doctor, setDoctor] = useState(event?.doctor ?? '');
   const [batchOrProduct, setBatchOrProduct] = useState(event?.batch_or_product ?? '');
   const [description, setDescription] = useState(event?.description ?? '');
+
+  const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
+  const [extracting, setExtracting] = useState(false);
+  const [extractedSuccess, setExtractedSuccess] = useState(false);
+  const [extractedPatient, setExtractedPatient] = useState('');
+  const [fileError, setFileError] = useState('');
+
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const busy = saving || extracting;
 
   const parsed = validateHealthEvent({
     category,
@@ -68,22 +96,230 @@ export function HistoryDialog({
       el.close();
       document.body.style.overflow = previous;
       focus?.focus();
+      if (!savedRef.current && uploadRef.current?.uploaded) {
+        void createClient().storage.from('medical-documents').remove([uploadRef.current.path]);
+      }
     };
   }, []);
+
+  async function selectFile(next?: File) {
+    if (!next || busy) return;
+    setFileError('');
+    setExtractedSuccess(false);
+    setExtractedPatient('');
+
+    const ext = mimeExtensions[next.type];
+    if (!ext || !next.size || next.size > MAX_FILE) {
+      setFileError(
+        pl
+          ? 'Wybierz poprawny plik PDF, JPG lub PNG o rozmiarze do 6 MB.'
+          : 'Choose a valid PDF, JPG, or PNG file up to 6 MB.',
+      );
+      return;
+    }
+
+    const headerBytes = new Uint8Array(await next.slice(0, 8).arrayBuffer());
+    if (!fileMatches(headerBytes, next.type)) {
+      setFileError(
+        pl
+          ? 'Zawartość pliku nie odpowiada formatowi PDF, JPG ani PNG.'
+          : 'File content does not match PDF, JPG, or PNG format.',
+      );
+      return;
+    }
+
+    if (uploadRef.current?.uploaded) {
+      await createClient().storage.from('medical-documents').remove([uploadRef.current.path]);
+    }
+    uploadRef.current = null;
+    setFile(next);
+  }
+
+  async function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
+    const next = e.target.files?.[0];
+    e.target.value = '';
+    await selectFile(next);
+  }
+
+  function handleDragEnter(e: DragEvent<HTMLElement>) {
+    if (busy || !e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepth.current += 1;
+    setDragging(true);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLElement>) {
+    if (busy || !e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLElement>) {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragging(false);
+  }
+
+  function handleDrop(e: DragEvent<HTMLElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepth.current = 0;
+    setDragging(false);
+    if (busy) return;
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) void selectFile(dropped);
+  }
+
+  async function removeSelectedFile() {
+    if (busy) return;
+    if (uploadRef.current?.uploaded) {
+      await createClient().storage.from('medical-documents').remove([uploadRef.current.path]);
+    }
+    uploadRef.current = null;
+    setFile(null);
+    setFileError('');
+    setExtractedSuccess(false);
+    setExtractedPatient('');
+  }
+
+  async function extractFromFile() {
+    if (!file || busy) return;
+    setExtracting(true);
+    setFileError('');
+    setError('');
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const {data, error: invokeError} = await createClient().functions.invoke('pet-history', {
+        body: {
+          action: 'extract',
+          pet_id: petId,
+          mime: file.type,
+          file: base64,
+        },
+      });
+
+      if (invokeError || !data?.extracted) {
+        const details = await invokeError?.context?.json?.().catch(() => null);
+        const code = details?.error;
+        setFileError(
+          code === 'daily_limit'
+            ? pl
+              ? 'Wykorzystano dzienny limit 10 odczytów AI. Możesz uzupełnić pola ręcznie i zapisać wpis z załącznikiem.'
+              : 'Daily limit of 10 AI reads reached. You can fill in the fields manually and still save the attachment.'
+            : code === 'ai_billing'
+              ? pl
+                ? 'Odczyt AI jest chwilowo niedostępny (limit rozliczeniowy dostawcy). Wypełnij pola ręcznie.'
+                : 'AI reading is temporarily unavailable (provider billing limit). Fill in the fields manually.'
+              : pl
+                ? 'Nie udało się automatycznie odczytać dokumentu. Możesz wpisać dane ręcznie — plik nadal zostanie zapisany jako załącznik.'
+                : 'Could not automatically read the document. You can enter the details manually — the file will still be attached.',
+        );
+        return;
+      }
+
+      const ext = data.extracted as {
+        category?: HealthEventCategory;
+        title?: string;
+        event_date?: string;
+        next_due_date?: string;
+        clinic?: string;
+        doctor?: string;
+        batch_or_product?: string;
+        description?: string;
+      };
+
+      if (ext.category && ['visit', 'vaccination', 'prevention'].includes(ext.category)) {
+        setCategory(ext.category);
+      }
+      if (ext.title) setTitle(ext.title);
+      if (ext.event_date) setEventDate(ext.event_date);
+      if (ext.next_due_date !== undefined) setNextDueDate(ext.next_due_date);
+      if (ext.clinic) setClinic(ext.clinic);
+      if (ext.doctor) setDoctor(ext.doctor);
+      if (ext.batch_or_product) setBatchOrProduct(ext.batch_or_product);
+      if (ext.description) setDescription(ext.description);
+
+      setExtractedPatient(typeof data.patient_name === 'string' ? data.patient_name : '');
+      setExtractedSuccess(true);
+    } catch {
+      setFileError(
+        pl
+          ? 'Wystąpił błąd podczas odczytu AI. Możesz uzupełnić formularz ręcznie.'
+          : 'An error occurred during AI reading. You can fill in the form manually.',
+      );
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   async function save(e: FormEvent) {
     e.preventDefault();
     setSubmitted(true);
     setError('');
-    if (!parsed.value || saving) return;
+    if (!parsed.value || busy) return;
     setSaving(true);
     try {
-      const {data, error: invokeError} = await createClient().functions.invoke('pet-history', {
+      const client = createClient();
+      let sourcePayload: {
+        source_id?: string;
+        source_name?: string;
+        source_mime?: string;
+      } = {};
+
+      if (file) {
+        const {
+          data: {user},
+        } = await client.auth.getUser();
+        if (!user) throw new Error('unauthorized');
+        const ext = mimeExtensions[file.type];
+        if (!uploadRef.current) {
+          const uploadId = crypto.randomUUID();
+          uploadRef.current = {
+            id: uploadId,
+            path: `${householdId}/${user.id}/${uploadId}.${ext}`,
+            uploaded: false,
+          };
+        }
+        if (!uploadRef.current.uploaded) {
+          const {error: storageError} = await client.storage
+            .from('medical-documents')
+            .upload(uploadRef.current.path, file, {
+              contentType: file.type,
+              upsert: false,
+              cacheControl: '0',
+            });
+          if (
+            storageError &&
+            String((storageError as {statusCode?: string}).statusCode) !== '409'
+          ) {
+            throw storageError;
+          }
+          uploadRef.current.uploaded = true;
+        }
+        sourcePayload = {
+          source_id: uploadRef.current.id,
+          source_name: file.name.slice(0, 180),
+          source_mime: file.type,
+        };
+      }
+
+      const {data, error: invokeError} = await client.functions.invoke('pet-history', {
         body: {
           id,
           pet_id: petId,
           revision: event?.revision ?? 0,
           event: parsed.value,
+          ...sourcePayload,
         },
       });
       if (invokeError) {
@@ -98,7 +334,8 @@ export function HistoryDialog({
         );
         return;
       }
-      onSave(data.event as HealthEvent);
+      savedRef.current = true;
+      onSave((data.event ?? data.entry) as HealthEvent);
     } catch {
       setError(
         pl
@@ -109,6 +346,10 @@ export function HistoryDialog({
       setSaving(false);
     }
   }
+
+  const patientMismatch =
+    extractedPatient.trim().length > 0 &&
+    extractedPatient.trim().toLocaleLowerCase() !== petName.trim().toLocaleLowerCase();
 
   const categories: {id: HealthEventCategory; label: string; icon: typeof IconStethoscope}[] = [
     {
@@ -187,7 +428,7 @@ export function HistoryDialog({
       aria-labelledby="history-dialog-title"
       onCancel={e => {
         e.preventDefault();
-        if (!saving) onClose();
+        if (!busy) onClose();
       }}
     >
       <form onSubmit={save} noValidate>
@@ -216,23 +457,135 @@ export function HistoryDialog({
           <button
             type="button"
             onClick={onClose}
-            disabled={saving}
+            disabled={busy}
             aria-label={pl ? 'Zamknij okno' : 'Close dialog'}
           >
             <IconX size={20} />
           </button>
         </header>
 
-        <div className="weight-dialog-info">
-          <IconInfoCircle size={18} />
-          <p>
-            {pl
-              ? 'Zapisz wizytę, szczepienie lub podany preparat. Opcjonalna data kolejnego terminu pojawi się jako przypomnienie na osi czasu.'
-              : 'Record a vet visit, vaccination, or preventative treatment. An optional next due date will appear as a reminder on the timeline.'}
-          </p>
-        </div>
+        <fieldset disabled={busy}>
+          <div
+            className={`history-ai-box${dragging ? ' is-dragging' : ''}`}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png"
+              hidden
+              onChange={handleFileSelect}
+            />
 
-        <fieldset disabled={saving}>
+            {!file ? (
+              <div className="history-ai-empty">
+                <div className="history-ai-empty-text">
+                  <strong>
+                    <IconSparkles size={15} aria-hidden="true" />
+                    {pl
+                      ? 'Wczytaj z pliku (AI) lub przeciągnij tutaj'
+                      : 'Import from file (AI) or drag & drop here'}
+                  </strong>
+                  <small>
+                    {event?.source_name
+                      ? pl
+                        ? `Obecny załącznik: ${event.source_name}. Wybierz nowy plik, aby go zastąpić.`
+                        : `Current attachment: ${event.source_name}. Choose a new file to replace it.`
+                      : pl
+                        ? 'PDF, JPG lub PNG (do 6 MB) — AI uzupełni formularz i zapisze dokument.'
+                        : 'PDF, JPG or PNG (up to 6 MB) — AI will pre-fill the form and save the document.'}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="history-ai-upload-btn"
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <IconUpload size={15} aria-hidden="true" />
+                  {pl ? 'Wybierz plik' : 'Choose file'}
+                </button>
+              </div>
+            ) : (
+              <div className="history-ai-selected">
+                <div className="history-ai-file-row">
+                  <span className="history-ai-file-icon" aria-hidden="true">
+                    <IconFileText size={18} />
+                  </span>
+                  <div className="history-ai-file-meta">
+                    <strong>{file.name}</strong>
+                    <small>
+                      {(file.size / 1024).toFixed(0)} KB •{' '}
+                      {pl
+                        ? 'Zostanie zapisany jako załącznik wpisu'
+                        : 'Will be saved as entry attachment'}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="history-ai-remove-btn"
+                    onClick={removeSelectedFile}
+                    aria-label={pl ? 'Usuń wybrany plik' : 'Remove selected file'}
+                  >
+                    <IconTrash size={16} aria-hidden="true" />
+                  </button>
+                </div>
+
+                <div className="history-ai-actions">
+                  <button
+                    type="button"
+                    className="history-ai-extract-btn"
+                    onClick={extractFromFile}
+                    disabled={extracting}
+                  >
+                    <IconSparkles size={16} aria-hidden="true" />
+                    {extracting
+                      ? pl
+                        ? 'Odczytywanie karty wizyty przez AI…'
+                        : 'Reading visit document with AI…'
+                      : extractedSuccess
+                        ? pl
+                          ? 'Odczytaj ponownie z pliku (AI)'
+                          : 'Re-read from file (AI)'
+                        : pl
+                          ? 'Odczytaj i wypełnij formularz (AI)'
+                          : 'Read & pre-fill form (AI)'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {extractedSuccess && (
+              <p className="history-ai-notice is-success" role="status">
+                <IconCheck size={16} aria-hidden="true" />
+                <span>
+                  {pl
+                    ? 'Formularz został uzupełniony na podstawie dokumentu. Sprawdź poprawność pól przed zapisaniem.'
+                    : 'Form fields were pre-filled from the document. Review them before saving.'}
+                </span>
+              </p>
+            )}
+
+            {patientMismatch && (
+              <p className="history-ai-notice is-warning" role="alert">
+                <IconAlertTriangle size={16} aria-hidden="true" />
+                <span>
+                  {pl
+                    ? `Uwaga: na dokumencie wykryto imię pacjenta „${extractedPatient}” (kartoteka: ${petName}). Upewnij się, że to właściwy dokument.`
+                    : `Note: patient name on document is "${extractedPatient}" (record: ${petName}). Please verify this is the right file.`}
+                </span>
+              </p>
+            )}
+
+            {fileError && (
+              <p className="weight-error" role="alert">
+                {fileError}
+              </p>
+            )}
+          </div>
+
           {submitted && !parsed.value && (
             <p className="weight-error" role="alert">
               {pl
@@ -242,7 +595,11 @@ export function HistoryDialog({
           )}
 
           <label>{pl ? 'Rodzaj wpisu' : 'Entry category'} *</label>
-          <div className="history-category-picker" role="radiogroup" aria-label={pl ? 'Rodzaj wpisu' : 'Entry category'}>
+          <div
+            className="history-category-picker"
+            role="radiogroup"
+            aria-label={pl ? 'Rodzaj wpisu' : 'Entry category'}
+          >
             {categories.map(item => {
               const Icon = item.icon;
               const active = category === item.id;
@@ -262,22 +619,38 @@ export function HistoryDialog({
             })}
           </div>
 
-          <label htmlFor="history-title">{pl ? 'Tytuł wpisu' : 'Entry title'} *</label>
-          <input
-            id="history-title"
-            autoFocus
-            type="text"
-            maxLength={120}
-            value={title}
-            placeholder={titlePlaceholder}
-            aria-invalid={!!errors.title}
-            onChange={e => setTitle(e.target.value)}
-          />
-          {errors.title && (
-            <small className="weight-error">
-              {pl ? 'Podaj tytuł wpisu (maks. 120 znaków).' : 'Enter a title (max 120 characters).'}
-            </small>
-          )}
+          <div className="history-dialog-grid">
+            <div>
+              <label htmlFor="history-title">{pl ? 'Tytuł wpisu' : 'Entry title'} *</label>
+              <input
+                id="history-title"
+                autoFocus
+                type="text"
+                maxLength={120}
+                value={title}
+                placeholder={titlePlaceholder}
+                aria-invalid={!!errors.title}
+                onChange={e => setTitle(e.target.value)}
+              />
+              {errors.title && (
+                <small className="weight-error">
+                  {pl ? 'Podaj tytuł wpisu (maks. 120 znaków).' : 'Enter a title (max 120 characters).'}
+                </small>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="history-product">{productLabel}</label>
+              <input
+                id="history-product"
+                type="text"
+                maxLength={120}
+                value={batchOrProduct}
+                placeholder={productPlaceholder}
+                onChange={e => setBatchOrProduct(e.target.value)}
+              />
+            </div>
+          </div>
 
           <div className="history-dialog-grid">
             <div>
@@ -351,16 +724,6 @@ export function HistoryDialog({
             </div>
           </div>
 
-          <label htmlFor="history-product">{productLabel}</label>
-          <input
-            id="history-product"
-            type="text"
-            maxLength={120}
-            value={batchOrProduct}
-            placeholder={productPlaceholder}
-            onChange={e => setBatchOrProduct(e.target.value)}
-          />
-
           <div className="weight-note-label">
             <label htmlFor="history-description">
               {pl ? 'Opis i zalecenia (opcjonalnie)' : 'Notes & recommendations (optional)'}
@@ -369,7 +732,7 @@ export function HistoryDialog({
           </div>
           <textarea
             id="history-description"
-            rows={4}
+            rows={3}
             maxLength={2000}
             value={description}
             placeholder={
@@ -388,10 +751,10 @@ export function HistoryDialog({
         </fieldset>
 
         <footer>
-          <button type="button" onClick={onClose} disabled={saving}>
+          <button type="button" onClick={onClose} disabled={busy}>
             {pl ? 'Anuluj' : 'Cancel'}
           </button>
-          <button type="submit" disabled={saving}>
+          <button type="submit" disabled={busy}>
             <IconDeviceFloppy size={18} />
             {saving
               ? pl

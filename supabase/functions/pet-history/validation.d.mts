@@ -1,5 +1,10 @@
 export type HealthEventCategory = "visit" | "vaccination" | "prevention";
 
+export const MAX_FILE: number;
+export const mimeExtensions: Record<string, string>;
+export function fileMatches(bytes: Uint8Array, mime: string): boolean;
+export function isValidIsoDate(date: unknown): boolean;
+
 export type HealthEventInput = {
   category?: string;
   title?: string;

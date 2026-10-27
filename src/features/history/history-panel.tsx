@@ -25,6 +25,7 @@ import {Link} from '@/i18n/navigation';
 import {Button} from '@/components/ui/button';
 import {createClient} from '@/lib/supabase/client';
 import {rangeStatus} from '@/features/medical/comparison';
+import {FormattedMedicalText} from '@/features/medical/formatted-text';
 import type {MedicalReport} from '@/features/medical/types';
 import type {HealthEvent, HealthEventCategory} from './types';
 import {HistoryDialog} from './history-dialog';
@@ -52,11 +53,13 @@ type TimelineItem =
 
 export function HistoryPanel({
   petId,
+  householdId,
   petName,
   initialEvents,
   reports,
 }: {
   petId: string;
+  householdId: string;
   petName: string;
   initialEvents: HealthEvent[];
   reports: MedicalReport[];
@@ -117,10 +120,24 @@ export function HistoryPanel({
       if (filter !== 'all' && item.category !== filter) return false;
       if (!normalizedQuery) return true;
       if (item.kind === 'manual') {
-        const {title, clinic, doctor, batch_or_product, description, event_date} = item.event;
-        return [title, clinic, doctor, batch_or_product, description, event_date].some(val =>
-          val?.toLocaleLowerCase(locale).includes(normalizedQuery),
-        );
+        const {
+          title,
+          clinic,
+          doctor,
+          batch_or_product,
+          description,
+          event_date,
+          source_name,
+        } = item.event;
+        return [
+          title,
+          clinic,
+          doctor,
+          batch_or_product,
+          description,
+          event_date,
+          source_name,
+        ].some(val => val?.toLocaleLowerCase(locale).includes(normalizedQuery));
       }
       const {title, laboratory, doctor, notes, test_date, rows} = item.report;
       const paramNames = rows.map(r => r.name).join(' ');
@@ -162,7 +179,8 @@ export function HistoryPanel({
     setDeletePending(true);
     setDeleteError('');
     try {
-      const {error} = await createClient().functions.invoke('pet-history', {
+      const client = createClient();
+      const {error} = await client.functions.invoke('pet-history', {
         body: {
           action: 'delete',
           id: deleting.id,
@@ -181,6 +199,9 @@ export function HistoryPanel({
               : 'Could not delete entry. Please retry.',
         );
         return;
+      }
+      if (deleting.source_path) {
+        await client.storage.from('medical-documents').remove([deleting.source_path]);
       }
       setEvents(prev => prev.filter(item => item.id !== deleting.id));
       setDeleting(null);
@@ -256,7 +277,11 @@ export function HistoryPanel({
           </div>
         </div>
 
-        <div className="history-filter-pills" role="tablist" aria-label={pl ? 'Filtruj wpisy według kategorii' : 'Filter entries by category'}>
+        <div
+          className="history-filter-pills"
+          role="tablist"
+          aria-label={pl ? 'Filtruj wpisy według kategorii' : 'Filter entries by category'}
+        >
           {filterButtons.map(btn => {
             const active = filter === btn.id;
             return (
@@ -402,7 +427,12 @@ export function HistoryPanel({
                             </div>
                           )}
 
-                          {ev.description && <p className="history-card-desc">{ev.description}</p>}
+                          {ev.description && (
+                            <FormattedMedicalText
+                              text={ev.description}
+                              className="history-card-desc"
+                            />
+                          )}
 
                           <div className="history-card-footer">
                             <div className="history-card-tags">
@@ -412,6 +442,15 @@ export function HistoryPanel({
                             </div>
 
                             <div className="history-card-actions">
+                              {ev.source_path && (
+                                <Link
+                                  className="history-action-link is-primary"
+                                  href={`/app/zwierzeta/${petId}?tab=documents&document=${ev.id}`}
+                                >
+                                  <IconFileText size={15} aria-hidden="true" />
+                                  {pl ? 'Dokument źródłowy' : 'Source document'}
+                                </Link>
+                              )}
                               <button
                                 type="button"
                                 className="history-action-btn"
@@ -442,6 +481,7 @@ export function HistoryPanel({
                   }
 
                   const rep = item.report;
+                  const isDescriptive = rep.rows.length === 0;
                   const abnormalRows = rep.rows.filter(r => {
                     const st = rangeStatus(r);
                     return st === 'above' || st === 'below';
@@ -453,6 +493,10 @@ export function HistoryPanel({
                         ? rep.rows.filter(r => r.is_key)
                         : rep.rows
                   ).slice(0, 3);
+                  const notePreview =
+                    rep.notes && rep.notes.length > 520
+                      ? `${rep.notes.slice(0, 520).trimEnd()}…`
+                      : rep.notes;
 
                   return (
                     <li key={item.id} className="history-timeline-item is-lab">
@@ -465,7 +509,13 @@ export function HistoryPanel({
                           <div className="history-card-heading">
                             <div className="history-card-badges">
                               <span className="history-category-tag is-lab">
-                                {pl ? 'Badania laboratoryjne' : 'Lab report'}
+                                {isDescriptive
+                                  ? pl
+                                    ? 'Badanie obrazowe / opisowe'
+                                    : 'Imaging / descriptive report'
+                                  : pl
+                                    ? 'Badania laboratoryjne'
+                                    : 'Lab report'}
                               </span>
                               <span className="history-date-tag">
                                 <IconCalendarEvent size={14} aria-hidden="true" />
@@ -476,7 +526,12 @@ export function HistoryPanel({
                           </div>
 
                           <div className="history-card-status">
-                            {abnormalRows.length > 0 ? (
+                            {isDescriptive ? (
+                              <span className="history-status-pill is-done">
+                                <IconCheck size={14} aria-hidden="true" />
+                                {pl ? 'Opis badania' : 'Descriptive report'}
+                              </span>
+                            ) : abnormalRows.length > 0 ? (
                               <span className="history-status-pill is-warning">
                                 {pl
                                   ? `Do obserwacji (${abnormalRows.length})`
@@ -508,7 +563,12 @@ export function HistoryPanel({
                           </div>
                         )}
 
-                        {rep.notes && <p className="history-card-desc">{rep.notes}</p>}
+                        {notePreview && (
+                          <FormattedMedicalText
+                            text={notePreview}
+                            className="history-card-desc"
+                          />
+                        )}
 
                         {highlightedRows.length > 0 && (
                           <div className="history-lab-highlights">
@@ -537,9 +597,13 @@ export function HistoryPanel({
                         <div className="history-card-footer">
                           <div className="history-card-tags">
                             <span className="history-product-pill">
-                              {pl
-                                ? `${rep.rows.length} parametrów`
-                                : `${rep.rows.length} parameters`}
+                              {isDescriptive
+                                ? pl
+                                  ? 'Badanie opisowe / obrazowe'
+                                  : 'Descriptive / imaging'
+                                : pl
+                                  ? `${rep.rows.length} parametrów`
+                                  : `${rep.rows.length} parameters`}
                             </span>
                           </div>
 
@@ -558,7 +622,13 @@ export function HistoryPanel({
                               href={`/app/zwierzeta/${petId}?tab=results&report=${rep.id}`}
                             >
                               <IconFlask size={15} aria-hidden="true" />
-                              {pl ? 'Pełne wyniki badań →' : 'Full lab results →'}
+                              {isDescriptive
+                                ? pl
+                                  ? 'Pełny opis badania →'
+                                  : 'Full report description →'
+                                : pl
+                                  ? 'Pełne wyniki badań →'
+                                  : 'Full lab results →'}
                             </Link>
                           </div>
                         </div>
@@ -575,6 +645,7 @@ export function HistoryPanel({
       {dialogOpen && (
         <HistoryDialog
           petId={petId}
+          householdId={householdId}
           petName={petName}
           event={editing}
           defaultCategory={defaultDialogCategory}
