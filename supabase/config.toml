@@ -53,3 +53,13 @@ verify_jwt = false
 [functions.pet-history]
 verify_jwt = false
 
+[functions.pet-assistant]
+verify_jwt = false
+
+[functions.pet-schedule]
+verify_jwt = false
+
+[functions.schedule-notifications]
+verify_jwt = false
+
+

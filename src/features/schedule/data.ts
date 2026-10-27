@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { ScheduleItem } from "./types";
+import type { HouseholdNotificationSettings, ScheduleItem } from "./types";
 
 export async function listHouseholdScheduleItems(): Promise<ScheduleItem[]> {
   const client = await createClient();
@@ -29,4 +29,31 @@ export async function listPetScheduleItems(
     .limit(200);
   if (error) return [];
   return (data ?? []) as ScheduleItem[];
+}
+
+export async function getHouseholdNotificationSettings(): Promise<HouseholdNotificationSettings> {
+  const fallback: HouseholdNotificationSettings = {
+    email_enabled: true,
+    notify_7_days_before: true,
+    notify_1_day_before: true,
+    notify_day_of: false,
+    custom_email: "",
+  };
+  const client = await createClient();
+  if (!client) return fallback;
+  const { data, error } = await client
+    .from("household_notification_settings")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return fallback;
+  return {
+    id: data.id,
+    household_id: data.household_id,
+    email_enabled: Boolean(data.email_enabled),
+    notify_7_days_before: Boolean(data.notify_7_days_before),
+    notify_1_day_before: Boolean(data.notify_1_day_before),
+    notify_day_of: Boolean(data.notify_day_of),
+    custom_email: String(data.custom_email ?? ""),
+  };
 }

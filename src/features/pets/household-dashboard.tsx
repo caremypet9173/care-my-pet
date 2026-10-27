@@ -10,7 +10,10 @@ import {
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/types";
 import type { HealthEvent } from "@/features/history/types";
-import type { ScheduleItem } from "@/features/schedule/types";
+import type {
+  HouseholdNotificationSettings,
+  ScheduleItem,
+} from "@/features/schedule/types";
 import { HouseholdSchedule } from "@/features/schedule/household-schedule";
 import type { Pet } from "./types";
 import { PetIcon } from "./pet-icon";
@@ -22,11 +25,13 @@ export function HouseholdDashboard({
   pets,
   healthEvents = [],
   scheduleItems = [],
+  notificationSettings,
   locale,
 }: {
   pets: Pet[];
   healthEvents?: HealthEvent[];
   scheduleItems?: ScheduleItem[];
+  notificationSettings?: HouseholdNotificationSettings;
   locale: Locale;
 }) {
   const t = petMessages[locale];
@@ -249,6 +254,7 @@ export function HouseholdDashboard({
         pets={pets}
         initialScheduleItems={scheduleItems}
         initialHealthEvents={healthEvents}
+        initialNotificationSettings={notificationSettings}
       />
 
       <p className="household-advisory">

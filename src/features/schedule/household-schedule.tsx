@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
   IconBan,
+  IconBell,
   IconCalendar,
   IconCalendarMonth,
   IconCheck,
@@ -13,6 +14,7 @@ import {
   IconChevronRight,
   IconClock,
   IconList,
+  IconMailForward,
   IconNotes,
   IconPencil,
   IconPill,
@@ -28,7 +30,11 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type { Pet } from "@/features/pets/types";
 import type { HealthEvent } from "@/features/history/types";
-import type { ScheduleCategory, ScheduleItem } from "./types";
+import type {
+  HouseholdNotificationSettings,
+  ScheduleCategory,
+  ScheduleItem,
+} from "./types";
 import {
   ScheduleCompleteDialog,
   ScheduleDialog,
@@ -106,6 +112,56 @@ function buildSearchHaystack(
         ? "profilaktyka odrobaczanie kleszcze leki lek prevention medication"
         : "wizyta kontrola badanie visit checkup";
 
+  let weekdayAliases = "";
+  const yearNum = Number.parseInt(y, 10);
+  const monthNum = Number.parseInt(m, 10);
+  const dayNum = Number.parseInt(d, 10);
+  if (
+    Number.isFinite(yearNum) &&
+    Number.isFinite(monthNum) &&
+    Number.isFinite(dayNum)
+  ) {
+    const dow = new Date(Date.UTC(yearNum, monthNum - 1, dayNum)).getUTCDay();
+    const weekdayMap: Record<number, string> = {
+      0: "niedziela niedziele niedz sunday sun",
+      1: "poniedzialek pon monday mon",
+      2: "wtorek wt tuesday tue",
+      3: "sroda srode sr wednesday wed",
+      4: "czwartek czw thursday thu",
+      5: "piatek pt friday fri",
+      6: "sobota sobote sob saturday sat",
+    };
+    weekdayAliases = weekdayMap[dow] ?? "";
+  }
+
+  let timeAliases = "";
+  if (entry.time) {
+    const cleanTime = entry.time.slice(0, 5);
+    const [hh = "", mm = ""] = cleanTime.split(":");
+    const hourNum = Number.parseInt(hh, 10);
+    const unpaddedHour = Number.isFinite(hourNum) ? String(hourNum) : hh;
+    const timeOfDay =
+      !Number.isFinite(hourNum)
+        ? ""
+        : hourNum < 12
+          ? "rano poranek morning"
+          : hourNum < 17
+            ? "popoludniu popoludnie afternoon"
+            : "wieczorem wieczor evening";
+
+    timeAliases = [
+      cleanTime,
+      `${hh}.${mm}`,
+      `${unpaddedHour}:${mm}`,
+      `${unpaddedHour}.${mm}`,
+      `godz ${hh}`,
+      `godz ${unpaddedHour}`,
+      `godzina ${hh}`,
+      `godzina ${unpaddedHour}`,
+      timeOfDay,
+    ].join(" ");
+  }
+
   const extra =
     entry.kind === "schedule_item"
       ? entry.prepNotes
@@ -120,9 +176,12 @@ function buildSearchHaystack(
       entry.date,
       `${d}.${m}.${y}`,
       `${d}/${m}/${y}`,
+      `${Number.parseInt(d, 10)}.${m}.${y}`,
       `${m}.${y}`,
       y,
       monthAliases,
+      weekdayAliases,
+      timeAliases,
       categoryAliases,
       extra,
     ].join(" "),
@@ -166,11 +225,13 @@ export function HouseholdSchedule({
   pets,
   initialScheduleItems,
   initialHealthEvents,
+  initialNotificationSettings,
   fixedPetId,
 }: {
   pets: Pick<Pet, "id" | "imie">[];
   initialScheduleItems: ScheduleItem[];
   initialHealthEvents: HealthEvent[];
+  initialNotificationSettings?: HouseholdNotificationSettings;
   fixedPetId?: string;
 }) {
   const locale = useLocale();
@@ -258,6 +319,24 @@ export function HouseholdSchedule({
   const [completingTarget, setCompletingTarget] =
     useState<CompleteTarget | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifSettings, setNotifSettings] =
+    useState<HouseholdNotificationSettings>(() => ({
+      email_enabled: initialNotificationSettings?.email_enabled ?? true,
+      notify_7_days_before:
+        initialNotificationSettings?.notify_7_days_before ?? true,
+      notify_1_day_before:
+        initialNotificationSettings?.notify_1_day_before ?? true,
+      notify_day_of: initialNotificationSettings?.notify_day_of ?? false,
+      custom_email: initialNotificationSettings?.custom_email ?? "",
+    }));
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifTesting, setNotifTesting] = useState(false);
+  const [notifFeedback, setNotifFeedback] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
 
   const petMap = useMemo(
     () => new Map(pets.map((p) => [p.id, p.imie])),
@@ -513,6 +592,76 @@ export function HouseholdSchedule({
       }
     } finally {
       setBusyKey(null);
+    }
+  }
+
+  async function handleSaveNotifications() {
+    if (notifSaving) return;
+    setNotifSaving(true);
+    setNotifFeedback(null);
+    try {
+      const client = createClient();
+      const { data, error } = await client.functions.invoke(
+        "schedule-notifications",
+        {
+          body: {
+            action: "save_settings",
+            ...notifSettings,
+          },
+        },
+      );
+      if (error || !data?.settings) {
+        setNotifFeedback({
+          type: "error",
+          text: pl
+            ? "Nie udało się zapisać ustawień powiadomień."
+            : "Could not save notification settings.",
+        });
+        return;
+      }
+      setNotifFeedback({
+        type: "ok",
+        text: pl
+          ? "Ustawienia powiadomień e-mail zostały zapisane."
+          : "Email notification settings saved.",
+      });
+    } finally {
+      setNotifSaving(false);
+    }
+  }
+
+  async function handleSendTestDigest() {
+    if (notifTesting) return;
+    setNotifTesting(true);
+    setNotifFeedback(null);
+    try {
+      const client = createClient();
+      const { data, error } = await client.functions.invoke(
+        "schedule-notifications",
+        {
+          body: {
+            action: "send_test",
+            recipient_email: notifSettings.custom_email.trim() || undefined,
+          },
+        },
+      );
+      if (error || !data?.sent) {
+        setNotifFeedback({
+          type: "error",
+          text: pl
+            ? "Nie udało się wysłać wiadomości testowej. Sprawdź adres e-mail."
+            : "Could not send test email. Please verify the address.",
+        });
+        return;
+      }
+      setNotifFeedback({
+        type: "ok",
+        text: pl
+          ? `Wysłano podsumowanie testowe na adres ${data.recipient} (${data.items_count} poz.).`
+          : `Test digest sent to ${data.recipient} (${data.items_count} items).`,
+      });
+    } finally {
+      setNotifTesting(false);
     }
   }
 
@@ -786,6 +935,20 @@ export function HouseholdSchedule({
             </button>
           </div>
 
+          <button
+            type="button"
+            className={`schedule-notif-toggle-btn${notificationsOpen ? " is-active" : ""}`}
+            onClick={() => setNotificationsOpen((prev) => !prev)}
+            title={
+              pl
+                ? "Ustawienia powiadomień e-mail"
+                : "Email notification settings"
+            }
+          >
+            <IconBell size={16} aria-hidden="true" />
+            <span>{pl ? "Powiadomienia" : "Notifications"}</span>
+          </button>
+
           <Button
             type="button"
             variant="primary"
@@ -801,6 +964,165 @@ export function HouseholdSchedule({
           </Button>
         </div>
       </div>
+
+      {notificationsOpen && (
+        <div className="schedule-notifications-panel">
+          <div className="schedule-notifications-header">
+            <div>
+              <strong>
+                {pl
+                  ? "Automatyczne przypomnienia e-mail"
+                  : "Automatic email reminders"}
+              </strong>
+              <p>
+                {pl
+                  ? "Codziennie rano sprawdzamy nadchodzące wizyty oraz terminy szczepień i wysyłamy zestawienie na Twój adres e-mail."
+                  : "Every morning we check upcoming visits and vaccination due dates and email you a summary."}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="schedule-mini-btn"
+              onClick={() => setNotificationsOpen(false)}
+              aria-label={pl ? "Zamknij" : "Close"}
+            >
+              <IconX size={14} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="schedule-notifications-controls">
+            <label className="schedule-notif-check">
+              <input
+                type="checkbox"
+                checked={notifSettings.email_enabled}
+                onChange={(e) =>
+                  setNotifSettings((prev) => ({
+                    ...prev,
+                    email_enabled: e.target.checked,
+                  }))
+                }
+              />
+              <span>
+                {pl ? "Włącz powiadomienia e-mail" : "Enable email reminders"}
+              </span>
+            </label>
+
+            <label className="schedule-notif-check">
+              <input
+                type="checkbox"
+                disabled={!notifSettings.email_enabled}
+                checked={notifSettings.notify_7_days_before}
+                onChange={(e) =>
+                  setNotifSettings((prev) => ({
+                    ...prev,
+                    notify_7_days_before: e.target.checked,
+                  }))
+                }
+              />
+              <span>{pl ? "7 dni przed terminem" : "7 days before"}</span>
+            </label>
+
+            <label className="schedule-notif-check">
+              <input
+                type="checkbox"
+                disabled={!notifSettings.email_enabled}
+                checked={notifSettings.notify_1_day_before}
+                onChange={(e) =>
+                  setNotifSettings((prev) => ({
+                    ...prev,
+                    notify_1_day_before: e.target.checked,
+                  }))
+                }
+              />
+              <span>{pl ? "1 dzień przed (jutro)" : "1 day before"}</span>
+            </label>
+
+            <label className="schedule-notif-check">
+              <input
+                type="checkbox"
+                disabled={!notifSettings.email_enabled}
+                checked={notifSettings.notify_day_of}
+                onChange={(e) =>
+                  setNotifSettings((prev) => ({
+                    ...prev,
+                    notify_day_of: e.target.checked,
+                  }))
+                }
+              />
+              <span>{pl ? "W dniu terminu rano" : "On the day of"}</span>
+            </label>
+          </div>
+
+          <div className="schedule-notifications-footer">
+            <div className="schedule-notif-email-field">
+              <label htmlFor="schedule-notif-custom-email">
+                {pl
+                  ? "Adres odbiorcy (zostaw puste, aby użyć adresu konta):"
+                  : "Recipient email (leave blank to use account email):"}
+              </label>
+              <input
+                id="schedule-notif-custom-email"
+                type="email"
+                value={notifSettings.custom_email}
+                onChange={(e) =>
+                  setNotifSettings((prev) => ({
+                    ...prev,
+                    custom_email: e.target.value,
+                  }))
+                }
+                placeholder={
+                  pl ? "Domyślnie: e-mail właściciela konta" : "Default: account email"
+                }
+              />
+            </div>
+
+            <div className="schedule-notif-actions">
+              <button
+                type="button"
+                className="history-action-btn"
+                disabled={notifTesting || notifSaving}
+                onClick={() => void handleSendTestDigest()}
+              >
+                <IconMailForward size={15} aria-hidden="true" />
+                <span>
+                  {notifTesting
+                    ? pl
+                      ? "Wysyłanie…"
+                      : "Sending…"
+                    : pl
+                      ? "Wyślij test na e-mail"
+                      : "Send test email"}
+                </span>
+              </button>
+
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={notifSaving || notifTesting}
+                onClick={() => void handleSaveNotifications()}
+              >
+                {notifSaving
+                  ? pl
+                    ? "Zapisywanie…"
+                    : "Saving…"
+                  : pl
+                    ? "Zapisz ustawienia"
+                    : "Save settings"}
+              </Button>
+            </div>
+          </div>
+
+          {notifFeedback && (
+            <p
+              className={`schedule-notif-feedback is-${notifFeedback.type}`}
+              role="status"
+            >
+              {notifFeedback.text}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="schedule-toolbar">
         <div className="schedule-filter-pills" role="group">
@@ -825,8 +1147,8 @@ export function HouseholdSchedule({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={
                 pl
-                  ? "Szukaj: np. Styczeń 2026, USG, szczepienie…"
-                  : "Search: e.g. January 2026, ultrasound, rabies…"
+                  ? "Szukaj: np. Styczeń 2026, 14:30, wtorek, USG…"
+                  : "Search: e.g. January 2026, 14:30, Tuesday, ultrasound…"
               }
               aria-label={
                 pl ? "Szukaj w terminarzu" : "Search schedule"

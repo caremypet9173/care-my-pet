@@ -19,3 +19,14 @@ export type ScheduleItem = {
   created_at: string;
   updated_at: string;
 };
+
+export type HouseholdNotificationSettings = {
+  id?: string;
+  household_id?: string;
+  email_enabled: boolean;
+  notify_7_days_before: boolean;
+  notify_1_day_before: boolean;
+  notify_day_of: boolean;
+  custom_email: string;
+};
+

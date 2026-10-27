@@ -2,7 +2,7 @@ import {listWeights} from "@/features/weight/data";
 import {WeightPanel} from "@/features/weight/weight-panel";
 import {listHealthEvents} from "@/features/history/data";
 import {HistoryPanel} from "@/features/history/history-panel";
-import {listPetScheduleItems} from "@/features/schedule/data";
+import {getHouseholdNotificationSettings, listPetScheduleItems} from "@/features/schedule/data";
 import {HouseholdSchedule} from "@/features/schedule/household-schedule";
 import {listAssistantThreads, listAssistantMessages, getAssistantQuotaUsed} from "@/features/assistant/data";
 import {AssistantPanel} from "@/features/assistant/assistant-panel";
@@ -33,7 +33,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   if (!pet) notFound();
   const resolvedSearch = await searchParams;
   const requestedReport = resolvedSearch.report ?? resolvedSearch.document;
-  const [reports,weights,healthEvents,scheduleItems,assistantThreads,assistantMessages,assistantQuotaUsed] = await Promise.all([listReports(pet.id,requestedReport),listWeights(pet.id),listHealthEvents(pet.id),listPetScheduleItems(pet.id),listAssistantThreads(pet.id),listAssistantMessages(pet.id),getAssistantQuotaUsed()]);
+  const [reports,weights,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed] = await Promise.all([listReports(pet.id,requestedReport),listWeights(pet.id),listHealthEvents(pet.id),listPetScheduleItems(pet.id),getHouseholdNotificationSettings(),listAssistantThreads(pet.id),listAssistantMessages(pet.id),getAssistantQuotaUsed()]);
   const keyParameters=reports.flatMap(report=>report.rows.filter(row=>row.is_key).map(row=>({row,date:report.test_date})));
   const tab = resolvedSearch.tab;
   const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : tab === "weight" ? 4 : tab === "assistant" ? 5 : 0;
@@ -82,7 +82,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Waga i rozwój →':'Weight and growth →'}</Link></dd></div>
     </dl></section></aside></div>
-    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} fixedPetId={pet.id} />
+    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} />
     </RecordSections>
   </Container>;
 }
