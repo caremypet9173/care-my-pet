@@ -15,3 +15,16 @@ export async function listHealthEvents(petId: string): Promise<HealthEvent[]> {
   if (error) throw Error('Could not load health events');
   return data;
 }
+
+export async function listHouseholdHealthEvents(): Promise<HealthEvent[]> {
+  const client = await createClient();
+  if (!client) return [];
+  const {data, error} = await client
+    .from('pet_health_event')
+    .select('*')
+    .order('event_date', {ascending: false})
+    .order('created_at', {ascending: false})
+    .limit(500);
+  if (error) return [];
+  return data ?? [];
+}

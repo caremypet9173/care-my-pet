@@ -127,6 +127,119 @@
 .household-calendar-empty > svg { flex-shrink: 0; color: var(--color-primary); }
 .household-calendar-empty h3 { font-size: .875rem; }
 .household-calendar-empty p { font-size: .75rem; margin-top: .35rem; }
+.household-calendar-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .65rem; }
+.household-calendar-link { display: flex; align-items: center; gap: .9rem; padding: .9rem 1.1rem; border-radius: .875rem; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); text-decoration: none; transition: border-color .15s, background-color .15s; }
+.household-calendar-link:hover { border-color: var(--color-primary); background: var(--color-surface-sand); }
+.household-calendar-link.is-overdue { border-color: #f5c2c2; background: #fffafa; }
+.household-calendar-icon { width: 2.35rem; height: 2.35rem; border-radius: .65rem; display: grid; place-items: center; background: var(--color-success-surface); border: 1px solid var(--color-success-border); color: var(--color-primary); flex-shrink: 0; }
+.household-calendar-link.is-overdue .household-calendar-icon { background: #fff5f4; border-color: #f5c2c2; color: #a82424; }
+.household-calendar-main { min-width: 0; flex: 1; display: grid; gap: .2rem; }
+.household-calendar-title-row { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
+.household-calendar-title-row strong { font-size: .875rem; color: var(--color-text); }
+.household-calendar-main small { font-size: .75rem; color: var(--color-text-muted); }
+.household-calendar-due { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.household-due-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .28rem .7rem; border-radius: 999px; background: var(--color-success-surface); border: 1px solid var(--color-success-border); color: var(--color-primary); font-size: .72rem; font-weight: 700; }
+.household-due-badge.is-overdue { background: #fff5f4; border-color: #f5c2c2; color: #a82424; }
+.household-due-badge.is-today { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+.schedule-heading-actions { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.schedule-toolbar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.1rem; padding-bottom: .9rem; border-bottom: 1px solid var(--color-border); }
+.schedule-filter-pills, .schedule-view-switch { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.schedule-filter-pill { display: inline-flex; align-items: center; min-height: 36px; padding: .35rem .75rem; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+.schedule-filter-pill:hover { border-color: var(--color-primary); color: var(--color-text); }
+.schedule-filter-pill.is-active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.schedule-toolbar-right { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.schedule-search-box { display: inline-flex; align-items: center; gap: .4rem; min-height: 36px; min-width: 16rem; padding: .25rem .65rem; border-radius: .55rem; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); }
+.schedule-search-box:focus-within { border-color: var(--color-primary); background: #fff; box-shadow: 0 0 0 2px #164d341f; }
+.schedule-search-box input { border: 0; background: transparent; color: var(--color-text); font: inherit; font-size: .78rem; width: 100%; min-width: 11rem; outline: none; }
+.schedule-search-clear { width: 22px; height: 22px; border-radius: 50%; border: 0; background: #ece8df; color: var(--color-text); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; }
+.schedule-search-clear:hover { background: #dcd6c8; }
+.schedule-pet-filter, .schedule-select { min-height: 36px; padding: .35rem .75rem; border-radius: .55rem; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: .78rem; font-weight: 600; }
+.schedule-select { width: 100%; min-height: 38px; background: #fff; }
+.schedule-month-groups { display: grid; gap: .85rem; }
+.schedule-month-group { display: grid; gap: .35rem; }
+.schedule-month-group-header { display: inline-flex; align-items: center; gap: .45rem; width: fit-content; padding: .25rem .5rem; border-radius: .45rem; border: 0; background: transparent; color: var(--color-text); font-size: .8125rem; cursor: pointer; text-transform: capitalize; }
+.schedule-month-group-header:hover { background: var(--color-surface-sand); }
+.schedule-group-chevron { transition: transform .15s; color: var(--color-text-muted); }
+.schedule-group-chevron.is-collapsed { transform: rotate(-90deg); }
+.schedule-group-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.4rem; height: 1.25rem; padding-inline: .35rem; border-radius: 999px; background: var(--color-surface-sand); border: 1px solid var(--color-border); font-size: .68rem; font-weight: 700; color: var(--color-text-muted); }
+.schedule-compact-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--color-border); border-radius: .85rem; overflow: hidden; background: var(--color-surface); }
+.schedule-compact-row { padding: .55rem .85rem; border-bottom: 1px solid var(--color-border); display: grid; gap: .4rem; transition: background-color .12s; }
+.schedule-compact-row:last-child { border-bottom: 0; }
+.schedule-compact-row:hover { background: #f8f6f1; }
+.schedule-compact-row.is-overdue { background: #fffafa; }
+.schedule-compact-row.is-archived { opacity: .78; background: #faf8f4; }
+.schedule-compact-row.is-highlighted { background: #eef7f2; box-shadow: inset 3px 0 0 var(--color-primary); }
+.schedule-compact-main { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+.schedule-compact-date { display: inline-flex; align-items: center; gap: .25rem; min-width: 6.4rem; padding: .2rem .55rem; border-radius: .45rem; background: var(--color-surface-sand); border: 1px solid var(--color-border); color: var(--color-text); font-size: .72rem; font-weight: 700; flex-shrink: 0; white-space: nowrap; }
+.schedule-compact-date small { font-weight: 600; color: var(--color-text-muted); margin-left: .15rem; }
+.schedule-compact-date.is-overdue { background: #fff5f4; border-color: #f5c2c2; color: #a82424; }
+.schedule-compact-date.is-today { background: #eef7f2; border-color: #b8d4c5; color: #164d34; }
+.schedule-compact-icon { width: 1.85rem; height: 1.85rem; border-radius: .5rem; display: grid; place-items: center; background: var(--color-success-surface); border: 1px solid var(--color-success-border); color: var(--color-primary); flex-shrink: 0; }
+.schedule-compact-icon.is-vaccination { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+.schedule-compact-icon.is-prevention { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+.schedule-compact-info { min-width: 0; flex: 1; }
+.schedule-compact-title-line { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; min-width: 0; }
+.schedule-compact-title-line strong { font-size: .825rem; color: var(--color-text); }
+.schedule-compact-meta { font-size: .74rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 24rem; }
+.schedule-compact-actions { display: flex; align-items: center; gap: .3rem; flex-shrink: 0; margin-left: auto; }
+.schedule-mini-btn { display: inline-flex; align-items: center; gap: .25rem; min-height: 28px; padding: .2rem .55rem; border-radius: .45rem; border: 1px solid var(--color-border); background: #fff; color: var(--color-text); font-size: .72rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background-color .12s, border-color .12s; }
+.schedule-mini-btn:hover:not(:disabled) { background: #ece8df; border-color: #718b80; }
+.schedule-mini-btn.is-active { background: #eef7f2; border-color: #164d34; color: #164d34; }
+.schedule-mini-btn.is-primary { background: #eef7f2; border-color: #b8d4c5; color: #164d34; }
+.schedule-mini-btn.is-primary:hover:not(:disabled) { background: #dfeee6; border-color: #164d34; }
+.schedule-mini-btn.is-danger { color: #a82424; }
+.schedule-mini-btn.is-danger:hover:not(:disabled) { background: #fff5f4; border-color: #a82424; }
+.schedule-compact-notes { display: flex; align-items: flex-start; gap: .45rem; padding: .45rem .65rem; border-radius: .5rem; background: #fff; border: 1px dashed #c8c0b3; font-size: .75rem; color: var(--color-text); }
+.schedule-compact-notes svg { flex-shrink: 0; color: var(--color-primary); margin-top: .1rem; }
+.schedule-compact-notes p { margin: 0; white-space: pre-wrap; line-height: 1.4; }
+.household-calendar-icon.is-vaccination { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+.household-calendar-icon.is-prevention { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+.schedule-pet-tag { text-decoration: none; font-weight: 700; color: var(--color-primary); border-color: #b8d4c5; background: #eef7f2; }
+.schedule-pet-tag:hover { background: #dfeee6; }
+.schedule-status-badge { display: inline-flex; align-items: center; padding: .12rem .55rem; border-radius: 999px; font-size: .68rem; font-weight: 700; }
+.schedule-status-badge.is-completed { background: #e7f4ec; color: #164d34; border: 1px solid #b8d4c5; }
+.schedule-status-badge.is-cancelled { background: #f3f0ea; color: #526462; border: 1px solid #d5cfc4; }
+.schedule-prep-notes { display: flex; align-items: flex-start; gap: .55rem; padding: .65rem .85rem; border-radius: .65rem; background: #fff; border: 1px dashed #c8c0b3; font-size: .78rem; line-height: 1.45; }
+.schedule-prep-notes svg { flex-shrink: 0; color: var(--color-primary); margin-top: .1rem; }
+.schedule-prep-notes strong { display: block; font-size: .72rem; color: #526462; margin-bottom: .15rem; }
+.schedule-prep-notes p { margin: 0; color: var(--color-text); white-space: pre-wrap; }
+.schedule-card-actions { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; padding-top: .55rem; border-top: 1px solid var(--color-border); }
+.schedule-layout-toggle { display: inline-flex; align-items: center; padding: .2rem; border-radius: .65rem; border: 1px solid var(--color-border); background: var(--color-surface); gap: .15rem; }
+.schedule-layout-btn { display: inline-flex; align-items: center; gap: .35rem; min-height: 32px; padding: .25rem .65rem; border-radius: .45rem; border: 0; background: transparent; color: var(--color-text-muted); font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+.schedule-layout-btn:hover { color: var(--color-text); }
+.schedule-layout-btn.is-active { background: var(--color-primary); color: #fff; }
+.schedule-month-wrapper { display: grid; gap: 1.15rem; }
+.schedule-month-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.schedule-month-nav { display: inline-flex; align-items: center; gap: .5rem; }
+.schedule-month-nav-btn { width: 36px; height: 36px; border-radius: .55rem; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); display: grid; place-items: center; cursor: pointer; transition: background-color .15s, border-color .15s; }
+.schedule-month-nav-btn:hover { background: var(--color-surface-sand); border-color: var(--color-primary); }
+.schedule-month-title { font-size: 1rem; font-weight: 700; text-transform: capitalize; min-width: 10.5rem; text-align: center; }
+.schedule-month-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.schedule-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--color-border); border-radius: .95rem; overflow: hidden; background: var(--color-border); gap: 1px; }
+.schedule-weekday-header { background: var(--color-surface-sand); padding: .55rem .4rem; text-align: center; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-muted); }
+.schedule-day-cell { min-height: 6.2rem; padding: .45rem .5rem; background: var(--color-surface-raised); display: flex; flex-direction: column; gap: .3rem; cursor: pointer; transition: background-color .12s; }
+.schedule-day-cell:hover { background: #f8f6f1; }
+.schedule-day-cell.is-outside { background: #faf8f4; color: var(--color-text-muted); opacity: .65; }
+.schedule-day-cell.is-today { background: #f4faf6; }
+.schedule-day-cell.is-selected { outline: 2px solid var(--color-primary); outline-offset: -2px; background: #eef7f2; }
+.schedule-day-top { display: flex; align-items: center; justify-content: space-between; gap: .25rem; }
+.schedule-day-num { display: inline-grid; place-items: center; min-width: 1.55rem; height: 1.55rem; padding-inline: .25rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+.schedule-day-cell.is-today .schedule-day-num { background: var(--color-primary); color: #fff; }
+.schedule-day-add { width: 1.4rem; height: 1.4rem; border-radius: .35rem; border: 1px solid transparent; background: transparent; color: var(--color-text-muted); font-size: .85rem; font-weight: 700; line-height: 1; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, background-color .15s; }
+.schedule-day-cell:hover .schedule-day-add, .schedule-day-cell.is-selected .schedule-day-add, .schedule-day-add:focus-visible { opacity: 1; }
+.schedule-day-add:hover { background: #dfeee6; border-color: #b8d4c5; color: #164d34; }
+.schedule-day-events { display: grid; gap: .2rem; min-width: 0; }
+.schedule-day-pill { display: block; width: 100%; text-align: left; padding: .2rem .45rem; border: 0; border-radius: .35rem; font: inherit; font-size: .68rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #eef7f2; color: #164d34; border-left: 3px solid #164d34; cursor: pointer; transition: filter .12s, transform .1s; }
+.schedule-day-pill:hover { filter: brightness(.95); }
+.schedule-day-pill.is-vaccination { background: #eef2ff; color: #4338ca; border-left-color: #4338ca; }
+.schedule-day-pill.is-prevention { background: #fffbeb; color: #b45309; border-left-color: #b45309; }
+.schedule-day-pill.is-overdue { background: #fff5f4; color: #a82424; border-left-color: #a82424; }
+.schedule-day-pill.is-completed { opacity: .65; text-decoration: line-through; }
+.schedule-day-more { font-size: .65rem; font-weight: 700; color: var(--color-text-muted); padding-left: .2rem; }
+.schedule-selected-day-panel { display: grid; gap: .75rem; padding: 1rem 1.15rem; border-radius: .95rem; border: 1px solid var(--color-border); background: #faf8f3; }
+.schedule-selected-day-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.schedule-selected-day-header h3 { margin: 0; font-size: .9rem; font-weight: 700; }
+.schedule-selected-day-empty { margin: 0; font-size: .78rem; color: var(--color-text-muted); }
 .household-advisory { display: flex; align-items: flex-start; gap: .75rem; font-size: .7rem; background: var(--color-surface-sand); padding: 1rem; border-radius: .75rem; margin-top: 2rem; }
 .household-advisory svg { flex-shrink: 0; color: var(--color-primary); }
 .household-record-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; font-size: .8125rem; }
@@ -192,6 +305,13 @@
   .household-digest > div + div { padding-top: .75rem; border-top: 1px solid var(--color-border); }
   .household-section-heading > span { display: none; }
   .household-calendar { padding: 1.25rem; }
+  .household-calendar-link { flex-wrap: wrap; }
+  .household-calendar-due { width: 100%; justify-content: space-between; padding-top: .35rem; border-top: 1px dashed var(--color-border); }
+  .schedule-day-cell { min-height: 4.5rem; padding: .3rem; }
+  .schedule-day-pill { font-size: .62rem; padding: .1rem .25rem; }
+  .schedule-search-box { width: 100%; min-width: 0; }
+  .schedule-compact-main { flex-wrap: wrap; }
+  .schedule-compact-actions { width: 100%; justify-content: flex-end; padding-top: .25rem; }
   .household-cover { padding: .75rem; }
   .household-cover-top { margin-bottom: 2rem; }
   .household-profile-glass { flex-direction: column; align-items: stretch; padding: 1rem; }
