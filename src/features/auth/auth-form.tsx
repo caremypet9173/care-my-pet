@@ -22,6 +22,11 @@ export function AuthForm({ mode, configured, initialError }: {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(initialError === "callback" ? t.callback : initialError === "confirmation" ? t.confirmation : "");
   const messageRef = useRef<HTMLParagraphElement>(null);
+  const returnTo = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("returnTo")
+    : null;
+  const returnToSuffix = returnTo && returnTo.startsWith("/") ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
+
   function showError(message: string) {
     setError(message);
     requestAnimationFrame(() => messageRef.current?.focus());
@@ -46,7 +51,7 @@ export function AuthForm({ mode, configured, initialError }: {
       if (result.error) {
         showError(result.error.status === 429 ? t.rateLimit : register ? t.failed : t.credentials);
       } else if (result.data.session) {
-        router.replace("/app");
+        router.replace(returnTo && returnTo.startsWith("/") ? returnTo : "/app");
         router.refresh();
       } else {
         form.reset();
@@ -63,9 +68,12 @@ export function AuthForm({ mode, configured, initialError }: {
     setBusy(true);
     setError("");
     try {
+      const callbackUrl = returnTo && returnTo.startsWith("/")
+        ? `${window.location.origin}/${locale}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+        : `${window.location.origin}/${locale}/auth/callback`;
       const { data, error } = await createClient().auth.signInWithOAuth({
         provider: "google", options: {
-          redirectTo: `${window.location.origin}/${locale}/auth/callback`,
+          redirectTo: callbackUrl,
           skipBrowserRedirect: true,
         },
       });
@@ -74,7 +82,7 @@ export function AuthForm({ mode, configured, initialError }: {
     } catch { showError(t.failed); setBusy(false); }
   }
   return <div className="auth-content">
-    <nav className="auth-mode-switch" aria-label={d.modes}><Link href="/login" aria-current={!register ? "page" : undefined}>{t.login}</Link><Link href="/register" aria-current={register ? "page" : undefined}>{t.register}</Link></nav>
+    <nav className="auth-mode-switch" aria-label={d.modes}><Link href={`/login${returnToSuffix}`} aria-current={!register ? "page" : undefined}>{t.login}</Link><Link href={`/register${returnToSuffix}`} aria-current={register ? "page" : undefined}>{t.register}</Link></nav>
     <div className="auth-form-heading"><h1>{sent ? t.checkEmail : register ? t.register : d.welcome}</h1>
     <p>{sent ? t.sent : register ? d.registerIntro : d.loginIntro}</p></div>
     {!configured ? <p role="status">{t.unavailable}</p> : null}
@@ -97,6 +105,6 @@ export function AuthForm({ mode, configured, initialError }: {
       </form>
       <p className="auth-legal">{t.legal} <Link href="/regulamin">{t.terms}</Link> {t.and} <Link href="/prywatnosc">{t.privacy}</Link>.</p>
     </> : null}
-    <p>{register ? t.hasAccount : t.noAccount} <Link href={register ? "/login" : "/register"}>{register ? t.login : t.register}</Link></p>
+    <p>{register ? t.hasAccount : t.noAccount} <Link href={register ? `/login${returnToSuffix}` : `/register${returnToSuffix}`}>{register ? t.login : t.register}</Link></p>
   </div>;
 }

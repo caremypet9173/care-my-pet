@@ -150,6 +150,111 @@ Deno.serve(async (req) => {
     });
   }
 
+  // -------------------------------------------------------------------------
+  // 1b. Bezpośrednia rejestracja nowego konta i akceptacja zaproszenia w jednym kroku
+  // -------------------------------------------------------------------------
+  if (action === "register_and_accept") {
+    const token = typeof body.token === "string" ? body.token.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+
+    if (!tokenPattern.test(token)) {
+      return reply({ error: "invalid_token" }, 400);
+    }
+    if (!password || password.length < 8) {
+      return reply({ error: "weak_password" }, 400);
+    }
+
+    const { data: invite, error: inviteErr } = await adminClient
+      .from("zaproszenie_gospodarstwa")
+      .select("*")
+      .eq("token", token)
+      .maybeSingle();
+
+    if (inviteErr || !invite) {
+      return reply({ error: "not_found" }, 404);
+    }
+
+    if (invite.status !== "pending") {
+      return reply({ error: `invite_${invite.status}` }, 400);
+    }
+
+    const now = new Date();
+    if (now.getTime() > new Date(invite.expires_at).getTime()) {
+      await adminClient
+        .from("zaproszenie_gospodarstwa")
+        .update({ status: "expired" })
+        .eq("id", invite.id);
+      return reply({ error: "invite_expired" }, 400);
+    }
+
+    const { data: targetHousehold } = await adminClient
+      .from("gospodarstwo")
+      .select("id, owner_id, nazwa")
+      .eq("id", invite.gospodarstwo_id)
+      .maybeSingle();
+
+    if (!targetHousehold) {
+      return reply({ error: "household_not_found" }, 404);
+    }
+
+    // Utwórz użytkownika w auth.users (z email_confirm: true, bo unikalny token
+    // z wiadomości e-mail potwierdza posiadanie skrzynki pocztowej)
+    const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
+      email: invite.email,
+      password,
+      email_confirm: true,
+    });
+
+    let userId: string;
+
+    if (createErr || !newUser?.user) {
+      const errMsg = (createErr?.message || "").toLowerCase();
+      if (
+        errMsg.includes("already registered") ||
+        errMsg.includes("already exists") ||
+        createErr?.status === 422
+      ) {
+        return reply({ error: "user_already_exists" }, 409);
+      }
+      console.error("Failed to create user during invite acceptance:", createErr);
+      return reply({ error: "user_creation_failed", details: createErr?.message }, 500);
+    } else {
+      userId = newUser.user.id;
+    }
+
+    // Dodaj użytkownika do członków gospodarstwa
+    const { error: memberErr } = await adminClient
+      .from("czlonek_gospodarstwa")
+      .upsert({
+        gospodarstwo_id: invite.gospodarstwo_id,
+        user_id: userId,
+        email: invite.email,
+        rola: invite.rola || "member",
+      });
+
+    if (memberErr) {
+      console.error("Failed to add member to household:", memberErr);
+      return reply({ error: "membership_failed" }, 500);
+    }
+
+    // Oznacz zaproszenie jako zaakceptowane
+    await adminClient
+      .from("zaproszenie_gospodarstwa")
+      .update({
+        status: "accepted",
+        accepted_at: now.toISOString(),
+        accepted_by: userId,
+      })
+      .eq("id", invite.id);
+
+    return reply({
+      success: true,
+      email: invite.email,
+      household_id: invite.gospodarstwo_id,
+      household_name: targetHousehold.nazwa,
+    });
+  }
+
   // =========================================================================
   // 2. Operacje wymagające zalogowanego użytkownika
   // =========================================================================

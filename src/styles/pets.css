@@ -1004,8 +1004,181 @@
 .household-invite-actions {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+.household-invite-logged-card {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #eef7f4;
+  border: 1px solid #cce5dd;
+  border-radius: 0.75rem;
+  font-size: 0.85rem;
+  color: #1a6354;
+}
+.household-invite-logged-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.household-invite-switch-link {
+  background: transparent;
+  border: none;
+  color: #164d34;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.household-invite-auth-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+}
+.household-invite-tabs {
+  display: flex;
+  background: var(--color-surface-sand);
+  padding: 0.25rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--color-border);
+  gap: 0.25rem;
+}
+.household-invite-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.household-invite-tab-btn.is-active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+}
+.household-invite-embedded-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.household-invite-field-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+.household-invite-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.household-invite-input-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.household-invite-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text-muted);
+}
+.household-invite-input-wrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(22, 77, 52, 0.15);
+}
+.household-invite-input-wrap input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  outline: none;
+}
+.household-invite-input-readonly {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-surface-sand);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text-muted);
+}
+.household-invite-input-readonly input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  outline: none;
+  cursor: default;
+}
+.household-invite-eye-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.household-invite-eye-btn:hover {
+  color: var(--color-text);
+}
+.household-invite-switch-prompt {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0.25rem 0 0;
+}
+.household-invite-text-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.household-invite-fallback {
+  border-top: 1px dashed var(--color-border);
+  padding-top: 1rem;
+  text-align: center;
+}
+.household-invite-fallback-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.household-invite-fallback-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 .household-invite-user-note {
   font-size: 0.8125rem;
