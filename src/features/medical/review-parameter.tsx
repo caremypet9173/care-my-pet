@@ -46,9 +46,7 @@ export function ReviewParameter({
     <fieldset
       className={`medical-parameter medical-parameter--${
         attention ? "attention" : "compact"
-      } is-expanded ${
-        nameInvalid || valueInvalid ? "has-validation-error" : ""
-      }`}
+      } ${nameInvalid || valueInvalid ? "has-validation-error" : ""}`}
     >
       <legend className="sr-only">
         {index + 1}. {row.name || t.name}
@@ -59,37 +57,41 @@ export function ReviewParameter({
             className={`review-dot review-dot--${status}`}
             aria-hidden="true"
           />
-          <div>
+          <div className="review-parameter-titles">
             <strong>{row.name || t.name}</strong>
-            <small>{t[row.category]}</small>
+            <span className="review-parameter-category">{t[row.category]}</span>
           </div>
+          <button
+            type="button"
+            className="review-param-edit-btn"
+            aria-expanded={identity}
+            aria-label={`${
+              locale === "pl" ? "Edytuj nazwę i kategorię dla" : "Edit name and category for"
+            } ${row.name || t.name}`}
+            title={locale === "pl" ? "Edytuj nazwę i kategorię" : "Edit name and category"}
+            onClick={() => setIdentity(!identity)}
+          >
+            <IconPencil size={13} aria-hidden="true" />
+          </button>
         </div>
-        <span className={`medical-status medical-status--${status}`}>
-          {status === "above" ? "↑ " : status === "below" ? "↓ " : ""}
-          {t[status]}
-        </span>
-        <div className="review-parameter-actions">
+        <div className="review-parameter-meta">
+          <span className={`medical-status medical-status--${status}`}>
+            {status === "above" ? "↑ " : status === "below" ? "↓ " : ""}
+            {t[status]}
+          </span>
           <button
             type="button"
             className="review-icon-button"
-            aria-label={`${t.remove} ${index + 1}`}
+            aria-label={`${t.remove} ${index + 1}: ${row.name || t.name}`}
             onClick={onRemove}
           >
-            <IconTrash size={16} />
+            <IconTrash size={15} />
           </button>
         </div>
       </div>
-      <button
-        type="button"
-        className="review-identity-toggle"
-        aria-expanded={identity}
-        onClick={() => setIdentity(!identity)}
-      >
-        {locale === "pl" ? "Nazwa i kategoria" : "Name and category"}
-        <IconPencil size={14} />
-      </button>
+
       {(identity || nameInvalid) && (
-        <div className="medical-fields">
+        <div className="medical-fields review-parameter-identity-fields">
           <label>
             {t.name} *
             <input
@@ -119,6 +121,7 @@ export function ReviewParameter({
           </label>
         </div>
       )}
+
       <div className="medical-row-values">
         {(
           [
@@ -152,6 +155,7 @@ export function ReviewParameter({
           </label>
         ))}
       </div>
+
       {nameInvalid && (
         <p className="review-field-error" id={`${errorId}-name`}>
           {locale === "pl"
@@ -168,16 +172,6 @@ export function ReviewParameter({
             : "Enter a valid result."}
         </p>
       )}
-      <small className="review-value-type">
-        {locale === "pl" ? "Typ wartości: " : "Value type: "}
-        {numericValue
-          ? locale === "pl"
-            ? "liczba dziesiętna"
-            : "decimal number"
-          : locale === "pl"
-          ? "tekst / wynik opisowy"
-          : "text / descriptive result"}
-      </small>
     </fieldset>
   );
 }
