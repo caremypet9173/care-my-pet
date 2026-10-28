@@ -1,6 +1,16 @@
 import "server-only";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import type { AvailableHouseholdItem, HouseholdDetailsResponse } from "./types";
+import type { AvailableHouseholdItem, HouseholdDetailsResponse, HouseholdInfo } from "./types";
+
+export async function getActiveHouseholdId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    return cookieStore.get("care_active_household_id")?.value ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export async function isHouseholdOwner(): Promise<boolean> {
   const client = await createClient();
@@ -18,6 +28,22 @@ export async function isHouseholdOwner(): Promise<boolean> {
     .maybeSingle();
 
   return !!data;
+}
+
+export async function getActiveHouseholdContext(): Promise<{
+  activeHousehold: HouseholdInfo | null;
+  isOwner: boolean;
+  availableHouseholds: AvailableHouseholdItem[];
+}> {
+  const details = await getHouseholdDetails();
+  if (!details) {
+    return { activeHousehold: null, isOwner: false, availableHouseholds: [] };
+  }
+  return {
+    activeHousehold: details.household,
+    isOwner: details.household.is_owner,
+    availableHouseholds: details.availableHouseholds ?? [],
+  };
 }
 
 export async function getHouseholdDetails(
@@ -67,17 +93,20 @@ export async function getHouseholdDetails(
     }
   }
 
-  // Wybierz aktywne gospodarstwo
+  // Wybierz aktywne gospodarstwo (priorytet: selectedHouseholdId -> cookie -> ownedHome -> memberHome)
   let activeHousehold: { id: string; nazwa: string; owner_id: string; created_at: string } | null = null;
   let isOwner = false;
 
-  if (selectedHouseholdId) {
-    if (ownedHome && ownedHome.id === selectedHouseholdId) {
+  const cookieHouseholdId = await getActiveHouseholdId();
+  const effectiveId = selectedHouseholdId || cookieHouseholdId;
+
+  if (effectiveId) {
+    if (ownedHome && ownedHome.id === effectiveId) {
       activeHousehold = ownedHome;
       isOwner = true;
     } else {
       const found = (memberHomes ?? []).find(
-        (m) => (m.gospodarstwo as unknown as { id: string })?.id === selectedHouseholdId,
+        (m) => (m.gospodarstwo as unknown as { id: string })?.id === effectiveId,
       );
       if (found && found.gospodarstwo) {
         activeHousehold = found.gospodarstwo as unknown as {

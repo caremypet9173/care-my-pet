@@ -514,6 +514,213 @@
   color: var(--color-primary);
   border-color: var(--color-border);
 }
+
+/* Household Header Switcher */
+.household-header-switcher {
+  position: relative;
+  display: inline-block;
+}
+
+.household-header-single-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-sand);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.household-header-single-name {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.household-header-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.household-header-switcher-btn:hover,
+.household-header-switcher-btn[aria-expanded="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-surface-sand);
+  color: var(--color-primary);
+}
+
+.household-switcher-home-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-primary);
+}
+
+.household-header-switcher-name {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.household-header-switcher-role {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-surface-sand);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.household-header-chevron {
+  transition: transform 0.2s ease;
+  color: var(--color-text-muted);
+}
+
+.household-header-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.household-header-dropdown {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  width: 280px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.household-header-dropdown-header {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  background: var(--color-surface-sand);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.household-header-dropdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.household-header-dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.household-header-dropdown-item:hover {
+  background: var(--color-surface-sand);
+}
+
+.household-header-dropdown-item.is-active {
+  background: rgba(22, 77, 52, 0.08);
+}
+
+.household-header-dropdown-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.household-header-dropdown-item-left svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.household-header-dropdown-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.household-header-dropdown-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.household-header-dropdown-role {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.household-header-dropdown-role.is-owner {
+  color: #164d34;
+  font-weight: 500;
+}
+
+.household-header-dropdown-check {
+  color: #164d34;
+  flex-shrink: 0;
+}
+
+.household-header-dropdown-footer {
+  padding: 0.5rem 0.65rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-sand);
+}
+
+.household-header-dropdown-manage-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.household-header-dropdown-manage-link:hover {
+  color: var(--color-primary);
+  background: var(--color-surface);
+}
 .household-manager-layout {
   display: flex;
   flex-direction: column;

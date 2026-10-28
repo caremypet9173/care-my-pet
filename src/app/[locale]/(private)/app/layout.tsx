@@ -8,6 +8,8 @@ import { Container } from "@/components/layout/container";
 import { SignOut } from "@/features/auth/sign-out";
 import { authMessages } from "@/features/auth/messages";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
+import { getActiveHouseholdContext } from "@/features/household/data";
+import { HouseholdHeaderSwitcher } from "@/features/household/household-header-switcher";
 import { IconUsers } from "@tabler/icons-react";
 import "@/styles/pets.css";
 
@@ -22,6 +24,8 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   const t = authMessages[locale];
   const pl = locale === "pl";
 
+  const { activeHousehold, availableHouseholds } = await getActiveHouseholdContext();
+
   return (
     <div className="household-shell">
       <header className="household-header">
@@ -35,6 +39,11 @@ export default async function PrivateLayout({ children }: { children: React.Reac
             <strong>{result.data.user.email}</strong>
           </p>
           <div className="household-header-actions">
+            <HouseholdHeaderSwitcher
+              availableHouseholds={availableHouseholds}
+              activeHouseholdId={activeHousehold?.id ?? null}
+              locale={locale}
+            />
             <Link
               href="/app/gospodarstwo"
               className="household-nav-link"

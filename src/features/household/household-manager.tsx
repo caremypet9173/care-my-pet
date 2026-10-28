@@ -97,6 +97,7 @@ export function HouseholdManager({
       }
 
       const newId = data.household.id;
+      document.cookie = `care_active_household_id=${encodeURIComponent(newId)}; path=/; max-age=31536000; SameSite=Lax`;
       router.push(`/app/gospodarstwo?id=${newId}`);
       router.refresh();
     } catch {
@@ -306,6 +307,9 @@ export function HouseholdManager({
               <Link
                 key={h.id}
                 href={`/app/gospodarstwo?id=${h.id}`}
+                onClick={() => {
+                  document.cookie = `care_active_household_id=${encodeURIComponent(h.id)}; path=/; max-age=31536000; SameSite=Lax`;
+                }}
                 className={`household-switcher-pill ${h.is_active ? "is-active" : ""}`}
               >
                 <IconHome size={16} aria-hidden="true" />

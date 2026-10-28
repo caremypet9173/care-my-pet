@@ -16,15 +16,21 @@ export async function listHealthEvents(petId: string): Promise<HealthEvent[]> {
   return data;
 }
 
-export async function listHouseholdHealthEvents(): Promise<HealthEvent[]> {
+export async function listHouseholdHealthEvents(
+  householdId?: string | null,
+): Promise<HealthEvent[]> {
   const client = await createClient();
   if (!client) return [];
-  const {data, error} = await client
+  let query = client
     .from('pet_health_event')
     .select('*')
     .order('event_date', {ascending: false})
     .order('created_at', {ascending: false})
     .limit(500);
+  if (householdId) {
+    query = query.eq('household_id', householdId);
+  }
+  const {data, error} = await query;
   if (error) return [];
   return data ?? [];
 }

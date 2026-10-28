@@ -6,28 +6,40 @@ import type {
   ScheduleItem,
 } from "./types";
 
-export async function listHouseholdReportsSummary(): Promise<CalendarReportSummary[]> {
+export async function listHouseholdReportsSummary(
+  householdId?: string | null,
+): Promise<CalendarReportSummary[]> {
   const client = await createClient();
   if (!client) return [];
-  const { data, error } = await client
+  let query = client
     .from("wynik_badania")
     .select("id, pet_id:zwierze_id, title, test_date, laboratory, doctor")
     .order("test_date", { ascending: false })
     .order("confirmed_at", { ascending: false })
     .limit(400);
+  if (householdId) {
+    query = query.eq("gospodarstwo_id", householdId);
+  }
+  const { data, error } = await query;
   if (error) return [];
   return (data ?? []) as CalendarReportSummary[];
 }
 
-export async function listHouseholdScheduleItems(): Promise<ScheduleItem[]> {
+export async function listHouseholdScheduleItems(
+  householdId?: string | null,
+): Promise<ScheduleItem[]> {
   const client = await createClient();
   if (!client) return [];
-  const { data, error } = await client
+  let query = client
     .from("pet_schedule_item")
     .select("*")
     .order("scheduled_date", { ascending: true })
     .order("created_at", { ascending: false })
     .limit(300);
+  if (householdId) {
+    query = query.eq("household_id", householdId);
+  }
+  const { data, error } = await query;
   if (error) return [];
   return (data ?? []) as ScheduleItem[];
 }
@@ -48,7 +60,9 @@ export async function listPetScheduleItems(
   return (data ?? []) as ScheduleItem[];
 }
 
-export async function getHouseholdNotificationSettings(): Promise<HouseholdNotificationSettings> {
+export async function getHouseholdNotificationSettings(
+  householdId?: string | null,
+): Promise<HouseholdNotificationSettings> {
   const fallback: HouseholdNotificationSettings = {
     email_enabled: true,
     notify_7_days_before: true,
@@ -58,9 +72,13 @@ export async function getHouseholdNotificationSettings(): Promise<HouseholdNotif
   };
   const client = await createClient();
   if (!client) return fallback;
-  const { data, error } = await client
+  let query = client
     .from("household_notification_settings")
-    .select("*")
+    .select("*");
+  if (householdId) {
+    query = query.eq("household_id", householdId);
+  }
+  const { data, error } = await query
     .limit(1)
     .maybeSingle();
   if (error || !data) return fallback;

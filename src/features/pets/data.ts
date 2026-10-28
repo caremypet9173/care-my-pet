@@ -8,13 +8,20 @@ async function withAvatars(client: NonNullable<Awaited<ReturnType<typeof createC
   const urls = new Map(data?.map(item => [item.path, item.signedUrl]));
   return pets.map(pet => ({ ...pet, avatar_url: pet.avatar_path ? urls.get(pet.avatar_path) ?? null : null }));
 }
-export async function listPets(): Promise<Pet[] | null> {
+export async function listPets(householdId?: string | null): Promise<Pet[] | null> {
   const client = await createClient();
   if (!client) return null;
-  const { data, error } = await client.from("zwierze").select("*,medical_reports:wynik_badania(count)").order("created_at");
-  if(error)return null;
-  const pets=(data as (Pet & {medical_reports:{count:number}[]})[]).map(({medical_reports,...pet})=>({...pet,report_count:medical_reports[0]?.count??0}));
-  return withAvatars(client,pets);
+  let query = client.from("zwierze").select("*,medical_reports:wynik_badania(count)").order("created_at");
+  if (householdId) {
+    query = query.eq("gospodarstwo_id", householdId);
+  }
+  const { data, error } = await query;
+  if (error) return null;
+  const pets = (data as (Pet & { medical_reports: { count: number }[] })[]).map(({ medical_reports, ...pet }) => ({
+    ...pet,
+    report_count: medical_reports[0]?.count ?? 0,
+  }));
+  return withAvatars(client, pets);
 }
 export async function getPet(id: string): Promise<Pet | null> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;

@@ -45,7 +45,7 @@ export default async function HouseholdPage({
         </div>
       </div>
 
-      <HouseholdManager initialData={data} />
+      <HouseholdManager key={data.household.id} initialData={data} />
     </Container>
   );
 }
