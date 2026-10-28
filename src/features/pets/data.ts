@@ -21,6 +21,9 @@ export async function getPet(id: string): Promise<Pet | null> {
   const client = await createClient();
   if (!client) throw new Error("Supabase unavailable");
   const { data, error } = await client.from("zwierze").select("*").eq("id", id).maybeSingle();
-  if (error) throw new Error("Could not load pet");
+  if (error) {
+    console.error("[getPet error]", error);
+    throw new Error(`Could not load pet: ${error.message} (${error.code})`);
+  }
   return data ? (await withAvatars(client, [data as Pet]))[0] : null;
 }
