@@ -40,7 +40,17 @@ export default async function AppPage() {
     <Container className="pets-page">
       <div className="pets-heading">
         <div>
-          <span className="pets-eyebrow">{d.dashboard}</span>
+          <div className="pets-eyebrows-row">
+            <span className="pets-eyebrow">{d.dashboard}</span>
+            {!isOwner && (
+              <span className="household-co-guardian-pill">
+                <IconUsers size={13} aria-hidden="true" />
+                {locale === "pl"
+                  ? "Gospodarstwo współdzielone (Współopiekun)"
+                  : "Shared household (Co-guardian)"}
+              </span>
+            )}
+          </div>
           <h1>
             {activeHousehold?.nazwa
               ? `${t.title} – ${activeHousehold.nazwa}`
@@ -75,6 +85,25 @@ export default async function AppPage() {
           </ButtonLink>
         </div>
       </div>
+      {!isOwner && activeHousehold && (
+        <div className="household-co-guardian-banner">
+          <div className="household-co-guardian-banner-icon" aria-hidden="true">
+            <IconUsers size={22} />
+          </div>
+          <div className="household-co-guardian-banner-content">
+            <strong>
+              {locale === "pl"
+                ? `Jesteś współopiekunem w gospodarstwie „${activeHousehold.nazwa}”`
+                : `You are a co-guardian in "${activeHousehold.nazwa}"`}
+            </strong>
+            <p>
+              {locale === "pl"
+                ? "Działasz w trybie współdzielonym. Masz pełny wgląd w zdrowie i dokumentację pupili oraz wspólny terminarz. Dodawanie nowych zwierząt oraz zarządzanie członkami wykonuje właściciel gospodarstwa."
+                : "You are acting in shared mode. You have full access to health records and shared calendar. Adding new pets and managing members is handled by the household owner."}
+            </p>
+          </div>
+        </div>
+      )}
       {pets === null ? (
         <p role="alert">{t.loadFailed}</p>
       ) : (

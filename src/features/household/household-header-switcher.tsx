@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
-import { IconChevronDown, IconCheck, IconHome, IconSettings } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconCheck,
+  IconHome,
+  IconSettings,
+  IconUsers,
+} from "@tabler/icons-react";
 import type { AvailableHouseholdItem } from "./types";
 import { switchActiveHousehold } from "./actions";
 import {
@@ -105,13 +111,20 @@ export function HouseholdHeaderSwitcher({
 
   // Jeśli użytkownik ma tylko 1 gospodarstwo, wyświetlamy pojedynczy znacznik
   if (availableHouseholds.length === 1 && activeHousehold) {
+    const isOwner = activeHousehold.rola === "owner";
     return (
       <div
-        className="household-header-single-badge"
+        className={`household-header-single-badge ${!isOwner ? "is-co-guardian" : ""}`}
         title={pl ? "Twoje gospodarstwo domowe" : "Your household"}
       >
         <IconHome size={15} aria-hidden="true" />
         <span className="household-header-single-name">{activeHousehold.nazwa}</span>
+        {!isOwner && (
+          <span className="household-header-switcher-role is-co-guardian">
+            <IconUsers size={12} aria-hidden="true" />
+            {pl ? "Współopiekun" : "Co-guardian"}
+          </span>
+        )}
       </div>
     );
   }
@@ -129,11 +142,13 @@ export function HouseholdHeaderSwitcher({
     router.refresh();
   };
 
+  const isCoGuardian = activeHousehold?.rola !== "owner";
+
   return (
     <div className="household-header-switcher" ref={containerRef}>
       <button
         type="button"
-        className="household-header-switcher-btn"
+        className={`household-header-switcher-btn ${isCoGuardian ? "is-co-guardian" : ""}`}
         onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="menu"
         aria-expanded={isOpen}
@@ -145,7 +160,12 @@ export function HouseholdHeaderSwitcher({
         <span className="household-header-switcher-name">
           {activeHousehold ? activeHousehold.nazwa : pl ? "Wybierz gospodarstwo" : "Select household"}
         </span>
-        <span className="household-header-switcher-role">
+        <span
+          className={`household-header-switcher-role ${
+            isCoGuardian ? "is-co-guardian" : "is-owner"
+          }`}
+        >
+          {isCoGuardian ? <IconUsers size={12} aria-hidden="true" /> : null}
           {activeHousehold?.rola === "owner"
             ? pl
               ? "Właściciel"
@@ -169,6 +189,7 @@ export function HouseholdHeaderSwitcher({
           <ul className="household-header-dropdown-list">
             {availableHouseholds.map((h) => {
               const isSelected = h.id === activeHousehold?.id;
+              const itemIsCoGuardian = h.rola !== "owner";
               return (
                 <li key={h.id}>
                   <button
@@ -187,9 +208,12 @@ export function HouseholdHeaderSwitcher({
                         </span>
                         <span
                           className={`household-header-dropdown-role ${
-                            h.rola === "owner" ? "is-owner" : ""
+                            itemIsCoGuardian ? "is-co-guardian" : "is-owner"
                           }`}
                         >
+                          {itemIsCoGuardian ? (
+                            <IconUsers size={11} aria-hidden="true" />
+                          ) : null}
                           {h.rola === "owner"
                             ? pl
                               ? "Właściciel"
