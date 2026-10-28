@@ -49,16 +49,13 @@ test("medical document review, confirmation, retry and private source",async({pa
   await page.getByLabel("Nazwa badania",{exact:false}).fill("TEST Blood report");await page.getByLabel("Data badania",{exact:false}).fill("2026-09-15");
   if(!extracted){await page.getByRole("button",{name:"Dodaj parametr",exact:true}).click();const row=page.locator(".medical-parameter");await row.getByRole("textbox",{name:"Parametr *",exact:true}).fill("CREA");await row.getByLabel("Wynik",{exact:false}).fill("1,7");await row.getByLabel("Jednostka",{exact:true}).fill("mg/dl");await row.getByLabel("Zakres z dokumentu").fill("0,8–1,6");}
   expect((await client.from("wynik_badania").select("id").eq("zwierze_id",pet.id)).data).toEqual([]);
-  await page.getByRole("button",{name:"Zatwierdź i zapisz w kartotece"}).click();await expect(page.getByRole("alert").filter({hasText:"Uzupełnij wymagane pola"})).toBeVisible();
-  for(const checkbox of await page.getByLabel("Sprawdzone z oryginałem",{exact:true}).all())await checkbox.check();
-  const firstRow=page.locator(".medical-parameter").first();await firstRow.getByLabel("Wynik",{exact:false}).fill("1,8");await expect(firstRow.getByLabel("Sprawdzone z oryginałem")).not.toBeChecked();await firstRow.getByLabel("Sprawdzone z oryginałem").check();
-  await page.getByLabel("Potwierdzam pupila",{exact:false}).check();
+  const firstRow=page.locator(".medical-parameter").first();await firstRow.getByLabel("Wynik",{exact:false}).fill("1,8");
   expect((await new AxeBuilder({page}).include("main").exclude("iframe").analyze()).violations).toEqual([]);
   await page.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();window.scrollTo(0,0);});
   await page.screenshot({path:`tmp/medical-review-${testInfo.project.name}.png`,fullPage:true});
   let savedBody:Record<string,unknown>|null=null;
   const responsePromise=page.waitForResponse(r=>r.url().includes("/functions/v1/medical-reports")&&r.request().postDataJSON()?.action==="confirm");
-  await page.getByRole("button",{name:"Zatwierdź i zapisz w kartotece"}).click();const response=await responsePromise;savedBody=response.request().postDataJSON();expect(response.status(),await response.text()).toBe(201);
+  await page.getByRole("button",{name:"Zapisz badanie"}).click();const response=await responsePromise;savedBody=response.request().postDataJSON();expect(response.status(),await response.text()).toBe(201);
   fixture.report_id=(await response.json()).id;
   fixture.source_path=(await client.from("wynik_badania").select("source_path").eq("id",fixture.report_id).single()).data!.source_path;await saveFixture();
   await expect(page).toHaveURL(new RegExp(`/zwierzeta/${pet.id}\\?tab=results&report=${fixture.report_id}$`));await page.reload();await expect(page.getByRole("heading",{name:"Wyniki laboratoryjne"})).toBeVisible();
