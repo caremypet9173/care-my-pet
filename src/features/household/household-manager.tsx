@@ -249,6 +249,36 @@ export function HouseholdManager({
 
   return (
     <div className="household-manager-layout">
+      {/* Przełącznik wielu gospodarstw (jeśli użytkownik ma własne i jest też zaproszony do innego) */}
+      {initialData.availableHouseholds && initialData.availableHouseholds.length > 1 && (
+        <section className="household-switcher-box">
+          <span className="household-switcher-label">
+            {pl ? "Twoje gospodarstwa domowe:" : "Your households:"}
+          </span>
+          <div className="household-switcher-pills">
+            {initialData.availableHouseholds.map((h) => (
+              <Link
+                key={h.id}
+                href={`/app/gospodarstwo?id=${h.id}`}
+                className={`household-switcher-pill ${h.is_active ? "is-active" : ""}`}
+              >
+                <IconHome size={16} aria-hidden="true" />
+                <strong>{h.nazwa}</strong>
+                <span className={`household-role-tag ${h.rola === "owner" ? "is-owner" : ""}`}>
+                  {h.rola === "owner"
+                    ? pl
+                      ? "Właściciel"
+                      : "Owner"
+                    : pl
+                      ? "Współopiekun"
+                      : "Member"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Karta główna gospodarstwa */}
       <section className="household-manager-card">
         <div className="household-manager-card-top">

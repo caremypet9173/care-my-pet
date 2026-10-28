@@ -9,10 +9,15 @@ import "@/styles/pets.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function HouseholdPage() {
+export default async function HouseholdPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
+  const { id } = await searchParams;
   const locale = await getLocale();
   const pl = locale === "pl";
-  const data = await getHouseholdDetails();
+  const data = await getHouseholdDetails(id);
 
   if (!data) {
     return redirect({ href: "/app", locale });

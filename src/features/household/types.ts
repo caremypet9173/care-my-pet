@@ -31,12 +31,20 @@ export interface HouseholdPetSummary {
   avatar_path?: string | null;
 }
 
+export interface AvailableHouseholdItem {
+  id: string;
+  nazwa: string;
+  rola: "owner" | "admin" | "member";
+  is_active: boolean;
+}
+
 export interface HouseholdDetailsResponse {
   household: HouseholdInfo;
   owner: HouseholdMember;
   members: HouseholdMember[];
   invitations: HouseholdInvitation[];
   pets: HouseholdPetSummary[];
+  availableHouseholds?: AvailableHouseholdItem[];
 }
 
 export interface InvitationDetailsResponse {
