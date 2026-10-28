@@ -9,7 +9,11 @@ export function validDate(value) {
 export function validateReport(input) {
   if (!input || typeof input !== 'object' || !Array.isArray(input.rows) || input.rows.length > 100) return null;
   const text = (v,max,required=false) => typeof v === 'string' && v.trim().length <= max && (!required || v.trim().length>0) ? v.trim() : null;
-  const value = { title:text(input.title,160,true),test_date:input.test_date,laboratory:text(input.laboratory,160),doctor:text(input.doctor,160),notes:text(input.notes,12000),rows:[] };
+  const ai_interpretation = input.ai_interpretation === undefined || input.ai_interpretation === null
+    ? ''
+    : text(input.ai_interpretation, 12000);
+  if (ai_interpretation === null) return null;
+  const value = { title:text(input.title,160,true),test_date:input.test_date,laboratory:text(input.laboratory,160),doctor:text(input.doctor,160),notes:text(input.notes,12000),ai_interpretation,rows:[] };
   if (!validDate(value.test_date) || Object.values(value).some(v=>v===null)) return null;
   for (const row of input.rows) {
     if (!row || !['blood','renal','liver','other'].includes(row.category)) return null;

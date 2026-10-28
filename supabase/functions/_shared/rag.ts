@@ -210,6 +210,7 @@ export function formatReportKnowledgeContent(report: {
   laboratory?: string | null;
   doctor?: string | null;
   notes?: string | null;
+  ai_interpretation?: string | null;
   rows?: Array<{
     name: string | null;
     value: string | null;
@@ -235,6 +236,9 @@ export function formatReportKnowledgeContent(report: {
   }
   if (report.notes) {
     lines.push(`Uwagi i opis: ${report.notes}`);
+  }
+  if (report.ai_interpretation) {
+    lines.push(`Wstępna analiza AI: ${report.ai_interpretation}`);
   }
   return lines.join("\n");
 }

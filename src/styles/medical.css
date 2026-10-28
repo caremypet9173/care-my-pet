@@ -738,3 +738,170 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   .matrix-detail-header{padding:.95rem 1rem .75rem}
   .matrix-detail-table thead th,.matrix-detail-table tbody td{padding:.65rem 1rem}
 }
+
+/* AI interpretation cards and badges */
+.medical-ai-card {
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #f3f9f6 0%, #ffffff 100%);
+  border: 1px solid #a3cfbb;
+  border-left: 4px solid #164d34;
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+.medical-ai-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid #d4e8de;
+}
+.medical-ai-card-title {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.medical-ai-sparkle-icon {
+  color: #197a56;
+  flex-shrink: 0;
+}
+.medical-ai-card-title h3 {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 700;
+  color: #113826;
+}
+.medical-ai-card-title p {
+  margin: .15rem 0 0;
+  font-size: .75rem;
+  color: #4a6357;
+}
+.medical-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: .2rem .55rem;
+  border-radius: 9999px;
+  background: #d8f1e5;
+  color: #13553a;
+  border: 1px solid #9ad7be;
+}
+.medical-ai-card-content {
+  color: var(--color-text);
+  font-size: .85rem;
+  line-height: 1.6;
+}
+.medical-ai-card-footer {
+  margin-top: 1rem;
+  padding-top: .65rem;
+  border-top: 1px dashed #cbe3d7;
+  color: #557265;
+  font-size: .725rem;
+}
+
+/* Review form AI section */
+.review-ai-section {
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, #f4faf6 0%, #ffffff 100%);
+  border: 1px solid #a8d5c2;
+  border-left: 4px solid #164d34;
+  border-radius: .85rem;
+  padding: 1rem 1.2rem;
+}
+.review-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.review-ai-title {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.review-ai-title h3 {
+  margin: 0;
+  font-size: .85rem;
+  font-weight: 700;
+  color: #113826;
+}
+.review-ai-title p {
+  margin: .1rem 0 0;
+  font-size: .7rem;
+  color: #4a6357;
+}
+.review-ai-actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.review-ai-preview-box {
+  padding: .85rem 1rem;
+  border-radius: .6rem;
+  border: 1px solid #c8e0d4;
+  background: var(--color-surface);
+  min-height: 5rem;
+  margin-bottom: .4rem;
+}
+.review-ai-section textarea {
+  width: 100%;
+  margin-top: .4rem;
+  font-size: .8125rem;
+  line-height: 1.55;
+  border: 1px solid #c8e0d4;
+  border-radius: .6rem;
+  padding: .6rem;
+  background: #ffffff;
+  color: var(--color-text);
+}
+
+/* Documents dialog AI section */
+.medical-document-ai {
+  margin-top: 1rem;
+  padding: .75rem;
+  background: #f4faf6;
+  border: 1px solid #a8d5c2;
+  border-radius: .65rem;
+}
+.medical-document-ai-header {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: .5rem;
+}
+.medical-document-ai-header h3 {
+  margin: 0;
+  font-size: .75rem;
+  font-weight: 700;
+  color: #113826;
+}
+
+/* Shared vet record AI card */
+.shared-report-ai-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f4faf6 0%, #ffffff 100%);
+  border: 1px solid #a8d5c2;
+  border-radius: .75rem;
+}
+.shared-report-ai-header {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-bottom: .6rem;
+  color: #113826;
+  font-size: .85rem;
+}
+.shared-report-ai-disclaimer {
+  display: block;
+  margin-top: .65rem;
+  padding-top: .5rem;
+  border-top: 1px dashed #cbe3d7;
+  color: #557265;
+  font-size: .7rem;
+}

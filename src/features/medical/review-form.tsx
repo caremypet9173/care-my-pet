@@ -13,7 +13,7 @@ import { PdfPreview } from "./pdf-preview";
 import { ReviewParameter } from "./review-parameter";
 import { rangeStatus } from "./comparison";
 import { FormattedMedicalText } from "./formatted-text";
-const blank = ():ReportDraft => ({title:"",test_date:"",laboratory:"",doctor:"",notes:"",rows:[]});
+const blank = ():ReportDraft => ({title:"",test_date:"",laboratory:"",doctor:"",notes:"",ai_interpretation:"",rows:[]});
 const maxFile=6*1024*1024;
 const extensions:Record<string,string>={"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png"};
 export function ReviewForm({pet}:{pet:Pet}) {
@@ -35,6 +35,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
   const checkingNotice=useRef<HTMLParagraphElement>(null);
   const [candidate,setCandidate]=useState<File|null>(null);
   const [notesPreview,setNotesPreview]=useState(false);
+  const [aiPreview,setAiPreview]=useState(true);
   const [dragging,setDragging]=useState(false);
   const dragDepth=useRef(0);
   const choosing=useRef(false);
@@ -103,7 +104,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
       if(data.duplicate){setDuplicate(data.duplicate);return;}
     // Clean up only a pending unlinked source. RLS prevents deleting a confirmed source.
     if(upload.current?.uploaded)await createClient().storage.from("medical-documents").remove([upload.current.path]);
-    upload.current=null;setFile(next);setPreview(URL.createObjectURL(next));setDraft(blank());setSubmitted(false);setPatient("");setReadAutomatically(false);setReviewing(false);setNotesPreview(false);setError("");setZoom(100);setCandidate(null);
+    upload.current=null;setFile(next);setPreview(URL.createObjectURL(next));setDraft(blank());setSubmitted(false);setPatient("");setReadAutomatically(false);setReviewing(false);setNotesPreview(false);setAiPreview(true);setError("");setZoom(100);setCandidate(null);
     }catch{setError(t===medicalMessages.pl?"Nie udało się sprawdzić pliku. Nie został dodany. Spróbuj ponownie. To nie oznacza, że dokument jest duplikatem.":"Could not check the file. It has not been added. Please retry. This does not mean it is a duplicate.");}
     finally{choosing.current=false;setBusy(null);}
   }
@@ -117,7 +118,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
       const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=reject;reader.readAsDataURL(file);});
       const {data,error}=await createClient().functions.invoke("medical-reports",{body:{action:"extract",pet_id:pet.id,mime:file.type,file:base64}});
       if(error){const details=await error.context?.json?.().catch(()=>null);if(details?.duplicate){setDuplicate(details.duplicate);return;}throw new Error(details?.error??"extraction_failed");}
-      setDraft({...data.report,rows:data.report.rows.map((row:Measurement)=>({...row,value_type:measurementValueType(row)}))});setPatient(data.patient_name);setReadAutomatically(true);setNotesPreview(Boolean(data.report.notes?.trim()));setReviewing(true);
+      setDraft({...data.report,ai_interpretation:data.report.ai_interpretation??"",rows:data.report.rows.map((row:Measurement)=>({...row,value_type:measurementValueType(row)}))});setPatient(data.patient_name);setReadAutomatically(true);setNotesPreview(Boolean(data.report.notes?.trim()));setAiPreview(true);setReviewing(true);
     }catch(error){setError(error instanceof Error&&error.message==="daily_limit"?t.limit:error instanceof Error&&error.message==="ai_billing"?t.aiBilling:t.aiError);}finally{setBusy(null);}
   }
   async function save(event:FormEvent){
@@ -167,6 +168,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
       {reviewing&&<form ref={form} noValidate onSubmit={save} className="medical-review-form"><fieldset disabled={!!busy||!!duplicate}>
         {outside.length>0&&<aside className="review-attention"><IconAlertTriangle size={23} aria-hidden="true"/><div><strong>{pl?`Wskaźniki poza zakresem z dokumentu: ${outside.length}.`:`${outside.length} parameters outside the document range.`}</strong><p>{pl?"Możesz przejrzeć i skorygować dowolne pole lub zapisać badanie w obecnej postaci.":"You can review and correct any field or save the report as is."}</p></div><span>{pl?"Wymaga uwagi":"Needs review"}</span></aside>}
         <section className="medical-metadata"><header className="review-section-heading"><h2><IconClipboardText size={17}/>{t.metadata}</h2><span className="review-source-badge">{readAutomatically?(pl?"Odczytane automatycznie":"Automatically extracted"):(pl?"Wpisywane ręcznie":"Manual entry")}</span></header><div className="medical-fields">{([['test_date',t.date,10],['laboratory',t.lab,160],['doctor',t.doctor,160],['title',t.title,160]] as const).map(([key,label,max])=><label key={key}>{label}{(key==="title"||key==="test_date")&&" *"}<input id={`review-${key}`} type={key==="test_date"?"date":"text"} value={draft[key]} aria-invalid={submitted&&(key==="title"?titleInvalid:key==="test_date"?dateInvalid:false)} aria-describedby={submitted&&(key==="title"?titleInvalid:key==="test_date"?dateInvalid:false)?`review-error-${key}`:undefined} required={key==="title"||key==="test_date"} maxLength={max} min={key==="test_date"?"1900-01-01":undefined} max={key==="test_date"?new Date().toISOString().slice(0,10):undefined} onChange={event=>update(key,event.target.value)}/>{submitted&&((key==="title"&&titleInvalid)||(key==="test_date"&&dateInvalid))&&<span className="review-field-error" id={`review-error-${key}`}>{key==="title"?(pl?"Uzupełnij nazwę badania.":"Enter the report title."):(pl?"Podaj poprawną datę, nie późniejszą niż dzisiaj.":"Enter a valid date, no later than today.")}</span>}</label>)}</div><p className="review-patient-line">{t.patientHint} <strong>{pet.imie}</strong>{patient&&<> · {t.patient}: <strong>{patient}</strong></>}</p></section>
+        {Boolean(draft.ai_interpretation?.trim())&&<section className="review-ai-section" aria-label={pl?"Wstępna analiza AI":"Preliminary AI analysis"}><header className="review-ai-header"><div className="review-ai-title"><IconSparkles size={18} className="medical-ai-sparkle-icon" aria-hidden="true"/><div><h3>{pl?"Wstępna analiza AI badania":"Preliminary AI report analysis"}</h3><p>{pl?"Wygenerowana automatycznie podczas odczytu badania":"Generated automatically during document extraction"}</p></div></div><div className="review-ai-actions"><button type="button" className={`review-md-btn is-preview${aiPreview?" is-active":""}`} aria-pressed={aiPreview} onClick={()=>setAiPreview(v=>!v)}><IconEye size={15} aria-hidden="true"/>{aiPreview?(pl?"Edytuj tekst":"Edit text"):(pl?"Podgląd formatowania":"Preview formatting")}</button></div></header>{aiPreview?(<div className="review-ai-preview-box"><FormattedMedicalText text={draft.ai_interpretation||""}/></div>):(<label><span className="sr-only">{pl?"Treść analizy AI":"AI analysis content"}</span><textarea maxLength={12000} rows={7} value={draft.ai_interpretation||""} onChange={event=>update("ai_interpretation",event.target.value)}/></label>)}<small className="review-md-hint">{pl?"Wstępna analiza AI ma charakter pomocniczy i zostanie trwale zapisana wraz z badaniem.":"Preliminary AI analysis is advisory and will be permanently saved with the report."}</small></section>}
         <section className="medical-parameters"><header className="review-section-heading"><div><h2>{pl?"Wyodrębnione parametry laboratoryjne":t.parameters} <small>({draft.rows.length})</small></h2><span className="review-species">{pet.gatunek==="cat"?"Felis catus":"Canis familiaris"}</span></div><Button variant="ghost" disabled={draft.rows.length>=100} onClick={()=>{setDraft(current=>({...current,rows:[...current.rows,{name:"",value:"",unit:"",reference:"",category:"other"}]}));}}><IconPlus size={16}/>{t.addRow}</Button></header>
           {draft.rows.length===0&&<p className="review-descriptive-empty">{pl?"Badanie opisowe / obrazowe (np. USG, TK, RTG, ECHO) — brak parametrów tabelarycznych. Sprawdź i edytuj treść opisu poniżej lub dodaj parametr ręcznie.":"Descriptive / imaging report (e.g. ultrasound, CT, X-ray) — no tabular parameters. Review the description below or add a parameter manually."}</p>}
           {draft.rows.map((row,index)=><ReviewParameter key={index} row={row} index={index} submitted={submitted} onChange={(field,value)=>updateRow(index,field,value)} onRemove={()=>{setDraft(current=>({...current,rows:current.rows.filter((_,i)=>i!==index)}));}}/>)}

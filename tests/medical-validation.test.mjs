@@ -13,8 +13,9 @@ test('preserves source qualifiers and text rather than silently coercing numbers
  assert.equal(sameParameter(row,{...row,unit:'umol/l'}),false);
 });
 test('rejects impossible dates, oversized reports and blank required values',()=>{
- for(const patch of [{test_date:'2026-02-30'},{test_date:'2100-01-01'},{title:' '},{rows:Array(101).fill(row)},{notes:'x'.repeat(4001)},{rows:[{...row,value:' '}]}])assert.equal(validateReport({...report,...patch}),null);
+ for(const patch of [{test_date:'2026-02-30'},{test_date:'2100-01-01'},{title:' '},{rows:Array(101).fill(row)},{notes:'x'.repeat(12001)},{ai_interpretation:'x'.repeat(12001)},{rows:[{...row,value:' '}]}])assert.equal(validateReport({...report,...patch}),null);
  assert.equal(validateReport({...report,rows:[]}).rows.length,0);
+ assert.equal(validateReport({...report,ai_interpretation:'Analiza'}).ai_interpretation,'Analiza');
 });
 test('checks file signature, MIME and byte limit independently',()=>{
  assert.equal(fileMatches(Buffer.from('%PDF-1.4\n'),'application/pdf'),true);

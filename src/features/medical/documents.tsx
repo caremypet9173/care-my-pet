@@ -14,6 +14,7 @@ import {
   IconPlus,
   IconSearch,
   IconShieldCheck,
+  IconSparkles,
   IconX,
 } from "@tabler/icons-react";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -33,6 +34,7 @@ type UnifiedDocument = {
   laboratory: string;
   doctor: string;
   notes: string;
+  ai_interpretation?: string;
   source_path: string;
   source_name: string;
   source_mime: string;
@@ -177,6 +179,7 @@ export function MedicalDocuments({
         laboratory: r.laboratory,
         doctor: r.doctor,
         notes: r.notes,
+        ai_interpretation: r.ai_interpretation,
         source_path: r.source_path,
         source_name: r.source_name,
         source_mime: r.source_mime,
@@ -587,6 +590,18 @@ export function MedicalDocuments({
                     <h3>{t.notesHeading}</h3>
                     <div className="medical-document-notes-box">
                       <FormattedMedicalText text={activeDocument.notes} />
+                    </div>
+                  </section>
+                )}
+
+                {activeDocument.ai_interpretation && (
+                  <section className="medical-document-ai">
+                    <div className="medical-document-ai-header">
+                      <IconSparkles size={16} className="medical-ai-sparkle-icon" aria-hidden="true" />
+                      <h3>{locale === "pl" ? "Wstępna analiza AI" : "Preliminary AI analysis"}</h3>
+                    </div>
+                    <div className="medical-document-notes-box">
+                      <FormattedMedicalText text={activeDocument.ai_interpretation} />
                     </div>
                   </section>
                 )}

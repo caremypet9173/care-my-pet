@@ -2,7 +2,7 @@
 import { Fragment, useId, useRef, useState } from "react";
 import {useRouter} from "next/navigation";
 import { useLocale } from "next-intl";
-import { IconFileText, IconPlus, IconCalendar, IconShieldCheck, IconPencil, IconStar, IconChevronDown, IconList, IconTable } from "@tabler/icons-react";
+import { IconFileText, IconPlus, IconCalendar, IconShieldCheck, IconPencil, IconStar, IconChevronDown, IconList, IconTable, IconSparkles } from "@tabler/icons-react";
 import { ButtonLink } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { medicalMessages } from "./messages";
@@ -77,6 +77,7 @@ export function MedicalResults({petId,reports:initialReports,initialReportId}:{p
           requestAnimationFrame(()=>{detailHeading.current?.focus({preventScroll:true});backToList.current?.scrollIntoView({block:'start',behavior:'instant'});});
         }}/>:<p className="medical-chart-empty">{t.noTrend}</p>}
       </section>}
+      {Boolean(report.ai_interpretation?.trim())&&<section className="pet-panel medical-ai-card" aria-label={locale==="pl"?"Wstępna analiza AI badania":"Preliminary AI report analysis"}><header className="medical-ai-card-header"><div className="medical-ai-card-title"><IconSparkles size={20} className="medical-ai-sparkle-icon" aria-hidden="true"/><div><h3>{locale==="pl"?"Wstępna analiza AI badania":"Preliminary AI report analysis"}</h3><p>{locale==="pl"?"Wnioski i podsumowanie wygenerowane automatycznie na podstawie dokumentu":"Summary and key findings generated automatically from the document"}</p></div></div><span className="medical-ai-badge">AI Assistant</span></header><div className="medical-ai-card-content"><FormattedMedicalText text={report.ai_interpretation||""}/></div><footer className="medical-ai-card-footer"><small>{locale==="pl"?"Wstępna analiza AI ma charakter wyłącznie pomocniczy i nie zastępuje diagnozy lekarza weterynarii.":"Preliminary AI analysis is for informational purposes only and does not replace a veterinary diagnosis."}</small></footer></section>}
       <section className="pet-panel medical-table-panel"><header><div><h3>{report.rows.length>0?t.table:(locale==="pl"?"Opis badania obrazowego / specjalistycznego":"Imaging / descriptive report findings")}</h3><p>{report.title}{report.laboratory?` · ${report.laboratory}`:""}{report.doctor?` · ${report.doctor}`:""}</p></div><span className="medical-report-date">{locale==="pl"?"Data wykonania: ":"Test date: "}{date(report.test_date)}</span></header>
         {report.rows.length===0?(!report.notes&&<p className="medical-descriptive-empty">{t.noRows}</p>):!rows.length?<p>{t.noMatches}</p>:<div className="medical-table-scroll"><table><thead><tr>{[t.name,locale==="pl"?"Aktualny wynik":"Current result",locale==="pl"?"Poprzednio":t.previous,locale==="pl"?"Zakres referencyjny / rozkład":"Reference range / distribution",locale==="pl"?"Status":t.status].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead>{(["blood","renal","liver","other"] as const).map(category=>{
           const grouped=rows.filter(row=>row.category===category);if(!grouped.length)return null;

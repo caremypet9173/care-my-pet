@@ -15,6 +15,7 @@ import {
   IconPill,
   IconScale,
   IconShieldCheck,
+  IconSparkles,
   IconStethoscope,
   IconTable,
   IconVaccine,
@@ -746,6 +747,19 @@ export function SharedVetRecordView({
                           text={selectedReport.notes}
                           className={`medical-notes${selectedReport.rows.length === 0 ? " is-descriptive" : ""}`}
                         />
+                      )}
+
+                      {selectedReport.ai_interpretation && (
+                        <div className="shared-report-ai-card">
+                          <div className="shared-report-ai-header">
+                            <IconSparkles size={16} className="medical-ai-sparkle-icon" aria-hidden="true" />
+                            <strong>{pl ? "Wstępna analiza AI badania" : "Preliminary AI report analysis"}</strong>
+                          </div>
+                          <FormattedMedicalText text={selectedReport.ai_interpretation} />
+                          <small className="shared-report-ai-disclaimer">
+                            {pl ? "Analiza pomocnicza AI — nie zastępuje diagnozy lekarskiej." : "Advisory AI analysis — does not replace veterinary diagnosis."}
+                          </small>
+                        </div>
                       )}
                     </div>
                   )}
