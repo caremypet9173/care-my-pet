@@ -38,8 +38,9 @@ export default async function RootLayout({
       lang={locale}
       data-theme="signature"
       className={`${jakarta.variable} ${inter.variable}`}
+      suppressHydrationWarning
     >
-      <body>
+      <body suppressHydrationWarning>
         <a className="skip-link" href="#main-content">
           {t("skipToContent")}
         </a>
