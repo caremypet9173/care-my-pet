@@ -24,19 +24,26 @@
  .household-guardian-note strong { color:#4b3412; }
  .household-guardian-note p { margin:.125rem 0 0; color:#6a4b1a; }
  @media (max-width:767px) {
-  .household-cover { padding:1.75rem; }
-  .household-profile-glass { flex-direction:column; align-items:stretch; }
-  .household-profile-identity { align-items:flex-start; }
+  .household-cover { padding:1.25rem; }
+  .household-profile-glass { flex-direction:column; align-items:stretch; gap:1rem; padding:1.15rem; }
+  .household-profile-identity { align-items:center; }
   .household-guardian-note { flex:auto; width:100%; }
  }
  @media (max-width:639px) {
-  .household-cover { padding:1rem; }
+  .household-cover { padding:.75rem; border-radius:1.15rem; }
+  .household-cover-top { margin-bottom:.55rem; }
+  .household-cover-top > span { font-size:.68rem; padding:.2rem .6rem; }
   .household-cover-top small { display:none; }
-  .household-profile-glass { padding:1.25rem; }
-  .household-profile-identity { flex-direction:column; align-items:center; text-align:center; }
-  .household-portrait { width:6rem; height:6rem; }
-  .household-profile-name, .household-profile-tags { justify-content:center; }
-  .household-profile-name h1 { font-size:1.5rem; line-height:2rem; }
-  .household-guardian-note { padding:.875rem; }
+  .household-profile-glass { padding:.95rem 1rem; border-radius:1rem; gap:.75rem; }
+  .household-profile-identity { flex-direction:row; align-items:center; text-align:left; gap:1rem; }
+  .household-portrait { width:6.5rem; height:6.5rem; border-radius:1rem; flex-shrink:0; }
+  .household-portrait .household-pet-avatar { border-radius:1rem; }
+  .household-profile-name { justify-content:flex-start; gap:.4rem; }
+  .household-profile-name h1 { font-size:1.35rem; line-height:1.65rem; }
+  .household-profile-details > p { font-size:.8rem; margin-top:.1rem; }
+  .household-profile-tags { justify-content:flex-start; margin:.45rem 0 0; gap:.3rem; }
+  .household-profile-tags .household-tag { font-size:.68rem; padding:.18rem .5rem; }
+  .household-guardian-note { padding:.65rem .8rem; border-radius:.75rem; gap:.55rem; align-items:flex-start; }
+  .household-guardian-note svg { width:16px; height:16px; margin-top:.15rem; }
  }
 }

@@ -2,7 +2,7 @@
 import { Fragment, useId, useRef, useState } from "react";
 import {useRouter} from "next/navigation";
 import { useLocale } from "next-intl";
-import { IconFileText, IconPlus, IconCalendar, IconShieldCheck, IconPencil, IconStar, IconChevronDown } from "@tabler/icons-react";
+import { IconFileText, IconPlus, IconCalendar, IconShieldCheck, IconPencil, IconStar, IconChevronDown, IconList, IconTable } from "@tabler/icons-react";
 import { ButtonLink } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { medicalMessages } from "./messages";
@@ -10,6 +10,7 @@ import { numeric, rangeStatus, sameParameter } from "./comparison";
 import type { MedicalReport, Measurement } from "./types";
 import {TrendParameterPicker} from "./trend-parameter-picker";
 import {ReportList} from "./report-list";
+import { LabComparisonMatrix } from "./lab-comparison-matrix";
 import { PdfPreview } from "./pdf-preview";
 import {EditParameterDialog} from "./edit-parameter-dialog";
 import { FormattedMedicalText } from "./formatted-text";
@@ -17,6 +18,7 @@ import "@/styles/medical-edit-dialog.css";
 export function MedicalResults({petId,reports:initialReports,initialReportId}:{petId:string;reports:MedicalReport[];initialReportId?:string}){
   const router=useRouter();
   const [detail,setDetail]=useState(!!initialReportId);
+  const [listMode,setListMode]=useState<"list"|"matrix">("list");
   const [reportQuery,setReportQuery]=useState('');
   const detailHeading=useRef<HTMLHeadingElement>(null);
   const backToList=useRef<HTMLButtonElement>(null);
@@ -52,11 +54,15 @@ export function MedicalResults({petId,reports:initialReports,initialReportId}:{p
   // Same-day duplicates and qualifiers are not combined into a misleading trend.
   const uniquePoints=points.filter(p=>points.filter(other=>other.date===p.date).length===1).slice(-12);
   const rows=report?.rows.filter(row=>filter==="all"||row.category===filter)??[];
-  if(!detail)return <ReportList reports={reports} petId={petId} query={reportQuery} onQuery={setReportQuery} onOpen={next=>{
+  const openReportDetail=(next:MedicalReport)=>{
     origin.current=next.id;setSelected(next.id);setCollapsed({});setFilter('all');setSource(null);
     setParameter(next.rows.find(row=>['above','below'].includes(rangeStatus(row)))??next.rows.find(row=>numeric(row.value)!==null)??null);
     setDetail(true);requestAnimationFrame(()=>{detailHeading.current?.focus({preventScroll:true});backToList.current?.scrollIntoView({block:'start',behavior:'instant'});});
-  }}/>;
+  };
+  if(!detail)return <div className="medical-results">
+    {reports.length>0&&<div className="medical-mode-switcher" role="group" aria-label={locale==="pl"?"Widok wyników badań":"Results view"}><button type="button" className={`medical-mode-card${listMode==="list"?" is-active":""}`} onClick={()=>setListMode("list")}><span className="medical-mode-icon"><IconList size={20} aria-hidden="true"/></span><div><strong>{locale==="pl"?"Lista badań i opisów":"Reports & imaging list"}</strong><small>{locale==="pl"?`Wszystkie dokumenty i badania (${reports.length})`:`All reports and studies (${reports.length})`}</small></div></button><button type="button" className={`medical-mode-card is-highlight${listMode==="matrix"?" is-active":""}`} onClick={()=>setListMode("matrix")}><span className="medical-mode-icon"><IconTable size={20} aria-hidden="true"/></span><div><strong>{locale==="pl"?"Porównanie parametrów w czasie":"Compare parameters over time"}</strong><small>{locale==="pl"?"Zbiorcza tabela wszystkich wyników + wykres wielu parametrów":"Comparison matrix across dates + multi-parameter chart"}</small></div></button></div>}
+    {listMode==="matrix"?<LabComparisonMatrix reports={reports} onOpenReport={openReportDetail}/>:<ReportList reports={reports} petId={petId} query={reportQuery} onQuery={setReportQuery} onOpen={openReportDetail}/>}
+  </div>;
   return <div className="medical-results">
     <button ref={backToList} className="medical-back-list" type="button" onClick={()=>{setDetail(false);requestAnimationFrame(()=>document.getElementById(`open-report-${origin.current??selected}`)?.focus());}}>{locale==="pl"?"← Wróć do listy badań":"← Back to reports"}</button>
     <h2 ref={detailHeading} tabIndex={-1} className="medical-detail-title">{locale==="pl"?"Szczegóły badania":"Report details"}</h2>

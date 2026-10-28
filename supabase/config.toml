@@ -62,4 +62,8 @@ verify_jwt = false
 [functions.schedule-notifications]
 verify_jwt = false
 
+[functions.pet-share]
+verify_jwt = false
+
+
 
