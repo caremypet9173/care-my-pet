@@ -29,6 +29,7 @@ export function HouseholdDashboard({
   reportsSummary = [],
   notificationSettings,
   locale,
+  canAddPet = true,
 }: {
   pets: Pet[];
   healthEvents?: HealthEvent[];
@@ -36,11 +37,12 @@ export function HouseholdDashboard({
   reportsSummary?: CalendarReportSummary[];
   notificationSettings?: HouseholdNotificationSettings;
   locale: Locale;
+  canAddPet?: boolean;
 }) {
   const t = petMessages[locale];
   const d = dashboardMessages[locale];
   const pl = locale === "pl";
-  if (pets.length === 0) return <EmptyHousehold locale={locale} />;
+  if (pets.length === 0) return <EmptyHousehold locale={locale} canAddPet={canAddPet} />;
 
   const todayIso = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Warsaw",
@@ -243,14 +245,16 @@ export function HouseholdDashboard({
           );
         })}
 
-        <Link className="pet-card pet-card--add" href="/app/zwierzeta/nowe">
-          <span className="add-pet-icon">
-            <IconPlus size={26} aria-hidden="true" />
-          </span>
-          <h3>{pets.length ? d.nextPet : t.empty}</h3>
-          <p>{d.addHint}</p>
-          <span className="household-add-label">+ {t.add}</span>
-        </Link>
+        {canAddPet && (
+          <Link className="pet-card pet-card--add" href="/app/zwierzeta/nowe">
+            <span className="add-pet-icon">
+              <IconPlus size={26} aria-hidden="true" />
+            </span>
+            <h3>{pets.length ? d.nextPet : t.empty}</h3>
+            <p>{d.addHint}</p>
+            <span className="household-add-label">+ {t.add}</span>
+          </Link>
+        )}
       </div>
 
       <HouseholdSchedule

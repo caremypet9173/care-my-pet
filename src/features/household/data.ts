@@ -2,6 +2,24 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { AvailableHouseholdItem, HouseholdDetailsResponse } from "./types";
 
+export async function isHouseholdOwner(): Promise<boolean> {
+  const client = await createClient();
+  if (!client) return false;
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return false;
+
+  const { data } = await client
+    .from("gospodarstwo")
+    .select("id")
+    .eq("owner_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  return !!data;
+}
+
 export async function getHouseholdDetails(
   selectedHouseholdId?: string | null,
 ): Promise<HouseholdDetailsResponse | null> {

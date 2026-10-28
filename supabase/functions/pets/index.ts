@@ -41,7 +41,11 @@ Deno.serve(async (req) => {
     if (!parsed.ok || !parsed.value) return reply({ error: 'invalid_input', field: parsed.field }, 400);
     if (body.action === 'create') {
       const { data, error } = await client.rpc('create_pet', { p_pet: parsed.value });
-      if (error) { console.error('pet_create_failed', error.code); return reply({ error: 'save_failed' }, 500); }
+      if (error) {
+        console.error('pet_create_failed', error.code, error.message);
+        if (error.code === '42501') return reply({ error: 'forbidden' }, 403);
+        return reply({ error: 'save_failed' }, 500);
+      }
       return reply({ pet: data }, 201);
     }
     if (body.action === 'update' && typeof body.id === 'string' && /^[0-9a-f-]{36}$/i.test(body.id)
