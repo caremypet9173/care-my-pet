@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 import {
   IconAlertCircle,
@@ -20,7 +19,7 @@ import {
   IconUsers,
   IconUserX,
 } from "@tabler/icons-react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -28,6 +27,8 @@ import type {
   HouseholdInvitation,
   HouseholdMember,
 } from "./types";
+import { switchActiveHousehold } from "./actions";
+import { notifyHouseholdChange } from "./active-household-events";
 
 export function HouseholdManager({
   initialData,
@@ -65,6 +66,13 @@ export function HouseholdManager({
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
+  // Synchronizacja aktywnego gospodarstwa po stronie klienta (np. przy wejściu przez link ?id=...)
+  useEffect(() => {
+    if (household?.id) {
+      notifyHouseholdChange(household.id);
+    }
+  }, [household?.id]);
+
   // Założenie własnego gospodarstwa (dla osób będących tylko współopiekunem)
   const hasOwnedHousehold =
     initialData.availableHouseholds?.some((h) => h.rola === "owner") ??
@@ -72,6 +80,14 @@ export function HouseholdManager({
   const [newHomeName, setNewHomeName] = useState("");
   const [isCreatingHome, setIsCreatingHome] = useState(false);
   const [createHomeError, setCreateHomeError] = useState<string | null>(null);
+
+  async function handleSwitchHousehold(targetId: string) {
+    if (targetId === household.id) return;
+    notifyHouseholdChange(targetId);
+    await switchActiveHousehold(targetId);
+    router.push(`/app/gospodarstwo?id=${targetId}`);
+    router.refresh();
+  }
 
   async function handleCreateOwnHousehold(e: React.FormEvent) {
     e.preventDefault();
@@ -97,7 +113,8 @@ export function HouseholdManager({
       }
 
       const newId = data.household.id;
-      document.cookie = `care_active_household_id=${encodeURIComponent(newId)}; path=/; max-age=31536000; SameSite=Lax`;
+      notifyHouseholdChange(newId);
+      await switchActiveHousehold(newId);
       router.push(`/app/gospodarstwo?id=${newId}`);
       router.refresh();
     } catch {
@@ -304,13 +321,11 @@ export function HouseholdManager({
           </span>
           <div className="household-switcher-pills">
             {initialData.availableHouseholds.map((h) => (
-              <Link
+              <button
                 key={h.id}
-                href={`/app/gospodarstwo?id=${h.id}`}
-                onClick={() => {
-                  document.cookie = `care_active_household_id=${encodeURIComponent(h.id)}; path=/; max-age=31536000; SameSite=Lax`;
-                }}
-                className={`household-switcher-pill ${h.is_active ? "is-active" : ""}`}
+                type="button"
+                onClick={() => handleSwitchHousehold(h.id)}
+                className={`household-switcher-pill ${h.id === household.id ? "is-active" : ""}`}
               >
                 <IconHome size={16} aria-hidden="true" />
                 <strong>{h.nazwa}</strong>
@@ -323,7 +338,7 @@ export function HouseholdManager({
                       ? "Współopiekun"
                       : "Member"}
                 </span>
-              </Link>
+              </button>
             ))}
           </div>
         </section>

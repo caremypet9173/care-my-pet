@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import { IconChevronDown, IconCheck, IconHome, IconSettings } from "@tabler/icons-react";
-import { Link } from "@/i18n/navigation";
 import type { AvailableHouseholdItem } from "./types";
+import { switchActiveHousehold } from "./actions";
+import {
+  HOUSEHOLD_CHANGE_EVENT,
+  notifyHouseholdChange,
+} from "./active-household-events";
 
 interface HouseholdHeaderSwitcherProps {
   availableHouseholds: AvailableHouseholdItem[];
@@ -17,17 +21,52 @@ export function HouseholdHeaderSwitcher({
   activeHouseholdId,
   locale,
 }: HouseholdHeaderSwitcherProps) {
+  const [currentId, setCurrentId] = useState<string | null>(activeHouseholdId);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const pl = locale === "pl";
 
-  const activeHousehold =
-    availableHouseholds.find((h) => h.id === activeHouseholdId) ??
-    availableHouseholds.find((h) => h.is_active) ??
-    availableHouseholds[0];
+  // Synchronizacja przy zmianie propsa
+  useEffect(() => {
+    if (activeHouseholdId) {
+      setCurrentId(activeHouseholdId);
+    }
+  }, [activeHouseholdId]);
 
+  // Odczyt aktualnego ciasteczka po zamontowaniu (np. po nawigacji klienta)
+  useEffect(() => {
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)care_active_household_id=([^;]+)/);
+      if (match && match[1]) {
+        const cookieId = decodeURIComponent(match[1]);
+        if (cookieId && availableHouseholds.some((h) => h.id === cookieId)) {
+          setCurrentId(cookieId);
+        }
+      }
+    } catch {
+      // Ignoruj błędy odczytu ciasteczka
+    }
+  }, [availableHouseholds]);
+
+  // Nasłuchiwanie na globalne zdarzenie zmiany aktywnego gospodarstwa
+  useEffect(() => {
+    function handleEvent(e: Event) {
+      const customEvent = e as CustomEvent<{ householdId: string }>;
+      const newId = customEvent.detail?.householdId;
+      if (newId && availableHouseholds.some((h) => h.id === newId)) {
+        setCurrentId(newId);
+      }
+    }
+
+    window.addEventListener(HOUSEHOLD_CHANGE_EVENT, handleEvent);
+    return () => {
+      window.removeEventListener(HOUSEHOLD_CHANGE_EVENT, handleEvent);
+    };
+  }, [availableHouseholds]);
+
+  // Obsługa kliknięcia poza menu i Escape
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -58,28 +97,36 @@ export function HouseholdHeaderSwitcher({
     return null;
   }
 
-  // Jeśli użytkownik ma tylko 1 gospodarstwo, wyświetlamy pojedynczy dyskretny znacznik
+  const activeHousehold =
+    availableHouseholds.find((h) => h.id === currentId) ??
+    availableHouseholds.find((h) => h.id === activeHouseholdId) ??
+    availableHouseholds.find((h) => h.is_active) ??
+    availableHouseholds[0];
+
+  // Jeśli użytkownik ma tylko 1 gospodarstwo, wyświetlamy pojedynczy znacznik
   if (availableHouseholds.length === 1 && activeHousehold) {
     return (
-      <div className="household-header-single-badge" title={pl ? "Twoje gospodarstwo domowe" : "Your household"}>
+      <div
+        className="household-header-single-badge"
+        title={pl ? "Twoje gospodarstwo domowe" : "Your household"}
+      >
         <IconHome size={15} aria-hidden="true" />
         <span className="household-header-single-name">{activeHousehold.nazwa}</span>
       </div>
     );
   }
 
-  const handleSelect = (householdId: string) => {
-    document.cookie = `care_active_household_id=${encodeURIComponent(
-      householdId,
-    )}; path=/; max-age=31536000; SameSite=Lax`;
+  const handleSelect = async (householdId: string) => {
+    setCurrentId(householdId);
     setIsOpen(false);
+    notifyHouseholdChange(householdId);
 
-    // Jeśli jesteśmy na stronie gospodarstwa, przekierowujemy na query param nowego gospodarstwa
+    await switchActiveHousehold(householdId);
+
     if (pathname?.includes("/app/gospodarstwo")) {
-      router.push(`/${locale}/app/gospodarstwo?id=${householdId}`);
-    } else {
-      router.refresh();
+      router.push(`/app/gospodarstwo?id=${householdId}`);
     }
+    router.refresh();
   };
 
   return (

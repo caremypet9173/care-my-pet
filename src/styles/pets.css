@@ -759,6 +759,9 @@
   color: var(--color-text);
   text-decoration: none;
   font-size: 0.8125rem;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
   transition: all 0.15s ease;
 }
 .household-switcher-pill:hover {
