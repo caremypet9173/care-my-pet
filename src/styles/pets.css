@@ -570,6 +570,70 @@
   color: #fff;
   border-color: transparent;
 }
+.household-create-own-card {
+  background: #f7faf9;
+  border: 1px dashed #b8ded6;
+}
+.household-create-own-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.household-create-own-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.75rem;
+  background: #e6f4f1;
+  color: #1e564d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.household-create-own-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #164d34;
+}
+.household-create-own-header p {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  margin: 0;
+  max-width: 65ch;
+}
+.household-create-own-form {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.household-create-own-form input {
+  flex: 1;
+  min-width: 240px;
+  max-width: 380px;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+.household-create-own-form input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(22, 77, 52, 0.15);
+}
+.household-create-own-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #a82424;
+  font-size: 0.8rem;
+  margin: 0.75rem 0 0;
+}
 .household-manager-card {
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);

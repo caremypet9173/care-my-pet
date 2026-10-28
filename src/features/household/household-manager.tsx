@@ -11,6 +11,7 @@ import {
   IconHome,
   IconMail,
   IconPencil,
+  IconPlus,
   IconShieldCheck,
   IconTrash,
   IconUser,
@@ -63,6 +64,51 @@ export function HouseholdManager({
   // Stany akcji
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
+  // Założenie własnego gospodarstwa (dla osób będących tylko współopiekunem)
+  const hasOwnedHousehold =
+    initialData.availableHouseholds?.some((h) => h.rola === "owner") ??
+    household.is_owner;
+  const [newHomeName, setNewHomeName] = useState("");
+  const [isCreatingHome, setIsCreatingHome] = useState(false);
+  const [createHomeError, setCreateHomeError] = useState<string | null>(null);
+
+  async function handleCreateOwnHousehold(e: React.FormEvent) {
+    e.preventDefault();
+    if (isCreatingHome) return;
+    setIsCreatingHome(true);
+    setCreateHomeError(null);
+    try {
+      const client = createClient();
+      const { data, error } = await client.functions.invoke("household", {
+        body: {
+          action: "create_household",
+          nazwa: newHomeName.trim(),
+        },
+      });
+
+      if (error || !data?.household) {
+        setCreateHomeError(
+          pl
+            ? "Nie udało się utworzyć gospodarstwa. Spróbuj ponownie."
+            : "Could not create household. Please try again.",
+        );
+        return;
+      }
+
+      const newId = data.household.id;
+      router.push(`/app/gospodarstwo?id=${newId}`);
+      router.refresh();
+    } catch {
+      setCreateHomeError(
+        pl
+          ? "Wystąpił błąd podczas tworzenia gospodarstwa."
+          : "An error occurred while creating household.",
+      );
+    } finally {
+      setIsCreatingHome(false);
+    }
+  }
 
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(locale, {
@@ -360,6 +406,66 @@ export function HouseholdManager({
           </div>
         </div>
       </section>
+
+      {/* Opcja dla współopiekuna: Założenie własnego gospodarstwa */}
+      {!hasOwnedHousehold && (
+        <section className="household-manager-card household-create-own-card">
+          <div className="household-create-own-header">
+            <span className="household-create-own-icon" aria-hidden="true">
+              <IconHome size={24} />
+            </span>
+            <div>
+              <h3>
+                {pl
+                  ? "Chcesz założyć własne gospodarstwo domowe?"
+                  : "Want to create your own household?"}
+              </h3>
+              <p>
+                {pl
+                  ? `Obecnie jesteś współopiekunem w gospodarstwie „${household.nazwa}”. Masz dostęp do kartotek, badań i leków wspólnych pupili. Jeśli chcesz dodać własnego nowego zwierzaka lub zaprosić innych domowników, możesz w każdej chwili założyć własne gospodarstwo (będziesz jego właścicielem).`
+                  : `You are currently a co-guardian in "${household.nazwa}". If you want to add your own new pets and invite caregivers, you can create your own household.`}
+              </p>
+            </div>
+          </div>
+
+          <form
+            onSubmit={handleCreateOwnHousehold}
+            className="household-create-own-form"
+          >
+            <input
+              type="text"
+              value={newHomeName}
+              onChange={(e) => setNewHomeName(e.target.value)}
+              placeholder={pl ? "np. Mój dom lub Dom Rodzinny" : "e.g. My Home"}
+              maxLength={100}
+              disabled={isCreatingHome}
+              aria-label={pl ? "Nazwa nowego gospodarstwa" : "New household name"}
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={isCreatingHome}
+            >
+              <IconPlus size={16} aria-hidden="true" />
+              {isCreatingHome
+                ? pl
+                  ? "Tworzenie…"
+                  : "Creating…"
+                : pl
+                  ? "Załóż własne gospodarstwo"
+                  : "Create my household"}
+            </Button>
+          </form>
+
+          {createHomeError && (
+            <p className="household-create-own-error" role="alert">
+              <IconAlertCircle size={15} aria-hidden="true" />
+              <span>{createHomeError}</span>
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Sekcja: Członkowie gospodarstwa */}
       <section className="household-manager-card">

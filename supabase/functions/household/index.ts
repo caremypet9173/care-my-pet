@@ -357,6 +357,47 @@ Deno.serve(async (req) => {
   }
 
   // -------------------------------------------------------------------------
+  // 2b. Utworzenie własnego gospodarstwa (create_household)
+  // -------------------------------------------------------------------------
+  if (action === "create_household") {
+    const { data: existingOwned } = await adminClient
+      .from("gospodarstwo")
+      .select("id, nazwa, owner_id, created_at")
+      .eq("owner_id", user.id)
+      .maybeSingle();
+
+    if (existingOwned) {
+      return reply({
+        success: true,
+        household: existingOwned,
+        already_existed: true,
+      });
+    }
+
+    const rawName = typeof body.nazwa === "string" ? body.nazwa.trim() : "";
+    const name = rawName || (user.email ? `Dom ${user.email.split("@")[0]}` : "Mój dom");
+
+    const { data: newHome, error: createErr } = await adminClient
+      .from("gospodarstwo")
+      .insert({
+        owner_id: user.id,
+        nazwa: name.slice(0, 100),
+      })
+      .select()
+      .single();
+
+    if (createErr || !newHome) {
+      console.error("Create household error:", createErr);
+      return reply({ error: "create_failed" }, 500);
+    }
+
+    return reply({
+      success: true,
+      household: newHome,
+    });
+  }
+
+  // -------------------------------------------------------------------------
   // Ustal bieżące gospodarstwo użytkownika (najpierw własne, potem członkostwo)
   // -------------------------------------------------------------------------
   let requestedHouseholdId =
