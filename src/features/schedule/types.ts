@@ -30,3 +30,13 @@ export type HouseholdNotificationSettings = {
   custom_email: string;
 };
 
+export type CalendarReportSummary = {
+  id: string;
+  pet_id: string;
+  title: string;
+  test_date: string;
+  laboratory: string;
+  doctor: string;
+};
+
+

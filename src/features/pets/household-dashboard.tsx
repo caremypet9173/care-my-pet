@@ -11,6 +11,7 @@ import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/types";
 import type { HealthEvent } from "@/features/history/types";
 import type {
+  CalendarReportSummary,
   HouseholdNotificationSettings,
   ScheduleItem,
 } from "@/features/schedule/types";
@@ -25,12 +26,14 @@ export function HouseholdDashboard({
   pets,
   healthEvents = [],
   scheduleItems = [],
+  reportsSummary = [],
   notificationSettings,
   locale,
 }: {
   pets: Pet[];
   healthEvents?: HealthEvent[];
   scheduleItems?: ScheduleItem[];
+  reportsSummary?: CalendarReportSummary[];
   notificationSettings?: HouseholdNotificationSettings;
   locale: Locale;
 }) {
@@ -254,6 +257,7 @@ export function HouseholdDashboard({
         pets={pets}
         initialScheduleItems={scheduleItems}
         initialHealthEvents={healthEvents}
+        initialReports={reportsSummary}
         initialNotificationSettings={notificationSettings}
       />
 

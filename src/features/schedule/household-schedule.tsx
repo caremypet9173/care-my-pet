@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
   IconBan,
   IconBell,
   IconCalendar,
+  IconCalendarEvent,
   IconCalendarMonth,
+  IconCalendarWeek,
   IconCheck,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconClock,
+  IconFlask,
   IconList,
   IconMailForward,
   IconNotes,
@@ -31,6 +34,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Pet } from "@/features/pets/types";
 import type { HealthEvent } from "@/features/history/types";
 import type {
+  CalendarReportSummary,
   HouseholdNotificationSettings,
   ScheduleCategory,
   ScheduleItem,
@@ -41,9 +45,9 @@ import {
   type CompleteTarget,
 } from "./schedule-dialog";
 
-type FilterCategory = "all" | ScheduleCategory;
+type FilterCategory = "all" | ScheduleCategory | "lab";
 type ViewMode = "upcoming" | "archive";
-type DisplayLayout = "list" | "month";
+type DisplayLayout = "month" | "week" | "day" | "agenda";
 
 type UnifiedScheduleEntry =
   | {
@@ -74,6 +78,34 @@ type UnifiedScheduleEntry =
       lastEventDate: string;
       status: "planned";
       event: HealthEvent;
+    }
+  | {
+      kind: "history_event";
+      key: string;
+      petId: string;
+      category: ScheduleCategory;
+      title: string;
+      date: string;
+      time: string;
+      clinic: string;
+      doctor: string;
+      batchOrProduct: string;
+      description: string;
+      status: "completed";
+      event: HealthEvent;
+    }
+  | {
+      kind: "medical_report";
+      key: string;
+      petId: string;
+      category: "lab";
+      title: string;
+      date: string;
+      time: string;
+      clinic: string;
+      doctor: string;
+      status: "completed";
+      report: CalendarReportSummary;
     };
 
 const PL_MONTH_ALIASES: Record<string, string> = {
@@ -110,7 +142,9 @@ function buildSearchHaystack(
       ? "szczepienie szczepienia vaccination vaccine"
       : entry.category === "prevention"
         ? "profilaktyka odrobaczanie kleszcze leki lek prevention medication"
-        : "wizyta kontrola badanie visit checkup";
+        : entry.category === "lab"
+          ? "badanie badania wyniki krew mocz usg rtg lab results report"
+          : "wizyta kontrola badanie visit checkup";
 
   let weekdayAliases = "";
   const yearNum = Number.parseInt(y, 10);
@@ -165,7 +199,11 @@ function buildSearchHaystack(
   const extra =
     entry.kind === "schedule_item"
       ? entry.prepNotes
-      : `${entry.batchOrProduct} ${entry.lastEventDate}`;
+      : entry.kind === "due_event"
+        ? `${entry.batchOrProduct} ${entry.lastEventDate}`
+        : entry.kind === "history_event"
+          ? `${entry.batchOrProduct} ${entry.description}`
+          : "";
 
   return foldText(
     [
@@ -225,12 +263,14 @@ export function HouseholdSchedule({
   pets,
   initialScheduleItems,
   initialHealthEvents,
+  initialReports = [],
   initialNotificationSettings,
   fixedPetId,
 }: {
   pets: Pick<Pet, "id" | "imie">[];
   initialScheduleItems: ScheduleItem[];
   initialHealthEvents: HealthEvent[];
+  initialReports?: CalendarReportSummary[];
   initialNotificationSettings?: HouseholdNotificationSettings;
   fixedPetId?: string;
 }) {
@@ -250,8 +290,9 @@ export function HouseholdSchedule({
     useState<ScheduleItem[]>(initialScheduleItems);
   const [healthEvents, setHealthEvents] =
     useState<HealthEvent[]>(initialHealthEvents);
+  const [reports] = useState<CalendarReportSummary[]>(initialReports);
 
-  const [displayLayout, setDisplayLayout] = useState<DisplayLayout>("list");
+  const [displayLayout, setDisplayLayout] = useState<DisplayLayout>("month");
   const [petFilter, setPetFilter] = useState<string>(fixedPetId ?? "all");
   const [categoryFilter, setCategoryFilter] = useState<FilterCategory>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("upcoming");
@@ -297,7 +338,7 @@ export function HouseholdSchedule({
   const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!highlightedKey || displayLayout !== "list") return;
+    if (!highlightedKey || displayLayout !== "agenda") return;
     const timer = window.setTimeout(() => {
       const el = document.getElementById(`schedule-entry-${highlightedKey}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -321,6 +362,41 @@ export function HouseholdSchedule({
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [miniPickerOpen, setMiniPickerOpen] = useState(false);
+  const miniPickerRef = useRef<HTMLDivElement>(null);
+  const [miniMonthCursor, setMiniMonthCursor] = useState<{
+    year: number;
+    month: number;
+  }>(() => monthCursor);
+
+  useEffect(() => {
+    if (miniPickerOpen) {
+      setMiniMonthCursor(monthCursor);
+    }
+  }, [miniPickerOpen, monthCursor]);
+
+  useEffect(() => {
+    if (!miniPickerOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        miniPickerRef.current &&
+        !miniPickerRef.current.contains(e.target as Node)
+      ) {
+        setMiniPickerOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMiniPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [miniPickerOpen]);
   const [notifSettings, setNotifSettings] =
     useState<HouseholdNotificationSettings>(() => ({
       email_enabled: initialNotificationSettings?.email_enabled ?? true,
@@ -368,12 +444,138 @@ export function HouseholdSchedule({
 
   const monthTitle = useMemo(() => {
     const d = new Date(Date.UTC(monthCursor.year, monthCursor.month, 1));
-    return new Intl.DateTimeFormat(locale, {
+    const raw = new Intl.DateTimeFormat(locale, {
       month: "long",
       year: "numeric",
       timeZone: "UTC",
     }).format(d);
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
   }, [monthCursor, locale]);
+
+  const dayTitle = useMemo(() => {
+    const [dy = 2026, dm = 1, dd = 1] = selectedDayIso.split("-").map(Number);
+    const dayDate = new Date(Date.UTC(dy, dm - 1, dd));
+    const raw = new Intl.DateTimeFormat(locale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(dayDate);
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }, [selectedDayIso, locale]);
+
+  const weekDays = useMemo(() => {
+    const [y = 2026, m = 1, d = 1] = selectedDayIso.split("-").map(Number);
+    const cur = new Date(Date.UTC(y, m - 1, d));
+    const dayOfWeek = (cur.getUTCDay() + 6) % 7;
+    const monday = new Date(Date.UTC(y, m - 1, d - dayOfWeek));
+    const days: {
+      iso: string;
+      date: Date;
+      dayNum: number;
+      weekdayName: string;
+      weekdayFull: string;
+      isToday: boolean;
+      isSelected: boolean;
+    }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(
+        Date.UTC(
+          monday.getUTCFullYear(),
+          monday.getUTCMonth(),
+          monday.getUTCDate() + i,
+        ),
+      );
+      const iso = day.toISOString().slice(0, 10);
+      days.push({
+        iso,
+        date: day,
+        dayNum: day.getUTCDate(),
+        weekdayName: new Intl.DateTimeFormat(locale, {
+          weekday: "short",
+          timeZone: "UTC",
+        }).format(day),
+        weekdayFull: new Intl.DateTimeFormat(locale, {
+          weekday: "long",
+          timeZone: "UTC",
+        }).format(day),
+        isToday: iso === todayIso,
+        isSelected: iso === selectedDayIso,
+      });
+    }
+    return days;
+  }, [selectedDayIso, locale, todayIso]);
+
+  const weekTitle = useMemo(() => {
+    if (weekDays.length < 7) return "";
+    const start = weekDays[0].date;
+    const end = weekDays[6].date;
+    const startDay = start.getUTCDate();
+    const endDay = end.getUTCDate();
+    const startMonth = new Intl.DateTimeFormat(locale, {
+      month: "short",
+      timeZone: "UTC",
+    }).format(start);
+    const endMonth = new Intl.DateTimeFormat(locale, {
+      month: "short",
+      timeZone: "UTC",
+    }).format(end);
+    const startYear = start.getUTCFullYear();
+    const endYear = end.getUTCFullYear();
+
+    if (startYear !== endYear) {
+      return `${startDay} ${startMonth} ${startYear} – ${endDay} ${endMonth} ${endYear}`;
+    }
+    if (start.getUTCMonth() !== end.getUTCMonth()) {
+      return `${startDay} ${startMonth} – ${endDay} ${endMonth} ${startYear}`;
+    }
+    return `${startDay} – ${endDay} ${startMonth} ${startYear}`;
+  }, [weekDays, locale]);
+
+  const activeHeadingTitle = useMemo(() => {
+    if (displayLayout === "day") {
+      return dayTitle;
+    }
+    if (displayLayout === "week") {
+      return weekTitle;
+    }
+    return monthTitle;
+  }, [displayLayout, dayTitle, weekTitle, monthTitle]);
+
+  const miniMonthTitle = useMemo(() => {
+    const d = new Date(Date.UTC(miniMonthCursor.year, miniMonthCursor.month, 1));
+    const raw = new Intl.DateTimeFormat(locale, {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(d);
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }, [miniMonthCursor, locale]);
+
+  const miniMonthCells = useMemo(
+    () => buildMonthGrid(miniMonthCursor.year, miniMonthCursor.month),
+    [miniMonthCursor],
+  );
+
+  const activeWeekIsoSet = useMemo(() => {
+    return new Set(weekDays.map((d) => d.iso));
+  }, [weekDays]);
+
+  function shiftMiniMonth(delta: number) {
+    setMiniMonthCursor((prev) => {
+      let nextM = prev.month + delta;
+      let nextY = prev.year;
+      if (nextM < 0) {
+        nextM = 11;
+        nextY -= 1;
+      } else if (nextM > 11) {
+        nextM = 0;
+        nextY += 1;
+      }
+      return { year: nextY, month: nextM };
+    });
+  }
 
   const weekdayLabels = useMemo(
     () =>
@@ -384,6 +586,12 @@ export function HouseholdSchedule({
   );
 
   const allEntries = useMemo<UnifiedScheduleEntry[]>(() => {
+    const linkedHistoryIds = new Set(
+      scheduleItems
+        .filter((it) => it.status === "completed" && it.completed_event_id)
+        .map((it) => it.completed_event_id!),
+    );
+
     const manualEntries: UnifiedScheduleEntry[] = scheduleItems.map((it) => ({
       kind: "schedule_item",
       key: `sched-${it.id}`,
@@ -417,12 +625,49 @@ export function HouseholdSchedule({
         event: ev,
       }));
 
-    return [...manualEntries, ...dueEntries].sort(
+    const historyActualEntries: UnifiedScheduleEntry[] = healthEvents
+      .filter((ev) => !linkedHistoryIds.has(ev.id))
+      .map((ev) => ({
+        kind: "history_event",
+        key: `hist-${ev.id}`,
+        petId: ev.pet_id,
+        category: ev.category,
+        title: ev.title,
+        date: ev.event_date,
+        time: "",
+        clinic: ev.clinic,
+        doctor: ev.doctor,
+        batchOrProduct: ev.batch_or_product,
+        description: ev.description,
+        status: "completed",
+        event: ev,
+      }));
+
+    const reportEntries: UnifiedScheduleEntry[] = reports.map((rep) => ({
+      kind: "medical_report",
+      key: `rep-${rep.id}`,
+      petId: rep.pet_id,
+      category: "lab",
+      title: rep.title,
+      date: rep.test_date,
+      time: "",
+      clinic: rep.laboratory,
+      doctor: rep.doctor,
+      status: "completed",
+      report: rep,
+    }));
+
+    return [
+      ...manualEntries,
+      ...dueEntries,
+      ...historyActualEntries,
+      ...reportEntries,
+    ].sort(
       (a, b) =>
         a.date.localeCompare(b.date) ||
         (a.time || "99:99").localeCompare(b.time || "99:99"),
     );
-  }, [scheduleItems, healthEvents]);
+  }, [scheduleItems, healthEvents, reports]);
 
   const queryTokens = useMemo(() => {
     const folded = foldText(searchQuery.trim());
@@ -519,8 +764,48 @@ export function HouseholdSchedule({
   function shiftMonth(delta: number) {
     setMonthCursor((prev) => {
       const next = new Date(Date.UTC(prev.year, prev.month + delta, 1));
-      return { year: next.getUTCFullYear(), month: next.getUTCMonth() };
+      const nextY = next.getUTCFullYear();
+      const nextM = next.getUTCMonth();
+      const newYm = `${nextY}-${String(nextM + 1).padStart(2, "0")}`;
+      if (!selectedDayIso.startsWith(newYm)) {
+        setSelectedDayIso(`${newYm}-01`);
+      }
+      return { year: nextY, month: nextM };
     });
+  }
+
+  function shiftWeek(delta: number) {
+    const [y, m, d] = selectedDayIso.split("-").map(Number);
+    const cur = new Date(Date.UTC(y, m - 1, d));
+    cur.setUTCDate(cur.getUTCDate() + delta * 7);
+    const newIso = cur.toISOString().slice(0, 10);
+    setSelectedDayIso(newIso);
+    setMonthCursor({
+      year: cur.getUTCFullYear(),
+      month: cur.getUTCMonth(),
+    });
+  }
+
+  function shiftDay(delta: number) {
+    const [y, m, d] = selectedDayIso.split("-").map(Number);
+    const cur = new Date(Date.UTC(y, m - 1, d));
+    cur.setUTCDate(cur.getUTCDate() + delta);
+    const newIso = cur.toISOString().slice(0, 10);
+    setSelectedDayIso(newIso);
+    setMonthCursor({
+      year: cur.getUTCFullYear(),
+      month: cur.getUTCMonth(),
+    });
+  }
+
+  function handleNavigate(delta: number) {
+    if (displayLayout === "day") {
+      shiftDay(delta);
+    } else if (displayLayout === "week") {
+      shiftWeek(delta);
+    } else {
+      shiftMonth(delta);
+    }
   }
 
   function jumpToToday() {
@@ -540,7 +825,10 @@ export function HouseholdSchedule({
     setCollapsedMonths((prev) => ({ ...prev, [ym]: false }));
     setSearchQuery("");
     setViewMode(entry.status === "planned" ? "upcoming" : "archive");
-    setDisplayLayout("list");
+    setSelectedDayIso(entry.date);
+    const [y, m] = entry.date.split("-").map(Number);
+    if (y && m) setMonthCursor({ year: y, month: m - 1 });
+    setDisplayLayout("agenda");
     setHighlightedKey(entry.key);
   }
 
@@ -670,6 +958,7 @@ export function HouseholdSchedule({
     { id: "visit", label: pl ? "Wizyty" : "Visits" },
     { id: "vaccination", label: pl ? "Szczepienia" : "Vaccinations" },
     { id: "prevention", label: pl ? "Profilaktyka i leki" : "Prevention & meds" },
+    { id: "lab", label: pl ? "Wyniki badań" : "Lab results" },
   ];
 
   function renderCompactRow(entry: UnifiedScheduleEntry) {
@@ -681,7 +970,9 @@ export function HouseholdSchedule({
         ? IconVaccine
         : entry.category === "prevention"
           ? IconPill
-          : IconStethoscope;
+          : entry.category === "lab"
+            ? IconFlask
+            : IconStethoscope;
     const categoryLabel =
       entry.category === "vaccination"
         ? pl
@@ -691,18 +982,27 @@ export function HouseholdSchedule({
           ? pl
             ? "Profilaktyka"
             : "Prevention"
-          : pl
-            ? "Wizyta"
-            : "Visit";
+          : entry.category === "lab"
+            ? pl
+              ? "Wynik badania"
+              : "Lab result"
+            : pl
+              ? "Wizyta"
+              : "Visit";
 
     const isBusy = busyKey === entry.key;
-    const hasNotes = entry.kind === "schedule_item" && entry.prepNotes.trim().length > 0;
+    const hasNotes =
+      (entry.kind === "schedule_item" && entry.prepNotes.trim().length > 0) ||
+      (entry.kind === "history_event" && entry.description.trim().length > 0);
     const notesOpen = expandedNotesKey === entry.key || highlightedKey === entry.key;
 
     const metaParts: string[] = [];
     if (entry.clinic) metaParts.push(entry.clinic);
     if (entry.doctor) metaParts.push(entry.doctor);
-    if (entry.kind === "due_event" && entry.batchOrProduct) {
+    if (
+      (entry.kind === "due_event" || entry.kind === "history_event") &&
+      entry.batchOrProduct
+    ) {
       metaParts.push(entry.batchOrProduct);
     }
 
@@ -780,35 +1080,36 @@ export function HouseholdSchedule({
               </button>
             )}
 
-            {entry.status === "planned" && (
-              <button
-                type="button"
-                className="schedule-mini-btn is-primary"
-                disabled={isBusy}
-                onClick={() =>
-                  setCompletingTarget({
-                    sourceKind: entry.kind,
-                    sourceId:
-                      entry.kind === "schedule_item"
-                        ? entry.item.id
-                        : entry.event.id,
-                    petId: entry.petId,
-                    petName: petName || (pl ? "Pupil" : "Pet"),
-                    category: entry.category,
-                    title: entry.title,
-                    clinic: entry.clinic,
-                    doctor: entry.doctor,
-                    batchOrProduct:
-                      entry.kind === "due_event" ? entry.batchOrProduct : "",
-                    prepNotes:
-                      entry.kind === "schedule_item" ? entry.prepNotes : "",
-                  })
-                }
-              >
-                <IconCheck size={14} aria-hidden="true" />
-                <span>{pl ? "Wykonane" : "Done"}</span>
-              </button>
-            )}
+            {(entry.kind === "schedule_item" || entry.kind === "due_event") &&
+              entry.status === "planned" && (
+                <button
+                  type="button"
+                  className="schedule-mini-btn is-primary"
+                  disabled={isBusy}
+                  onClick={() =>
+                    setCompletingTarget({
+                      sourceKind: entry.kind,
+                      sourceId:
+                        entry.kind === "schedule_item"
+                          ? entry.item.id
+                          : entry.event.id,
+                      petId: entry.petId,
+                      petName: petName || (pl ? "Pupil" : "Pet"),
+                      category: entry.category,
+                      title: entry.title,
+                      clinic: entry.clinic,
+                      doctor: entry.doctor,
+                      batchOrProduct:
+                        entry.kind === "due_event" ? entry.batchOrProduct : "",
+                      prepNotes:
+                        entry.kind === "schedule_item" ? entry.prepNotes : "",
+                    })
+                  }
+                >
+                  <IconCheck size={14} aria-hidden="true" />
+                  <span>{pl ? "Wykonane" : "Done"}</span>
+                </button>
+              )}
 
             {entry.kind === "schedule_item" && (
               <>
@@ -869,25 +1170,755 @@ export function HouseholdSchedule({
               </>
             )}
 
-            {entry.kind === "due_event" && (
+            {(entry.kind === "due_event" || entry.kind === "history_event") && (
               <Link
                 href={`/app/zwierzeta/${entry.petId}?tab=history`}
                 className="schedule-mini-btn"
-                title={pl ? "Zobacz źródło w historii zdrowia" : "View in history"}
+                title={pl ? "Zobacz w historii zdrowia" : "View in health history"}
               >
                 <span>{pl ? "Historia →" : "History →"}</span>
+              </Link>
+            )}
+
+            {entry.kind === "medical_report" && (
+              <Link
+                href={`/app/zwierzeta/${entry.petId}?tab=results&report=${entry.report.id}`}
+                className="schedule-mini-btn is-primary"
+                title={pl ? "Otwórz wyniki badania" : "Open lab report"}
+              >
+                <span>{pl ? "Wyniki →" : "Report →"}</span>
               </Link>
             )}
           </div>
         </div>
 
-        {hasNotes && notesOpen && entry.kind === "schedule_item" && (
+        {hasNotes && notesOpen && (
           <div className="schedule-compact-notes">
             <IconNotes size={14} aria-hidden="true" />
-            <p>{entry.prepNotes}</p>
+            <p>
+              {entry.kind === "schedule_item"
+                ? entry.prepNotes
+                : entry.kind === "history_event"
+                  ? entry.description
+                  : ""}
+            </p>
           </div>
         )}
       </li>
+    );
+  }
+
+  const viewButtons: {
+    id: DisplayLayout;
+    label: string;
+    icon: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
+  }[] = [
+    { id: "month", label: pl ? "Miesiąc" : "Month", icon: IconCalendarMonth },
+    { id: "week", label: pl ? "Tydzień" : "Week", icon: IconCalendarWeek },
+    { id: "day", label: pl ? "Dzień" : "Day", icon: IconCalendarEvent },
+    { id: "agenda", label: pl ? "Agenda" : "Agenda", icon: IconList },
+  ];
+
+  function renderDayDetailCard(entry: UnifiedScheduleEntry) {
+    const petName = petMap.get(entry.petId);
+    const isOverdue = entry.status === "planned" && entry.date < todayIso;
+    const isBusy = busyKey !== null;
+
+    const EvIcon =
+      entry.category === "vaccination"
+        ? IconVaccine
+        : entry.category === "prevention"
+          ? IconPill
+          : entry.category === "lab"
+            ? IconFlask
+            : IconStethoscope;
+
+    const categoryLabel =
+      entry.category === "vaccination"
+        ? pl ? "Szczepienie" : "Vaccination"
+        : entry.category === "prevention"
+          ? pl ? "Profilaktyka" : "Prevention"
+          : entry.category === "lab"
+            ? pl ? "Badania i wyniki" : "Lab results"
+            : pl ? "Wizyta weterynaryjna" : "Vet visit";
+
+    const hasNotes =
+      (entry.kind === "schedule_item" && Boolean(entry.prepNotes?.trim())) ||
+      (entry.kind === "history_event" && Boolean(entry.description?.trim()));
+
+    return (
+      <li
+        key={entry.key}
+        className={`schedule-day-card is-${entry.category}${isOverdue ? " is-overdue" : ""}${entry.status === "completed" ? " is-completed" : ""}`}
+      >
+        <div className="schedule-day-card-time-col">
+          <span className="schedule-day-card-time">
+            {entry.time ? (
+              entry.time
+            ) : (
+              <IconClock size={16} aria-hidden="true" />
+            )}
+          </span>
+          <span
+            className={`schedule-day-card-icon is-${entry.category}`}
+            aria-hidden="true"
+          >
+            <EvIcon size={20} />
+          </span>
+        </div>
+
+        <div className="schedule-day-card-content">
+          <div className="schedule-day-card-header">
+            <div className="schedule-day-card-tags">
+              {petName && !fixedPetId && (
+                <Link
+                  href={`/app/zwierzeta/${entry.petId}`}
+                  className="household-tag schedule-pet-tag"
+                >
+                  {petName}
+                </Link>
+              )}
+              <span className="household-tag">{categoryLabel}</span>
+              {entry.status === "completed" && (
+                <span className="schedule-status-badge is-completed">
+                  {pl ? "Wykonano" : "Done"}
+                </span>
+              )}
+              {entry.status === "cancelled" && (
+                <span className="schedule-status-badge is-cancelled">
+                  {pl ? "Odwołano" : "Cancelled"}
+                </span>
+              )}
+              {isOverdue && (
+                <span className="schedule-status-badge is-overdue">
+                  {pl ? "Zaległe" : "Overdue"}
+                </span>
+              )}
+            </div>
+            <h4 className="schedule-day-card-title">{entry.title}</h4>
+          </div>
+
+          {(entry.clinic || entry.doctor) && (
+            <div className="schedule-day-card-meta">
+              {entry.clinic && <span>📍 {entry.clinic}</span>}
+              {entry.doctor && <span>🩺 {entry.doctor}</span>}
+              {entry.kind === "due_event" && entry.batchOrProduct && (
+                <span>🏷️ {entry.batchOrProduct}</span>
+              )}
+            </div>
+          )}
+
+          {hasNotes && (
+            <div className="schedule-day-card-notes">
+              <IconNotes size={16} aria-hidden="true" />
+              <div>
+                <strong>
+                  {entry.kind === "schedule_item"
+                    ? pl
+                      ? "Notatki przedwizytowe dla opiekuna:"
+                      : "Pre-visit notes:"
+                    : pl
+                      ? "Opis i zalecenia:"
+                      : "Description & recommendations:"}
+                </strong>
+                <p>
+                  {entry.kind === "schedule_item"
+                    ? entry.prepNotes
+                    : entry.kind === "history_event"
+                      ? entry.description
+                      : ""}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {entry.kind === "medical_report" && (
+            <div className="schedule-day-card-lab-info">
+              <IconFlask size={16} aria-hidden="true" />
+              <div>
+                <strong>
+                  {pl
+                    ? "Wynik badania laboratoryjnego"
+                    : "Laboratory test report"}
+                </strong>
+                <p>
+                  {pl
+                    ? "Wyniki badania zostały dołączone do karty pupila. Możesz sprawdzić przeanalizowane parametry i pliki źródłowe."
+                    : "Test results are attached to the pet profile. You can view parsed parameters and source files."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="schedule-day-card-actions">
+            {(entry.kind === "schedule_item" || entry.kind === "due_event") &&
+              entry.status === "planned" && (
+                <button
+                  type="button"
+                  className="history-action-btn is-primary"
+                  disabled={isBusy}
+                  onClick={() =>
+                    setCompletingTarget({
+                      sourceKind: entry.kind,
+                      sourceId:
+                        entry.kind === "schedule_item"
+                          ? entry.item.id
+                          : entry.event.id,
+                      petId: entry.petId,
+                      petName: petName || (pl ? "Pupil" : "Pet"),
+                      category: entry.category,
+                      title: entry.title,
+                      clinic: entry.clinic,
+                      doctor: entry.doctor,
+                      batchOrProduct:
+                        entry.kind === "due_event" ? entry.batchOrProduct : "",
+                      prepNotes:
+                        entry.kind === "schedule_item" ? entry.prepNotes : "",
+                    })
+                  }
+                >
+                  <IconCheck size={15} aria-hidden="true" />
+                  <span>{pl ? "Oznacz jako wykonane" : "Mark as done"}</span>
+                </button>
+              )}
+
+            {entry.kind === "schedule_item" && entry.status === "planned" && (
+              <>
+                <button
+                  type="button"
+                  className="schedule-mini-btn"
+                  disabled={isBusy}
+                  onClick={() => {
+                    setEditingItem(entry.item);
+                    setDialogDefaultDate(undefined);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <IconPencil size={14} aria-hidden="true" />
+                  <span>{pl ? "Edytuj" : "Edit"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="schedule-mini-btn"
+                  disabled={isBusy}
+                  onClick={() => void handleStatusChange(entry.item, "cancelled")}
+                >
+                  <IconBan size={14} aria-hidden="true" />
+                  <span>{pl ? "Odwołaj" : "Cancel"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="schedule-mini-btn is-danger"
+                  disabled={isBusy}
+                  onClick={() => void handleDelete(entry.item)}
+                >
+                  <IconTrash size={14} aria-hidden="true" />
+                  <span>{pl ? "Usuń" : "Delete"}</span>
+                </button>
+              </>
+            )}
+
+            {entry.kind === "medical_report" && (
+              <Link
+                href={`/app/zwierzeta/${entry.petId}?tab=results&report=${entry.report.id}`}
+                className="history-action-btn is-primary"
+              >
+                <IconFlask size={15} aria-hidden="true" />
+                <span>
+                  {pl ? "Otwórz wyniki badania →" : "Open lab report →"}
+                </span>
+              </Link>
+            )}
+
+            {(entry.kind === "due_event" || entry.kind === "history_event") && (
+              <Link
+                href={`/app/zwierzeta/${entry.petId}?tab=history`}
+                className="history-action-btn"
+              >
+                <span>
+                  {pl
+                    ? "Karta w historii zdrowia →"
+                    : "View in health history →"}
+                </span>
+              </Link>
+            )}
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+  function renderMonthView() {
+    return (
+      <div className="schedule-month-wrapper">
+        <div className="schedule-month-grid" role="grid">
+          {weekdayLabels.map((label) => (
+            <div
+              key={label}
+              className="schedule-weekday-header"
+              role="columnheader"
+            >
+              {label}
+            </div>
+          ))}
+
+          {monthCells.map((cell) => {
+            const dayItems = entriesByDate.get(cell.iso) ?? [];
+            const isToday = cell.iso === todayIso;
+            const isSelected = cell.iso === selectedDayIso;
+
+            return (
+              <div
+                key={cell.iso}
+                role="gridcell"
+                tabIndex={0}
+                aria-selected={isSelected}
+                onClick={() => setSelectedDayIso(cell.iso)}
+                onDoubleClick={() => openNewDialogForDate(cell.iso)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedDayIso(cell.iso);
+                  }
+                }}
+                className={`schedule-day-cell${!cell.inCurrentMonth ? " is-outside" : ""}${isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""}`}
+              >
+                <div className="schedule-day-top">
+                  <span className="schedule-day-num">{cell.dayNumber}</span>
+                  <button
+                    type="button"
+                    className="schedule-day-add"
+                    title={
+                      pl
+                        ? `Zaplanuj termin na ${cell.iso}`
+                        : `Schedule on ${cell.iso}`
+                    }
+                    aria-label={
+                      pl
+                        ? `Zaplanuj termin na ${cell.iso}`
+                        : `Schedule on ${cell.iso}`
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDayIso(cell.iso);
+                      openNewDialogForDate(cell.iso);
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div className="schedule-day-events">
+                  {dayItems.slice(0, 3).map((ev) => {
+                    const pName = petMap.get(ev.petId);
+                    const isOverdue =
+                      ev.status === "planned" && ev.date < todayIso;
+                    return (
+                      <button
+                        key={ev.key}
+                        type="button"
+                        title={
+                          pl
+                            ? `${ev.title} — kliknij, aby zaznaczyć dzień`
+                            : `${ev.title} — click to select day`
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDayIso(cell.iso);
+                        }}
+                        className={`schedule-day-pill is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""}`}
+                      >
+                        {ev.time ? `${ev.time} ` : ""}
+                        {!fixedPetId && pName ? `${pName}: ` : ""}
+                        {ev.title}
+                      </button>
+                    );
+                  })}
+                  {dayItems.length > 3 && (
+                    <small className="schedule-day-more">
+                      +{dayItems.length - 3}{" "}
+                      {pl ? "więcej" : "more"}
+                    </small>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="schedule-selected-day-panel">
+          <div className="schedule-selected-day-header">
+            <h3>
+              {pl
+                ? `Terminy w dniu ${formatDate(selectedDayIso)}`
+                : `Items on ${formatDate(selectedDayIso)}`}
+            </h3>
+            <div className="schedule-selected-day-actions">
+              <button
+                type="button"
+                className="history-action-btn"
+                onClick={() => setDisplayLayout("day")}
+                title={pl ? "Przejdź do widoku dnia" : "Go to day view"}
+              >
+                <IconCalendarEvent size={15} aria-hidden="true" />
+                <span>{pl ? "Widok dnia" : "Day view"}</span>
+              </button>
+              <button
+                type="button"
+                className="history-action-btn is-primary"
+                onClick={() => openNewDialogForDate(selectedDayIso)}
+              >
+                <IconPlus size={15} aria-hidden="true" />
+                <span>
+                  {pl ? "Dodaj termin w tym dniu" : "Add item on this day"}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {selectedDayEntries.length === 0 ? (
+            <p className="schedule-selected-day-empty">
+              {pl
+                ? "Brak zaplanowanych wizyt ani przypomnień w tym dniu. Kliknij przycisk powyżej lub „+” w kratce dnia, aby dodać termin."
+                : "No scheduled visits or reminders on this day. Click the button above or “+” on the day cell to add one."}
+            </p>
+          ) : (
+            <ul className="schedule-compact-list">
+              {selectedDayEntries.map((entry) => renderCompactRow(entry))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderWeekView() {
+    return (
+      <div className="schedule-week-wrapper">
+        <div className="schedule-week-grid" role="grid">
+          {weekDays.map((day) => {
+            const dayEntries = entriesByDate.get(day.iso) ?? [];
+            const isSelected = day.iso === selectedDayIso;
+
+            return (
+              <div
+                key={day.iso}
+                className={`schedule-week-col${day.isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""}`}
+                role="gridcell"
+                onClick={() => setSelectedDayIso(day.iso)}
+              >
+                <div
+                  className="schedule-week-col-header"
+                  title={
+                    pl
+                      ? `Kliknij, aby otworzyć widok dnia dla ${day.weekdayFull}`
+                      : `Click to open day view for ${day.weekdayFull}`
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedDayIso(day.iso);
+                    setDisplayLayout("day");
+                  }}
+                >
+                  <div className="schedule-week-col-header-info">
+                    <span className="schedule-week-weekday">
+                      {day.weekdayName}
+                    </span>
+                    <span
+                      className={`schedule-week-daynum${day.isToday ? " is-today" : ""}`}
+                    >
+                      {day.dayNum}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="schedule-week-quick-add"
+                    title={
+                      pl
+                        ? `Zaplanuj termin na ${day.iso}`
+                        : `Schedule on ${day.iso}`
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDayIso(day.iso);
+                      openNewDialogForDate(day.iso);
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div className="schedule-week-col-body">
+                  {dayEntries.length === 0 ? (
+                    <div
+                      className="schedule-week-empty-slot"
+                      title={
+                        pl
+                          ? `Kliknij, aby dodać termin na ${day.iso}`
+                          : `Click to add item on ${day.iso}`
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDayIso(day.iso);
+                        openNewDialogForDate(day.iso);
+                      }}
+                    >
+                      <span>+</span>
+                    </div>
+                  ) : (
+                    dayEntries.map((ev) => {
+                      const pName = petMap.get(ev.petId);
+                      const isOverdue =
+                        ev.status === "planned" && ev.date < todayIso;
+
+                      return (
+                        <div
+                          key={ev.key}
+                          className={`schedule-week-card is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDayIso(day.iso);
+                          }}
+                        >
+                          <div className="schedule-week-card-top">
+                            {ev.time ? (
+                              <span className="schedule-week-time">
+                                {ev.time}
+                              </span>
+                            ) : (
+                              <span className="schedule-week-category-pill">
+                                {ev.category === "vaccination"
+                                  ? pl ? "Szczepienie" : "Vaccine"
+                                  : ev.category === "prevention"
+                                    ? pl ? "Profilaktyka" : "Prevention"
+                                    : ev.category === "lab"
+                                      ? pl ? "Badanie" : "Lab"
+                                      : pl ? "Wizyta" : "Visit"}
+                              </span>
+                            )}
+                            {pName && !fixedPetId && (
+                              <span className="schedule-week-pet">{pName}</span>
+                            )}
+                          </div>
+
+                          <strong className="schedule-week-title" title={ev.title}>
+                            {ev.title}
+                          </strong>
+
+                          {(ev.clinic || ev.doctor) && (
+                            <span className="schedule-week-place">
+                              {[ev.clinic, ev.doctor].filter(Boolean).join(" · ")}
+                            </span>
+                          )}
+
+                          <div className="schedule-week-card-actions">
+                            {ev.kind === "medical_report" ? (
+                              <Link
+                                href={`/app/zwierzeta/${ev.petId}?tab=results&report=${ev.report.id}`}
+                                className="schedule-week-action-link"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span>{pl ? "Wyniki →" : "Report →"}</span>
+                              </Link>
+                            ) : (ev.kind === "schedule_item" ||
+                                ev.kind === "due_event") &&
+                              ev.status === "planned" ? (
+                              <button
+                                type="button"
+                                className="schedule-week-action-btn"
+                                disabled={busyKey !== null}
+                                title={pl ? "Oznacz jako wykonane" : "Mark as done"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCompletingTarget({
+                                    sourceKind: ev.kind,
+                                    sourceId:
+                                      ev.kind === "schedule_item"
+                                        ? ev.item.id
+                                        : ev.event.id,
+                                    petId: ev.petId,
+                                    petName: pName || (pl ? "Pupil" : "Pet"),
+                                    category: ev.category,
+                                    title: ev.title,
+                                    clinic: ev.clinic,
+                                    doctor: ev.doctor,
+                                    batchOrProduct:
+                                      ev.kind === "due_event"
+                                        ? ev.batchOrProduct
+                                        : "",
+                                    prepNotes:
+                                      ev.kind === "schedule_item"
+                                        ? ev.prepNotes
+                                        : "",
+                                  });
+                                }}
+                              >
+                                <IconCheck size={12} aria-hidden="true" />
+                                <span>{pl ? "Wykonane" : "Done"}</span>
+                              </button>
+                            ) : null}
+
+                            {ev.kind === "schedule_item" &&
+                              ev.status === "planned" && (
+                                <button
+                                  type="button"
+                                  className="schedule-week-icon-btn"
+                                  title={pl ? "Edytuj termin" : "Edit item"}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingItem(ev.item);
+                                    setDialogDefaultDate(undefined);
+                                    setDialogOpen(true);
+                                  }}
+                                >
+                                  <IconPencil size={12} aria-hidden="true" />
+                                </button>
+                              )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function renderDayView() {
+    return (
+      <div className="schedule-day-view-panel">
+        <div className="schedule-day-view-header">
+          <div className="schedule-day-view-title-block">
+            <h3>{dayTitle}</h3>
+            {selectedDayIso === todayIso && (
+              <span className="schedule-gcal-today-badge">
+                {pl ? "Dzisiaj" : "Today"}
+              </span>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => openNewDialogForDate(selectedDayIso)}
+          >
+            <IconPlus size={16} aria-hidden="true" />
+            {pl ? "Dodaj termin na ten dzień" : "Add item on this day"}
+          </Button>
+        </div>
+
+        {selectedDayEntries.length === 0 ? (
+          <div className="schedule-day-empty-state">
+            <div className="schedule-day-empty-icon">
+              <IconCalendar size={32} stroke={1.5} aria-hidden="true" />
+            </div>
+            <h4>
+              {pl
+                ? `Brak terminów na ${formatDate(selectedDayIso)}`
+                : `No items scheduled on ${formatDate(selectedDayIso)}`}
+            </h4>
+            <p>
+              {pl
+                ? "Nie masz zaplanowanych wizyt u weterynarza, szczepień ani przypomnień na ten termin."
+                : "You have no vet visits, vaccinations, or reminders scheduled for this date."}
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => openNewDialogForDate(selectedDayIso)}
+            >
+              <IconPlus size={16} aria-hidden="true" />
+              <span>
+                {pl ? "Zaplanuj wizytę lub badanie" : "Schedule visit or test"}
+              </span>
+            </Button>
+          </div>
+        ) : (
+          <div className="schedule-day-entries-timeline">
+            <ul className="schedule-day-entries-list">
+              {selectedDayEntries.map((entry) => renderDayDetailCard(entry))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderAgendaView() {
+    if (groupedByMonth.length === 0) {
+      return (
+        <div className="household-calendar-empty">
+          <IconCalendar size={30} stroke={1.4} aria-hidden="true" />
+          <div>
+            <h3>
+              {searchQuery.trim()
+                ? pl
+                  ? `Brak wyników dla „${searchQuery.trim()}”`
+                  : `No matches for “${searchQuery.trim()}”`
+                : viewMode === "upcoming"
+                  ? pl
+                    ? "Brak zaplanowanych terminów dla wybranych filtrów"
+                    : "No scheduled items for selected filters"
+                  : pl
+                    ? "Brak zakończonych lub odwołanych pozycji"
+                    : "No completed or cancelled items"}
+            </h3>
+            <p>
+              {searchQuery.trim()
+                ? pl
+                  ? "Spróbuj wpisać inną nazwę miesiąca (np. „Październik 2026”), nazwę zabiegu lub imię zwierzaka."
+                  : "Try another month name (e.g. “October 2026”), procedure title, or pet name."
+                : pl
+                  ? "Kliknij „Zaplanuj termin”, aby dodać wizytę weterynaryjną z notatkami przedwizytowymi lub przypomnienie o szczepieniu/leku."
+                  : "Click “Schedule item” to add a vet visit with pre-visit notes or a vaccination/medication reminder."}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="schedule-month-groups">
+        {groupedByMonth.map((group) => {
+          const isCollapsed = !!collapsedMonths[group.ym];
+          return (
+            <div key={group.ym} className="schedule-month-group">
+              <button
+                type="button"
+                className="schedule-month-group-header"
+                aria-expanded={!isCollapsed}
+                onClick={() =>
+                  setCollapsedMonths((prev) => ({
+                    ...prev,
+                    [group.ym]: !prev[group.ym],
+                  }))
+                }
+              >
+                <IconChevronDown
+                  size={16}
+                  aria-hidden="true"
+                  className={`schedule-group-chevron${isCollapsed ? " is-collapsed" : ""}`}
+                />
+                <strong>{group.label}</strong>
+                <span className="schedule-group-count">
+                  {group.items.length}
+                </span>
+              </button>
+
+              {!isCollapsed && (
+                <ul className="schedule-compact-list">
+                  {group.items.map((entry) => renderCompactRow(entry))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
@@ -912,29 +1943,6 @@ export function HouseholdSchedule({
         </div>
 
         <div className="schedule-heading-actions">
-          <div
-            className="schedule-layout-toggle"
-            role="group"
-            aria-label={pl ? "Widok terminarza" : "Schedule view"}
-          >
-            <button
-              type="button"
-              className={`schedule-layout-btn${displayLayout === "list" ? " is-active" : ""}`}
-              onClick={() => setDisplayLayout("list")}
-            >
-              <IconList size={16} aria-hidden="true" />
-              <span>{pl ? "Lista" : "List"}</span>
-            </button>
-            <button
-              type="button"
-              className={`schedule-layout-btn${displayLayout === "month" ? " is-active" : ""}`}
-              onClick={() => setDisplayLayout("month")}
-            >
-              <IconCalendarMonth size={16} aria-hidden="true" />
-              <span>{pl ? "Kalendarz" : "Calendar"}</span>
-            </button>
-          </div>
-
           <button
             type="button"
             className={`schedule-notif-toggle-btn${notificationsOpen ? " is-active" : ""}`}
@@ -955,7 +1963,7 @@ export function HouseholdSchedule({
             size="sm"
             onClick={() =>
               openNewDialogForDate(
-                displayLayout === "month" ? selectedDayIso : undefined,
+                displayLayout !== "agenda" ? selectedDayIso : undefined,
               )
             }
           >
@@ -1124,6 +2132,195 @@ export function HouseholdSchedule({
         </div>
       )}
 
+      {/* Google Calendar Controls Toolbar */}
+      <div className="schedule-gcal-toolbar">
+        <div className="schedule-gcal-nav-left">
+          <button
+            type="button"
+            className={`schedule-today-btn${selectedDayIso === todayIso ? " is-current" : ""}`}
+            onClick={jumpToToday}
+            title={
+              pl
+                ? `Przejdź do dzisiaj (${formatShortDay(todayIso)})`
+                : `Jump to today (${formatShortDay(todayIso)})`
+            }
+          >
+            {pl ? "Dzisiaj" : "Today"}
+          </button>
+
+          <div className="schedule-gcal-arrows">
+            <button
+              type="button"
+              className="schedule-nav-arrow-btn"
+              onClick={() => handleNavigate(-1)}
+              aria-label={pl ? "Poprzedni okres" : "Previous period"}
+              title={pl ? "Poprzedni okres" : "Previous period"}
+            >
+              <IconChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="schedule-nav-arrow-btn"
+              onClick={() => handleNavigate(1)}
+              aria-label={pl ? "Następny okres" : "Next period"}
+              title={pl ? "Następny okres" : "Next period"}
+            >
+              <IconChevronRight size={18} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="schedule-gcal-title-wrapper" ref={miniPickerRef}>
+            <button
+              type="button"
+              className={`schedule-gcal-title-btn${miniPickerOpen ? " is-open" : ""}`}
+              onClick={() => setMiniPickerOpen((prev) => !prev)}
+              aria-expanded={miniPickerOpen}
+              aria-haspopup="dialog"
+              title={
+                pl
+                  ? "Kliknij, aby otworzyć mały kalendarz nawigacyjny"
+                  : "Click to open navigation calendar"
+              }
+            >
+              <h3 className="schedule-gcal-title">{activeHeadingTitle}</h3>
+              <IconChevronDown
+                size={18}
+                aria-hidden="true"
+                className={`schedule-gcal-title-chevron${miniPickerOpen ? " is-open" : ""}`}
+              />
+            </button>
+
+            {displayLayout === "day" && selectedDayIso === todayIso && (
+              <span className="schedule-gcal-today-badge">
+                {pl ? "Dzisiaj" : "Today"}
+              </span>
+            )}
+
+            {miniPickerOpen && (
+              <div
+                className="schedule-mini-picker-popover"
+                role="dialog"
+                aria-label={pl ? "Mały kalendarz nawigacyjny" : "Mini navigation calendar"}
+              >
+                <div className="schedule-mini-picker-header">
+                  <strong className="schedule-mini-picker-title">
+                    {miniMonthTitle}
+                  </strong>
+                  <div className="schedule-mini-picker-arrows">
+                    <button
+                      type="button"
+                      className="schedule-mini-nav-btn"
+                      onClick={() => shiftMiniMonth(-1)}
+                      aria-label={pl ? "Poprzedni miesiąc" : "Previous month"}
+                      title={pl ? "Poprzedni miesiąc" : "Previous month"}
+                    >
+                      <IconChevronLeft size={16} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="schedule-mini-nav-btn"
+                      onClick={() => shiftMiniMonth(1)}
+                      aria-label={pl ? "Następny miesiąc" : "Next month"}
+                      title={pl ? "Następny miesiąc" : "Next month"}
+                    >
+                      <IconChevronRight size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="schedule-mini-picker-grid">
+                  {weekdayLabels.map((label) => (
+                    <div key={label} className="schedule-mini-weekday">
+                      {label.slice(0, 2)}
+                    </div>
+                  ))}
+
+                  {miniMonthCells.map((cell) => {
+                    const isSelected = cell.iso === selectedDayIso;
+                    const isToday = cell.iso === todayIso;
+                    const isInWeek =
+                      displayLayout === "week" &&
+                      activeWeekIsoSet.has(cell.iso);
+                    const hasEvents =
+                      (entriesByDate.get(cell.iso)?.length ?? 0) > 0;
+
+                    return (
+                      <button
+                        key={cell.iso}
+                        type="button"
+                        className={`schedule-mini-cell${!cell.inCurrentMonth ? " is-outside" : ""}${isSelected ? " is-selected" : ""}${isToday ? " is-today" : ""}${isInWeek ? " is-in-week" : ""}`}
+                        onClick={() => {
+                          setSelectedDayIso(cell.iso);
+                          const [y, m] = cell.iso.split("-").map(Number);
+                          if (y && m) {
+                            setMonthCursor({ year: y, month: m - 1 });
+                          }
+                          setMiniPickerOpen(false);
+                        }}
+                        title={`${formatDate(cell.iso)}${hasEvents ? (pl ? " (zaplanowane pozycje)" : " (items scheduled)") : ""}`}
+                      >
+                        <span className="schedule-mini-cell-num">
+                          {cell.dayNumber}
+                        </span>
+                        {hasEvents && (
+                          <span
+                            className="schedule-mini-cell-dot"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="schedule-mini-picker-footer">
+                  <button
+                    type="button"
+                    className="schedule-mini-quick-btn"
+                    onClick={() => {
+                      jumpToToday();
+                      setMiniPickerOpen(false);
+                    }}
+                  >
+                    {pl ? "Idź do dzisiaj" : "Jump to today"}
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-mini-quick-btn is-close"
+                    onClick={() => setMiniPickerOpen(false)}
+                  >
+                    {pl ? "Zamknij" : "Close"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="schedule-gcal-nav-right">
+          <div
+            className="schedule-layout-toggle"
+            role="group"
+            aria-label={pl ? "Widok terminarza" : "Schedule view"}
+          >
+            {viewButtons.map((btn) => {
+              const Icon = btn.icon;
+              return (
+                <button
+                  key={btn.id}
+                  type="button"
+                  className={`schedule-layout-btn${displayLayout === btn.id ? " is-active" : ""}`}
+                  onClick={() => setDisplayLayout(btn.id)}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  <span>{btn.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       <div className="schedule-toolbar">
         <div className="schedule-filter-pills" role="group">
           {categoryButtons.map((btn) => (
@@ -1184,7 +2381,7 @@ export function HouseholdSchedule({
             </select>
           )}
 
-          {displayLayout === "list" && archiveCount > 0 && (
+          {displayLayout === "agenda" && archiveCount > 0 && (
             <div className="schedule-view-switch" role="group">
               <button
                 type="button"
@@ -1209,245 +2406,10 @@ export function HouseholdSchedule({
         </div>
       </div>
 
-      {displayLayout === "month" ? (
-        <div className="schedule-month-wrapper">
-          <div className="schedule-month-bar">
-            <div className="schedule-month-nav">
-              <button
-                type="button"
-                className="schedule-month-nav-btn"
-                onClick={() => shiftMonth(-1)}
-                aria-label={pl ? "Poprzedni miesiąc" : "Previous month"}
-              >
-                <IconChevronLeft size={18} aria-hidden="true" />
-              </button>
-              <strong className="schedule-month-title">{monthTitle}</strong>
-              <button
-                type="button"
-                className="schedule-month-nav-btn"
-                onClick={() => shiftMonth(1)}
-                aria-label={pl ? "Następny miesiąc" : "Next month"}
-              >
-                <IconChevronRight size={18} aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="schedule-month-actions">
-              <button
-                type="button"
-                className="history-action-btn"
-                onClick={jumpToToday}
-              >
-                {pl ? "Dzisiaj" : "Today"}
-              </button>
-              <button
-                type="button"
-                className="history-action-link is-primary"
-                onClick={() => openNewDialogForDate(selectedDayIso)}
-              >
-                <IconPlus size={15} aria-hidden="true" />
-                <span>
-                  {pl
-                    ? `Dodaj na ${formatDate(selectedDayIso)}`
-                    : `Add on ${formatDate(selectedDayIso)}`}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <div className="schedule-month-grid" role="grid">
-            {weekdayLabels.map((label) => (
-              <div
-                key={label}
-                className="schedule-weekday-header"
-                role="columnheader"
-              >
-                {label}
-              </div>
-            ))}
-
-            {monthCells.map((cell) => {
-              const dayItems = entriesByDate.get(cell.iso) ?? [];
-              const isToday = cell.iso === todayIso;
-              const isSelected = cell.iso === selectedDayIso;
-
-              return (
-                <div
-                  key={cell.iso}
-                  role="gridcell"
-                  tabIndex={0}
-                  aria-selected={isSelected}
-                  onClick={() => setSelectedDayIso(cell.iso)}
-                  onDoubleClick={() => openNewDialogForDate(cell.iso)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelectedDayIso(cell.iso);
-                    }
-                  }}
-                  className={`schedule-day-cell${!cell.inCurrentMonth ? " is-outside" : ""}${isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""}`}
-                >
-                  <div className="schedule-day-top">
-                    <span className="schedule-day-num">{cell.dayNumber}</span>
-                    <button
-                      type="button"
-                      className="schedule-day-add"
-                      title={
-                        pl
-                          ? `Zaplanuj termin na ${cell.iso}`
-                          : `Schedule on ${cell.iso}`
-                      }
-                      aria-label={
-                        pl
-                          ? `Zaplanuj termin na ${cell.iso}`
-                          : `Schedule on ${cell.iso}`
-                      }
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDayIso(cell.iso);
-                        openNewDialogForDate(cell.iso);
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="schedule-day-events">
-                    {dayItems.slice(0, 3).map((ev) => {
-                      const pName = petMap.get(ev.petId);
-                      const isOverdue =
-                        ev.status === "planned" && ev.date < todayIso;
-                      return (
-                        <button
-                          key={ev.key}
-                          type="button"
-                          title={
-                            pl
-                              ? `${ev.title} — kliknij, aby przejść do szczegółów na liście`
-                              : `${ev.title} — click to view details in list`
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            focusEntryInList(ev);
-                          }}
-                          className={`schedule-day-pill is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""}`}
-                        >
-                          {ev.time ? `${ev.time} ` : ""}
-                          {!fixedPetId && pName ? `${pName}: ` : ""}
-                          {ev.title}
-                        </button>
-                      );
-                    })}
-                    {dayItems.length > 3 && (
-                      <small className="schedule-day-more">
-                        +{dayItems.length - 3}{" "}
-                        {pl ? "więcej" : "more"}
-                      </small>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="schedule-selected-day-panel">
-            <div className="schedule-selected-day-header">
-              <h3>
-                {pl
-                  ? `Terminy w dniu ${formatDate(selectedDayIso)}`
-                  : `Items on ${formatDate(selectedDayIso)}`}
-              </h3>
-              <button
-                type="button"
-                className="history-action-btn"
-                onClick={() => openNewDialogForDate(selectedDayIso)}
-              >
-                <IconPlus size={15} aria-hidden="true" />
-                <span>
-                  {pl ? "Dodaj termin w tym dniu" : "Add item on this day"}
-                </span>
-              </button>
-            </div>
-
-            {selectedDayEntries.length === 0 ? (
-              <p className="schedule-selected-day-empty">
-                {pl
-                  ? "Brak zaplanowanych wizyt ani przypomnień w tym dniu. Kliknij przycisk powyżej lub „+” w kratce dnia, aby dodać termin."
-                  : "No scheduled visits or reminders on this day. Click the button above or “+” on the day cell to add one."}
-              </p>
-            ) : (
-              <ul className="schedule-compact-list">
-                {selectedDayEntries.map((entry) => renderCompactRow(entry))}
-              </ul>
-            )}
-          </div>
-        </div>
-      ) : groupedByMonth.length === 0 ? (
-        <div className="household-calendar-empty">
-          <IconCalendar size={30} stroke={1.4} aria-hidden="true" />
-          <div>
-            <h3>
-              {searchQuery.trim()
-                ? pl
-                  ? `Brak wyników dla „${searchQuery.trim()}”`
-                  : `No matches for “${searchQuery.trim()}”`
-                : viewMode === "upcoming"
-                  ? pl
-                    ? "Brak zaplanowanych terminów dla wybranych filtrów"
-                    : "No scheduled items for selected filters"
-                  : pl
-                    ? "Brak zakończonych lub odwołanych pozycji"
-                    : "No completed or cancelled items"}
-            </h3>
-            <p>
-              {searchQuery.trim()
-                ? pl
-                  ? "Spróbuj wpisać inną nazwę miesiąca (np. „Październik 2026”), nazwę zabiegu lub imię zwierzaka."
-                  : "Try another month name (e.g. “October 2026”), procedure title, or pet name."
-                : pl
-                  ? "Kliknij „Zaplanuj termin”, aby dodać wizytę weterynaryjną z notatkami przedwizytowymi lub przypomnienie o szczepieniu/leku."
-                  : "Click “Schedule item” to add a vet visit with pre-visit notes or a vaccination/medication reminder."}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="schedule-month-groups">
-          {groupedByMonth.map((group) => {
-            const isCollapsed = !!collapsedMonths[group.ym];
-            return (
-              <div key={group.ym} className="schedule-month-group">
-                <button
-                  type="button"
-                  className="schedule-month-group-header"
-                  aria-expanded={!isCollapsed}
-                  onClick={() =>
-                    setCollapsedMonths((prev) => ({
-                      ...prev,
-                      [group.ym]: !prev[group.ym],
-                    }))
-                  }
-                >
-                  <IconChevronDown
-                    size={16}
-                    aria-hidden="true"
-                    className={`schedule-group-chevron${isCollapsed ? " is-collapsed" : ""}`}
-                  />
-                  <strong>{group.label}</strong>
-                  <span className="schedule-group-count">
-                    {group.items.length}
-                  </span>
-                </button>
-
-                {!isCollapsed && (
-                  <ul className="schedule-compact-list">
-                    {group.items.map((entry) => renderCompactRow(entry))}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {displayLayout === "month" && renderMonthView()}
+      {displayLayout === "week" && renderWeekView()}
+      {displayLayout === "day" && renderDayView()}
+      {displayLayout === "agenda" && renderAgendaView()}
 
       {dialogOpen && (
         <ScheduleDialog
@@ -1458,7 +2420,9 @@ export function HouseholdSchedule({
           defaultDate={dialogDefaultDate}
           item={editingItem}
           defaultCategory={
-            categoryFilter === "all" ? "visit" : categoryFilter
+            categoryFilter === "all" || categoryFilter === "lab"
+              ? "visit"
+              : categoryFilter
           }
           onClose={() => {
             setDialogOpen(false);

@@ -5,6 +5,7 @@ import { listPets } from "@/features/pets/data";
 import { listHouseholdHealthEvents } from "@/features/history/data";
 import {
   getHouseholdNotificationSettings,
+  listHouseholdReportsSummary,
   listHouseholdScheduleItems,
 } from "@/features/schedule/data";
 import { petMessages } from "@/features/pets/messages";
@@ -18,12 +19,13 @@ import "@/styles/medical.css";
 export default async function AppPage() {
   const locale = await getLocale();
   const t = petMessages[locale];
-  const [pets, healthEvents, scheduleItems, notificationSettings] =
+  const [pets, healthEvents, scheduleItems, notificationSettings, reportsSummary] =
     await Promise.all([
       listPets(),
       listHouseholdHealthEvents(),
       listHouseholdScheduleItems(),
       getHouseholdNotificationSettings(),
+      listHouseholdReportsSummary(),
     ]);
   const d = dashboardMessages[locale];
   const empty = pets?.length === 0;
@@ -31,6 +33,6 @@ export default async function AppPage() {
   const primaryPet = pets && pets.length > 0 ? pets[0] : null;
   return <Container className="pets-page">
     <div className="pets-heading"><div><span className="pets-eyebrow">{d.dashboard}</span><h1>{t.title}</h1><p>{t.intro}</p></div><div className="household-heading-actions"><ButtonLink variant={empty ? "primary" : "secondary"} size="sm" href="/app/zwierzeta/nowe"><IconPlus size={16} aria-hidden="true" />{empty ? firstPet : t.add}</ButtonLink>{primaryPet && <ButtonLink variant="secondary" size="sm" href={`/app/zwierzeta/${primaryPet.id}/badania/nowe`}><IconUpload size={16} aria-hidden="true" />{d.upload}</ButtonLink>}</div></div>
-    {pets === null ? <p role="alert">{t.loadFailed}</p> : <HouseholdDashboard pets={pets} healthEvents={healthEvents} scheduleItems={scheduleItems} notificationSettings={notificationSettings} locale={locale} />}
+    {pets === null ? <p role="alert">{t.loadFailed}</p> : <HouseholdDashboard pets={pets} healthEvents={healthEvents} scheduleItems={scheduleItems} reportsSummary={reportsSummary} notificationSettings={notificationSettings} locale={locale} />}
   </Container>;
 }

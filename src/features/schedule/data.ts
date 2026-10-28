@@ -1,6 +1,23 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { HouseholdNotificationSettings, ScheduleItem } from "./types";
+import type {
+  CalendarReportSummary,
+  HouseholdNotificationSettings,
+  ScheduleItem,
+} from "./types";
+
+export async function listHouseholdReportsSummary(): Promise<CalendarReportSummary[]> {
+  const client = await createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from("wynik_badania")
+    .select("id, pet_id:zwierze_id, title, test_date, laboratory, doctor")
+    .order("test_date", { ascending: false })
+    .order("confirmed_at", { ascending: false })
+    .limit(400);
+  if (error) return [];
+  return (data ?? []) as CalendarReportSummary[];
+}
 
 export async function listHouseholdScheduleItems(): Promise<ScheduleItem[]> {
   const client = await createClient();
