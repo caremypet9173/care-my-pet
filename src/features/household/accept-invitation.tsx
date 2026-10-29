@@ -50,7 +50,6 @@ export function AcceptInvitation({
 
   // Rejestracja
   const [regPassword, setRegPassword] = useState("");
-  const [regRepeat, setRegRepeat] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Logowanie
@@ -110,12 +109,6 @@ export function AcceptInvitation({
         pl
           ? "Hasło musi mieć co najmniej 8 znaków."
           : "Password must be at least 8 characters long.",
-      );
-      return;
-    }
-    if (regPassword !== regRepeat) {
-      setFormError(
-        pl ? "Hasła nie są identyczne." : "Passwords do not match.",
       );
       return;
     }
@@ -582,31 +575,11 @@ export function AcceptInvitation({
                 </div>
               </div>
 
-              <div className="household-invite-input-group">
-                <label htmlFor="invite-reg-repeat">
-                  {pl ? "Powtórz hasło" : "Repeat password"}
-                </label>
-                <div className="household-invite-input-wrap">
-                  <IconLock size={16} aria-hidden="true" />
-                  <input
-                    id="invite-reg-repeat"
-                    type={showRegPassword ? "text" : "password"}
-                    required
-                    minLength={8}
-                    maxLength={128}
-                    value={regRepeat}
-                    onChange={(e) => setRegRepeat(e.target.value)}
-                    placeholder={pl ? "Powtórz wybrane hasło" : "Repeat chosen password"}
-                    disabled={isSubmitting}
-                  />
-                </div>
-              </div>
-
               <Button
                 type="submit"
                 variant="primary"
                 size="md"
-                disabled={isSubmitting || !regPassword || !regRepeat}
+                disabled={isSubmitting || !regPassword}
               >
                 <IconUserPlus size={18} aria-hidden="true" />
                 {isSubmitting

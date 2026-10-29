@@ -1,31 +1,35 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("registration validates repeated password without contacting Auth", async ({ page }) => {
-  let calls = 0;
-  await page.route("**/auth/v1/**", async route => { calls++; await route.abort(); });
+test("registration rejects email not on pilot whitelist", async ({ page }) => {
+  await page.route("**/rest/v1/rpc/check_pilot_access*", async (route) => {
+    await route.fulfill({
+      json: { eligible: false, has_account: false, reason: "not_whitelisted" },
+    });
+  });
   await page.goto("/pl/register");
-  await page.getByLabel("Adres e-mail").fill("test@example.com");
-  await page.getByLabel("Hasło", { exact: true }).fill("long-test-password");
-  await page.getByLabel("Powtórz hasło").fill("different-password");
-  await page.getByRole("button", { name: "Utwórz konto", exact: true }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("Hasła muszą być takie same");
-  expect(calls).toBe(0);
+  await page.getByLabel("Adres e-mail").fill("uninvited@example.com");
+  await page.getByRole("button", { name: "Wyślij link aktywacyjny", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Trwa zamknięty pilotaż CareMyPet",
+  );
 });
 
-test("email registration requests confirmation and never creates a session in the UI", async ({ page }) => {
-  await page.route("**/auth/v1/signup**", async route => {
+test("email registration sends activation link for eligible pilot email", async ({ page }) => {
+  await page.route("**/rest/v1/rpc/check_pilot_access*", async (route) => {
+    await route.fulfill({ json: { eligible: true, has_account: false } });
+  });
+  let otpCalled = false;
+  await page.route("**/auth/v1/otp*", async (route) => {
+    otpCalled = true;
     const body = route.request().postDataJSON();
-    expect(body.email).toBe("test@example.com");
-    expect(body.code_challenge_method).toBe("s256");
-    expect(new URL(route.request().url()).searchParams.get("redirect_to")).toMatch(/\/en\/auth\/confirm$/);
-    await route.fulfill({ json: { id: "test-user", email: "test@example.com", identities: [], aud: "authenticated", created_at: new Date().toISOString() } });
+    expect(body.email).toBe("tester@example.com");
+    await route.fulfill({ json: {} });
   });
   await page.goto("/en/register");
-  await page.getByLabel("Email address").fill("test@example.com");
-  await page.getByLabel("Password", { exact: true }).fill("long-test-password");
-  await page.getByLabel("Repeat password").fill("long-test-password");
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.getByLabel("Email address").fill("tester@example.com");
+  await page.getByRole("button", { name: "Send activation link", exact: true }).click();
+  await expect.poll(() => otpCalled).toBe(true);
   await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
   await expect(page).toHaveURL(/\/en\/register$/);
 });
@@ -82,15 +86,16 @@ test("registration is accessible and fits a narrow screen", async ({ page }, tes
   await page.goto("/pl/register");
   await page.getByRole("button", { name: "Rozumiem", exact: true }).click();
   await expect(page.locator(".auth-mode-switch a[aria-current]")).toHaveAttribute("href", "/pl/register");
+  await expect(page.getByLabel("Adres e-mail")).toBeVisible();
+  await page.screenshot({ path: `tmp/auth-register-${testInfo.project.name}.png`, fullPage: true });
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.locator(".auth-mode-switch").getByRole("link", { name: "Zaloguj się" }).click();
+  await expect(page.getByRole("heading", { name: "Witaj z powrotem" })).toBeVisible();
   await page.getByLabel("Hasło", { exact: true }).fill("example-password-only");
   await page.getByRole("button", { name: "Pokaż hasło", exact: true }).click();
   await expect(page.getByLabel("Hasło", { exact: true })).toHaveAttribute("type", "text");
   await page.getByRole("button", { name: "Ukryj hasło", exact: true }).click();
   await page.getByLabel("Hasło", { exact: true }).fill("");
-  await page.screenshot({ path: `tmp/auth-register-${testInfo.project.name}.png`, fullPage: true });
-  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
-  await page.locator(".auth-mode-switch").getByRole("link", { name: "Zaloguj się" }).click();
-  await expect(page.getByRole("heading", { name: "Witaj z powrotem" })).toBeVisible();
   await page.screenshot({ path: `tmp/auth-login-${testInfo.project.name}.png`, fullPage: true });
   await page.setViewportSize({ width: 320, height: 740 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

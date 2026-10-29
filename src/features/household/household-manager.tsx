@@ -66,6 +66,122 @@ export function HouseholdManager({
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
+  // Zamknięty pilotaż (Biała lista)
+  const [pilotWhitelist, setPilotWhitelist] = useState<
+    Array<{ email: string; notes: string | null; created_at: string }>
+  >([]);
+  const [pilotLoading, setPilotLoading] = useState(false);
+  const [pilotEmail, setPilotEmail] = useState("");
+  const [pilotNotes, setPilotNotes] = useState("");
+  const [isAddingPilot, setIsAddingPilot] = useState(false);
+  const [pilotFeedback, setPilotFeedback] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    async function loadPilotList() {
+      setPilotLoading(true);
+      try {
+        const client = createClient();
+        const { data, error } = await client
+          .from("pilot_whitelist")
+          .select("email, notes, created_at")
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          setPilotWhitelist(data);
+        }
+      } catch {
+        // brak aktywnego połączenia
+      } finally {
+        setPilotLoading(false);
+      }
+    }
+    void loadPilotList();
+  }, [isOwner, household.id]);
+
+  async function handleAddPilotEmail(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmedEmail = pilotEmail.trim().toLowerCase();
+    if (!trimmedEmail || isAddingPilot) return;
+
+    setIsAddingPilot(true);
+    setPilotFeedback(null);
+    try {
+      const client = createClient();
+      const { error } = await client.rpc("add_pilot_email", {
+        p_email: trimmedEmail,
+        p_notes: pilotNotes.trim() || "",
+      });
+
+      if (error) {
+        setPilotFeedback({
+          type: "error",
+          text: pl
+            ? "Nie udało się dodać adresu e-mail do pilotażu."
+            : "Failed to add email address to pilot.",
+        });
+        return;
+      }
+
+      setPilotWhitelist((prev) => [
+        {
+          email: trimmedEmail,
+          notes: pilotNotes.trim() || null,
+          created_at: new Date().toISOString(),
+        },
+        ...prev.filter((item) => item.email !== trimmedEmail),
+      ]);
+      setPilotEmail("");
+      setPilotNotes("");
+      setPilotFeedback({
+        type: "ok",
+        text: pl
+          ? `Adres ${trimmedEmail} został dodany do pilotażu. Użytkownik może się teraz zarejestrować!`
+          : `Email ${trimmedEmail} was added to the pilot. The user can now register!`,
+      });
+    } catch {
+      setPilotFeedback({
+        type: "error",
+        text: pl
+          ? "Wystąpił błąd podczas dodawania do pilotażu."
+          : "An error occurred while adding to pilot.",
+      });
+    } finally {
+      setIsAddingPilot(false);
+    }
+  }
+
+  async function handleRemovePilotEmail(emailToRemove: string) {
+    if (
+      !confirm(
+        pl
+          ? `Czy na pewno chcesz usunąć adres ${emailToRemove} z listy pilotażu? Osoba ta nie będzie mogła założyć nowego konta.`
+          : `Are you sure you want to remove ${emailToRemove} from the pilot? This user won't be able to register a new account.`,
+      )
+    ) {
+      return;
+    }
+
+    setBusyActionKey(`pilot-rm-${emailToRemove}`);
+    try {
+      const client = createClient();
+      const { error } = await client
+        .from("pilot_whitelist")
+        .delete()
+        .eq("email", emailToRemove);
+
+      if (!error) {
+        setPilotWhitelist((prev) =>
+          prev.filter((item) => item.email !== emailToRemove),
+        );
+      }
+    } finally {
+      setBusyActionKey(null);
+    }
+  }
+
   // Synchronizacja aktywnego gospodarstwa po stronie klienta (np. przy wejściu przez link ?id=...)
   useEffect(() => {
     if (household?.id) {
@@ -780,6 +896,137 @@ export function HouseholdManager({
               );
             })}
           </ul>
+        </section>
+      )}
+
+      {/* Sekcja: Zamknięty pilotaż (Biała lista) - dostępna dla właściciela */}
+      {isOwner && (
+        <section className="household-manager-card">
+          <div className="household-manager-section-header">
+            <div>
+              <h3>
+                {pl
+                  ? "Zamknięty pilotaż (Biała lista)"
+                  : "Closed Pilot (Whitelist)"}
+              </h3>
+              <p>
+                {pl
+                  ? "W czasie trwania zamkniętego pilotażu rejestracja nowych kont jest ograniczona. Osoby zaproszone powyżej jako współopiekunowie do Twojego gospodarstwa uzyskują dostęp automatycznie. Poniżej możesz bezpośrednio nadać uprawnienia kolejnym testerom, aby mogli założyć własne niezależne gospodarstwo."
+                  : "Registration is restricted during the closed pilot. Co-guardians invited above gain access automatically. Below you can directly grant pilot access to additional testers so they can create their own household."}
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleAddPilotEmail} className="household-invite-form">
+            <div className="household-invite-input-row">
+              <div className="household-invite-field">
+                <IconMail size={18} aria-hidden="true" />
+                <input
+                  type="email"
+                  required
+                  value={pilotEmail}
+                  onChange={(e) => setPilotEmail(e.target.value)}
+                  placeholder={
+                    pl ? "np. znajomy.tester@gmail.com" : "e.g. tester@example.com"
+                  }
+                  aria-label={
+                    pl
+                      ? "Adres e-mail uczestnika pilotażu"
+                      : "Pilot participant email"
+                  }
+                />
+              </div>
+
+              <div
+                className="household-invite-field"
+                style={{ flex: "0 1 240px", minWidth: "160px" }}
+              >
+                <input
+                  type="text"
+                  value={pilotNotes}
+                  onChange={(e) => setPilotNotes(e.target.value)}
+                  placeholder={pl ? "Notatka (np. znajomy)" : "Note (optional)"}
+                  maxLength={80}
+                  aria-label={pl ? "Notatka o uczestniku" : "Participant note"}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={isAddingPilot || !pilotEmail.trim()}
+              >
+                <IconPlus size={16} aria-hidden="true" />
+                {isAddingPilot
+                  ? pl
+                    ? "Dodawanie…"
+                    : "Adding…"
+                  : pl
+                    ? "Dodaj do pilotażu"
+                    : "Add to pilot"}
+              </Button>
+            </div>
+
+            {pilotFeedback && (
+              <div
+                className={`household-invite-feedback is-${pilotFeedback.type}`}
+                role="status"
+              >
+                <div className="household-feedback-header">
+                  {pilotFeedback.type === "ok" ? (
+                    <IconCheck size={16} aria-hidden="true" />
+                  ) : (
+                    <IconAlertCircle size={16} aria-hidden="true" />
+                  )}
+                  <span>{pilotFeedback.text}</span>
+                </div>
+              </div>
+            )}
+          </form>
+
+          {pilotLoading ? (
+            <p style={{ color: "var(--color-text-muted)", fontSize: "0.85rem", marginTop: "1rem" }}>
+              {pl ? "Ładowanie listy pilotażu…" : "Loading pilot list…"}
+            </p>
+          ) : pilotWhitelist.length > 0 ? (
+            <ul className="household-invitations-list" style={{ marginTop: "1.25rem" }}>
+              {pilotWhitelist.map((item) => (
+                <li key={item.email} className="household-invitation-item">
+                  <div className="household-invitation-main">
+                    <div className="household-invitation-title">
+                      <IconShieldCheck size={16} aria-hidden="true" />
+                      <strong>{item.email}</strong>
+                      {item.notes ? (
+                        <span className="household-tag">{item.notes}</span>
+                      ) : null}
+                    </div>
+                    <div className="household-invitation-meta">
+                      <span>
+                        <IconClock size={13} aria-hidden="true" />
+                        {pl
+                          ? `Dodano: ${formatDate(item.created_at)}`
+                          : `Added: ${formatDate(item.created_at)}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="household-invitation-actions">
+                    <button
+                      type="button"
+                      className="history-action-btn is-danger"
+                      disabled={busyActionKey === `pilot-rm-${item.email}`}
+                      onClick={() => void handleRemovePilotEmail(item.email)}
+                      title={pl ? "Usuń z pilotażu" : "Remove from pilot"}
+                    >
+                      <IconTrash size={14} aria-hidden="true" />
+                      <span>{pl ? "Usuń" : "Remove"}</span>
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
       )}
 
