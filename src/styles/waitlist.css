@@ -99,7 +99,7 @@
   color: var(--color-text);
 }
 
-.waitlist-field input {
+.waitlist-field input:not([type="range"]) {
   min-height: 46px;
   padding: 0.75rem 1rem;
   border-radius: var(--radius-control);
@@ -110,7 +110,7 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.waitlist-field input:focus {
+.waitlist-field input:not([type="range"]):focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgb(29 74 64 / 0.15);
@@ -119,6 +119,142 @@
 .waitlist-field small {
   font-size: 0.75rem;
   color: var(--color-text-muted);
+}
+
+/* Suwak liczby pupili (Desktop + Mobile) */
+.waitlist-slider-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.waitlist-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.waitlist-slider-header label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.waitlist-slider-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: #fff3ec;
+  border: 1px solid #fbd9c8;
+  color: var(--color-action-accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.waitlist-slider-badge strong {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--color-action-accent);
+}
+
+.waitlist-slider-track-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.waitlist-field input.waitlist-range-slider {
+  width: 100%;
+  min-height: 38px;
+  height: 38px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+  accent-color: var(--color-action-accent);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.waitlist-field input.waitlist-range-slider:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+}
+
+/* Webkit (Chrome, Edge, Safari, iOS) */
+.waitlist-field input.waitlist-range-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 9999px;
+  background: var(--color-surface-sand);
+  border: 1px solid var(--color-border);
+}
+
+.waitlist-field input.waitlist-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-action-accent);
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(174, 79, 44, 0.4);
+  margin-top: -8px;
+  cursor: grab;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.waitlist-field input.waitlist-range-slider:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+  background: var(--color-action-accent-hover);
+}
+
+/* Firefox */
+.waitlist-field input.waitlist-range-slider::-moz-range-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 9999px;
+  background: var(--color-surface-sand);
+  border: 1px solid var(--color-border);
+}
+
+.waitlist-field input.waitlist-range-slider::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-action-accent);
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(174, 79, 44, 0.4);
+  cursor: grab;
+  transition: transform 0.12s ease;
+}
+
+.waitlist-field input.waitlist-range-slider:active::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+
+.waitlist-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding-inline: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  user-select: none;
 }
 
 /* Honeypot field - ukryty przed człowiekiem */
