@@ -7,7 +7,15 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { authMessages } from "./messages";
 import { authDesignMessages } from "./design-messages";
-import { IconBrandApple, IconEye, IconEyeOff, IconArrowRight } from "@tabler/icons-react";
+import {
+  IconBrandApple,
+  IconEye,
+  IconEyeOff,
+  IconArrowRight,
+  IconShieldLock,
+  IconAlertCircle,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 
 export function AuthForm({ mode, configured, initialError }: {
   mode: "login" | "register"; configured: boolean; initialError?: string;
@@ -31,7 +39,7 @@ export function AuthForm({ mode, configured, initialError }: {
           ? t.pilotRestricted
           : ""
   );
-  const messageRef = useRef<HTMLParagraphElement>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
   const returnTo = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("returnTo")
     : null;
@@ -165,9 +173,64 @@ export function AuthForm({ mode, configured, initialError }: {
 
       {!configured ? <p role="status">{t.unavailable}</p> : null}
       {error ? (
-        <p className="auth-message" role="alert" tabIndex={-1} ref={messageRef}>
-          {error}
-        </p>
+        <div
+          className={`auth-message auth-alert ${
+            error === t.pilotRestricted
+              ? "is-pilot"
+              : error === t.alreadyRegistered
+                ? "is-info"
+                : "is-error"
+          }`}
+          role="alert"
+          tabIndex={-1}
+          ref={messageRef}
+        >
+          <div className="auth-alert-icon" aria-hidden="true">
+            {error === t.pilotRestricted ? (
+              <IconShieldLock size={22} />
+            ) : error === t.alreadyRegistered ? (
+              <IconInfoCircle size={22} />
+            ) : (
+              <IconAlertCircle size={22} />
+            )}
+          </div>
+          <div className="auth-alert-body">
+            {error === t.pilotRestricted ? (
+              <>
+                <strong>
+                  {pl
+                    ? "Zamknięty pilotaż — dostęp na zaproszenie"
+                    : "Closed Pilot — Invite Only"}
+                </strong>
+                <p>{error}</p>
+                <a
+                  href="mailto:caremypet9173@gmail.com?subject=CareMyPet%20-%20Pro%C5%9Bba%20o%20dost%C4%99p%20do%20pilota%C5%BCu"
+                  className="auth-alert-action"
+                >
+                  {pl
+                    ? "Napisz do nas, aby dołączyć do testów →"
+                    : "Contact us to join the pilot →"}
+                </a>
+              </>
+            ) : error === t.alreadyRegistered ? (
+              <>
+                <strong>{pl ? "To konto już istnieje" : "Account already exists"}</strong>
+                <p>{error}</p>
+                <Link
+                  href={`/login${returnToSuffix}`}
+                  className="auth-alert-action"
+                >
+                  {pl ? "Przejdź do logowania →" : "Go to sign in →"}
+                </Link>
+              </>
+            ) : (
+              <>
+                <strong>{pl ? "Nie udało się wykonać akcji" : "Action failed"}</strong>
+                <p>{error}</p>
+              </>
+            )}
+          </div>
+        </div>
       ) : null}
 
       {!sent ? (

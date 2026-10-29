@@ -6,7 +6,13 @@ import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { authMessages } from "./messages";
-import { IconEye, IconEyeOff, IconArrowRight, IconShieldCheck } from "@tabler/icons-react";
+import {
+  IconEye,
+  IconEyeOff,
+  IconArrowRight,
+  IconShieldCheck,
+  IconAlertCircle,
+} from "@tabler/icons-react";
 
 export function SetPasswordForm() {
   const locale = useLocale();
@@ -16,7 +22,7 @@ export function SetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const messageRef = useRef<HTMLParagraphElement>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
 
   function showError(msg: string) {
     setError(msg);
@@ -59,9 +65,20 @@ export function SetPasswordForm() {
       </div>
 
       {error ? (
-        <p className="auth-message" role="alert" tabIndex={-1} ref={messageRef}>
-          {error}
-        </p>
+        <div
+          className="auth-message auth-alert is-error"
+          role="alert"
+          tabIndex={-1}
+          ref={messageRef}
+        >
+          <div className="auth-alert-icon" aria-hidden="true">
+            <IconAlertCircle size={22} />
+          </div>
+          <div className="auth-alert-body">
+            <strong>{locale === "pl" ? "Uwaga" : "Notice"}</strong>
+            <p>{error}</p>
+          </div>
+        </div>
       ) : null}
 
       <form onSubmit={submit} className="auth-form">
