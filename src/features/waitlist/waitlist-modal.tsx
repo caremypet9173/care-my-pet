@@ -167,20 +167,16 @@ export function WaitlistModal({
                           : "How many pets do you care for?"}
                       </label>
                       <span className="waitlist-slider-badge" aria-live="polite">
-                        <strong>{petsCount}</strong>{" "}
+                        <strong>{petsCount >= 10 ? "10+" : petsCount}</strong>{" "}
                         {pl
                           ? petsCount === 1
                             ? "pupil"
                             : petsCount < 5
                               ? "pupile"
-                              : petsCount >= 10
-                                ? "pupili (10+)"
-                                : "pupili"
+                              : "pupili"
                           : petsCount === 1
                             ? "pet"
-                            : petsCount >= 10
-                              ? "pets (10+)"
-                              : "pets"}
+                            : "pets"}
                       </span>
                     </div>
 
@@ -231,7 +227,7 @@ export function WaitlistModal({
                             ? "pupil"
                             : petsCount < 5
                               ? "pupile"
-                              : "pupili (5+)"
+                              : "pupili"
                           : petsCount === 1
                             ? "pet"
                             : "pets"}

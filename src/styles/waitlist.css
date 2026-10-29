@@ -136,6 +136,21 @@
   .waitlist-pills-mobile {
     display: block;
   }
+  .waitlist-form {
+    padding: 1.25rem 1rem;
+  }
+  .waitlist-pills-field {
+    padding: 0.75rem 0.85rem;
+  }
+  .waitlist-pills-header {
+    gap: 0.35rem;
+  }
+  .waitlist-pills-label {
+    white-space: nowrap;
+  }
+  .waitlist-slider-badge {
+    padding: 0.2rem 0.55rem;
+  }
 }
 
 /* Pigułki szybkiego wyboru na mobile */
