@@ -88,7 +88,7 @@ test("navigation works and the private app stays closed", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Zaloguj się",
+      name: /Witaj z powrotem|Zaloguj się/,
     }),
   ).toBeVisible();
   await expect(page.getByLabel("Adres e-mail")).toBeVisible();
@@ -146,4 +146,33 @@ test("small screens retain every section without horizontal scrolling", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test("waitlist modal opens from Hero, submits successfully and closes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const ctaBtn = page
+    .getByRole("button", { name: "Jestem zainteresowany" })
+    .first();
+  await expect(ctaBtn).toBeVisible();
+  await ctaBtn.click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Zadbaj o zdrowie pupili bez chaosu" }),
+  ).toBeVisible();
+
+  await page
+    .getByLabel("Twój adres e-mail *")
+    .fill("tester-waitlist@example.com");
+  await page.getByLabel("Ile pupili masz pod opieką?").fill("3");
+  await page.getByRole("button", { name: "Zapisz mnie na start!" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Dziękujemy! Jesteś na liście!" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Super, zamknij okno" }).click();
+  await expect(dialog).toHaveCount(0);
 });

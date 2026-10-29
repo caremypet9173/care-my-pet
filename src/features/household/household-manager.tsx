@@ -70,6 +70,9 @@ export function HouseholdManager({
   const [pilotWhitelist, setPilotWhitelist] = useState<
     Array<{ email: string; notes: string | null; created_at: string }>
   >([]);
+  const [waitlistEntries, setWaitlistEntries] = useState<
+    Array<{ id: string; email: string; pets_count: number; created_at: string }>
+  >([]);
   const [pilotLoading, setPilotLoading] = useState(false);
   const [pilotEmail, setPilotEmail] = useState("");
   const [pilotNotes, setPilotNotes] = useState("");
@@ -85,12 +88,23 @@ export function HouseholdManager({
       setPilotLoading(true);
       try {
         const client = createClient();
-        const { data, error } = await client
-          .from("pilot_whitelist")
-          .select("email, notes, created_at")
-          .order("created_at", { ascending: false });
-        if (!error && data) {
-          setPilotWhitelist(data);
+        const [{ data: whitelistData }, { data: waitlistData }] =
+          await Promise.all([
+            client
+              .from("pilot_whitelist")
+              .select("email, notes, created_at")
+              .order("created_at", { ascending: false }),
+            client
+              .from("waitlist")
+              .select("id, email, pets_count, created_at")
+              .eq("status", "pending")
+              .order("created_at", { ascending: false }),
+          ]);
+        if (whitelistData) {
+          setPilotWhitelist(whitelistData);
+        }
+        if (waitlistData) {
+          setWaitlistEntries(waitlistData);
         }
       } catch {
         // brak aktywnego połączenia
@@ -100,6 +114,33 @@ export function HouseholdManager({
     }
     void loadPilotList();
   }, [isOwner, household.id]);
+
+  async function handleApproveWaitlist(
+    id: string,
+    email: string,
+    petsCount: number,
+  ) {
+    setBusyActionKey(`waitlist-approve-${id}`);
+    try {
+      const client = createClient();
+      const { error } = await client.rpc("approve_waitlist_entry", {
+        p_id: id,
+      });
+      if (!error) {
+        setWaitlistEntries((prev) => prev.filter((item) => item.id !== id));
+        setPilotWhitelist((prev) => [
+          {
+            email,
+            notes: `Z listy oczekujących (${petsCount} ${petsCount === 1 ? "pupil" : "pupili"})`,
+            created_at: new Date().toISOString(),
+          },
+          ...prev.filter((item) => item.email !== email),
+        ]);
+      }
+    } finally {
+      setBusyActionKey(null);
+    }
+  }
 
   async function handleAddPilotEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -1027,6 +1068,105 @@ export function HouseholdManager({
               ))}
             </ul>
           ) : null}
+
+          {waitlistEntries.length > 0 && (
+            <div
+              style={{
+                marginTop: "1.75rem",
+                borderTop: "1px dashed var(--color-border)",
+                paddingTop: "1.25rem",
+              }}
+            >
+              <div className="household-manager-section-header">
+                <div>
+                  <h4
+                    style={{
+                      margin: 0,
+                      fontSize: "0.9375rem",
+                      fontWeight: 700,
+                      color: "var(--color-text)",
+                    }}
+                  >
+                    {pl
+                      ? `Zgłoszenia z listy oczekujących (Strona główna) (${waitlistEntries.length})`
+                      : `Waitlist signups (Landing page) (${waitlistEntries.length})`}
+                  </h4>
+                  <p
+                    style={{
+                      margin: "0.2rem 0 0",
+                      fontSize: "0.75rem",
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
+                    {pl
+                      ? "Osoby, które zapisały się przez przycisk „Jestem zainteresowany” na stronie głównej. Kliknij „Aktywuj”, aby natychmiast nadać im dostęp do pilotażu."
+                      : "People who registered via the landing page waitlist. Click 'Approve' to grant immediate pilot access."}
+                  </p>
+                </div>
+              </div>
+
+              <ul
+                className="household-invitations-list"
+                style={{ marginTop: "0.85rem" }}
+              >
+                {waitlistEntries.map((item) => (
+                  <li key={item.id} className="household-invitation-item">
+                    <div className="household-invitation-main">
+                      <div className="household-invitation-title">
+                        <IconMail size={16} aria-hidden="true" />
+                        <strong>{item.email}</strong>
+                        <span className="household-tag">
+                          {pl
+                            ? `${item.pets_count} ${item.pets_count === 1 ? "pupil" : item.pets_count < 5 ? "pupile" : "pupili"}`
+                            : `${item.pets_count} ${item.pets_count === 1 ? "pet" : "pets"}`}
+                        </span>
+                      </div>
+                      <div className="household-invitation-meta">
+                        <span>
+                          <IconClock size={13} aria-hidden="true" />
+                          {pl
+                            ? `Zapisano: ${formatDate(item.created_at)}`
+                            : `Joined: ${formatDate(item.created_at)}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="household-invitation-actions">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        disabled={
+                          busyActionKey === `waitlist-approve-${item.id}`
+                        }
+                        onClick={() =>
+                          void handleApproveWaitlist(
+                            item.id,
+                            item.email,
+                            item.pets_count,
+                          )
+                        }
+                        title={
+                          pl ? "Aktywuj w pilotażu" : "Grant pilot access"
+                        }
+                      >
+                        <IconUserCheck size={14} aria-hidden="true" />
+                        <span>
+                          {busyActionKey === `waitlist-approve-${item.id}`
+                            ? pl
+                              ? "Aktywowanie…"
+                              : "Approving…"
+                            : pl
+                              ? "Aktywuj w pilotażu"
+                              : "Grant access"}
+                        </span>
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 

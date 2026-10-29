@@ -1,6 +1,7 @@
 @import "tailwindcss" source("../");
 @import "./tokens.css";
 @import "./themes.css";
+@import "./waitlist.css";
 
 .auth-content { display: grid; gap: 1.25rem; text-align: left; }
 .auth-content h1, .auth-content p { margin: 0; }

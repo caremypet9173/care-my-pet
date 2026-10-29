@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import {
   IconArrowRight,
@@ -12,8 +12,11 @@ import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
 import { assets } from "@/lib/assets";
+import { WaitlistCtaButton } from "@/features/waitlist/waitlist-cta-button";
 
 export function Hero() {
+  const locale = useLocale();
+  const pl = locale === "pl";
   const t = useTranslations("copy");
   return (
     <Section spacing="hero" aria-labelledby="hero-title">
@@ -27,12 +30,19 @@ export function Hero() {
           </h1>
           <p className="hero-lead">{t("yourDogOrCatsTestsVisitsAnd214")}</p>
           <div className="hero-actions">
-            <ButtonLink href="/demo/luna" variant="accent">
+            <WaitlistCtaButton className="waitlist-submit-btn">
+              {pl ? "Jestem zainteresowany" : "Join the waitlist"}
+            </WaitlistCtaButton>
+            <ButtonLink href="/demo/luna" variant="secondary">
               {t("exploreASamplePetRecord")}{" "}
               <IconArrowRight size={18} aria-hidden="true" />
             </ButtonLink>
-            <span className="caption">{t("noSignInNeededFictionalData")}</span>
           </div>
+          <span className="caption">
+            {pl
+              ? "Trwa zamknięty pilotaż · Dostępne demo bez logowania"
+              : "Closed pilot · Sample demo available without sign-in"}
+          </span>
           <div className="hero-trust">
             <span>
               <IconShieldCheck size={17} aria-hidden="true" />

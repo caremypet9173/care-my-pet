@@ -1,0 +1,205 @@
+/* Waitlist dialog & CTA */
+.waitlist-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-floating);
+  overflow: hidden;
+}
+
+.waitlist-dialog::backdrop {
+  background: var(--color-dialog-backdrop);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.waitlist-dialog-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.waitlist-dialog-header {
+  position: relative;
+  padding: 1.5rem 1.5rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: radial-gradient(circle at 10% 10%, rgb(217 116 72 / 0.08), transparent 70%), var(--color-surface);
+}
+
+.waitlist-dialog-close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.waitlist-dialog-close:hover {
+  color: var(--color-text);
+  background: var(--color-surface-sand);
+}
+
+.waitlist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: #fff3ec;
+  border: 1px solid #fbd9c8;
+  color: var(--color-action-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.waitlist-dialog-header h2 {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.waitlist-dialog-header p {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-top: 0.35rem;
+}
+
+.waitlist-form {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+}
+
+.waitlist-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.waitlist-field label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.waitlist-field input {
+  min-height: 46px;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-control-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.waitlist-field input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgb(29 74 64 / 0.15);
+}
+
+.waitlist-field small {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Honeypot field - ukryty przed człowiekiem */
+.waitlist-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.waitlist-legal {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.waitlist-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.85rem 1.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-action-accent);
+  color: var(--color-on-action);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(174 79 44 / 0.25);
+  transition: all 0.15s ease;
+}
+
+.waitlist-submit-btn:hover:not(:disabled) {
+  background: var(--color-action-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(174 79 44 / 0.35);
+}
+
+.waitlist-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Ekran sukcesu */
+.waitlist-success-view {
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+}
+
+.waitlist-success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-success-surface);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success);
+  display: grid;
+  place-items: center;
+}
+
+.waitlist-success-view h2 {
+  font-size: 1.35rem;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.waitlist-success-view p {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  max-width: 24rem;
+  line-height: 1.5;
+  margin: 0;
+}
