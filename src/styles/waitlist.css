@@ -121,7 +121,97 @@
   color: var(--color-text-muted);
 }
 
-/* Suwak liczby pupili (Desktop + Mobile) */
+/* Suwak vs Pigułki (Desktop vs Mobile) */
+.waitlist-slider-desktop {
+  display: block;
+}
+.waitlist-pills-mobile {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .waitlist-slider-desktop {
+    display: none;
+  }
+  .waitlist-pills-mobile {
+    display: block;
+  }
+}
+
+/* Pigułki szybkiego wyboru na mobile */
+.waitlist-pills-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.waitlist-pills-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.waitlist-pills-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.waitlist-pills-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.waitlist-pill-btn {
+  flex: 1;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-raised);
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0.5rem 0.25rem;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.waitlist-pill-btn:hover:not(:disabled):not(.is-active) {
+  border-color: var(--color-control-border);
+  background: var(--color-surface-sand);
+}
+
+.waitlist-pill-btn.is-active {
+  background: var(--color-action-accent);
+  color: var(--color-on-action);
+  border-color: var(--color-action-accent);
+  box-shadow: 0 2px 8px rgb(174 79 44 / 0.3);
+  transform: translateY(-1px);
+}
+
+.waitlist-pill-btn.is-active:hover:not(:disabled) {
+  background: var(--color-action-accent-hover);
+  border-color: var(--color-action-accent-hover);
+  color: var(--color-on-action);
+}
+
+.waitlist-pill-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Suwak liczby pupili (Desktop) */
 .waitlist-slider-field {
   display: flex;
   flex-direction: column;

@@ -167,7 +167,12 @@ test("waitlist modal opens from Hero, submits successfully and closes", async ({
   await page
     .getByLabel("Twój adres e-mail *")
     .fill("tester-waitlist@example.com");
-  await page.getByLabel("Ile pupili masz pod opieką?").fill("3");
+  const desktopSlider = page.getByLabel("Ile pupili masz pod opieką?");
+  if (await desktopSlider.isVisible()) {
+    await desktopSlider.fill("3");
+  } else {
+    await page.getByRole("button", { name: "3", exact: true }).click();
+  }
   await page.getByRole("button", { name: "Zapisz mnie na start!" }).click();
 
   await expect(

@@ -154,58 +154,117 @@ export function WaitlistModal({
                 />
               </div>
 
-              <div className="waitlist-field waitlist-slider-field">
-                <div className="waitlist-slider-header">
-                  <label htmlFor="waitlist-pets">
-                    {pl
-                      ? "Ile pupili masz pod opieką?"
-                      : "How many pets do you care for?"}
-                  </label>
-                  <span className="waitlist-slider-badge" aria-live="polite">
-                    <strong>{petsCount}</strong>{" "}
-                    {pl
-                      ? petsCount === 1
-                        ? "pupil"
-                        : petsCount < 5
-                          ? "pupile"
-                          : petsCount >= 10
-                            ? "pupili (10+)"
-                            : "pupili"
-                      : petsCount === 1
-                        ? "pet"
-                        : petsCount >= 10
-                          ? "pets (10+)"
-                          : "pets"}
-                  </span>
+              <div className="waitlist-field">
+                <input type="hidden" name="pets_count" value={petsCount} />
+
+                {/* Widok Desktop: Elegancki suwak */}
+                <div className="waitlist-slider-desktop">
+                  <div className="waitlist-slider-field">
+                    <div className="waitlist-slider-header">
+                      <label htmlFor="waitlist-pets-desktop">
+                        {pl
+                          ? "Ile pupili masz pod opieką?"
+                          : "How many pets do you care for?"}
+                      </label>
+                      <span className="waitlist-slider-badge" aria-live="polite">
+                        <strong>{petsCount}</strong>{" "}
+                        {pl
+                          ? petsCount === 1
+                            ? "pupil"
+                            : petsCount < 5
+                              ? "pupile"
+                              : petsCount >= 10
+                                ? "pupili (10+)"
+                                : "pupili"
+                          : petsCount === 1
+                            ? "pet"
+                            : petsCount >= 10
+                              ? "pets (10+)"
+                              : "pets"}
+                      </span>
+                    </div>
+
+                    <div className="waitlist-slider-track-wrap">
+                      <input
+                        id="waitlist-pets-desktop"
+                        type="range"
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={petsCount}
+                        onChange={(e) => setPetsCount(Number(e.target.value))}
+                        disabled={isPending}
+                        aria-valuemin={1}
+                        aria-valuemax={10}
+                        aria-valuenow={petsCount}
+                        className="waitlist-range-slider"
+                      />
+                      <div className="waitlist-slider-ticks" aria-hidden="true">
+                        <span>1</span>
+                        <span>2</span>
+                        <span>3</span>
+                        <span>4</span>
+                        <span>5</span>
+                        <span>6</span>
+                        <span>7</span>
+                        <span>8</span>
+                        <span>9</span>
+                        <span>10+</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="waitlist-slider-track-wrap">
-                  <input
-                    id="waitlist-pets"
-                    name="pets_count"
-                    type="range"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={petsCount}
-                    onChange={(e) => setPetsCount(Number(e.target.value))}
-                    disabled={isPending}
-                    aria-valuemin={1}
-                    aria-valuemax={10}
-                    aria-valuenow={petsCount}
-                    className="waitlist-range-slider"
-                  />
-                  <div className="waitlist-slider-ticks" aria-hidden="true">
-                    <span>1</span>
-                    <span>2</span>
-                    <span>3</span>
-                    <span>4</span>
-                    <span>5</span>
-                    <span>6</span>
-                    <span>7</span>
-                    <span>8</span>
-                    <span>9</span>
-                    <span>10+</span>
+                {/* Widok Mobile: Pigułki szybkiego wyboru [ 1 ] [ 2 ] [ 3 ] [ 4 ] [ 5+ ] */}
+                <div className="waitlist-pills-mobile">
+                  <div className="waitlist-pills-field">
+                    <div className="waitlist-pills-header">
+                      <span className="waitlist-pills-label">
+                        {pl
+                          ? "Ile pupili masz pod opieką?"
+                          : "How many pets do you care for?"}
+                      </span>
+                      <span className="waitlist-slider-badge" aria-live="polite">
+                        <strong>{petsCount >= 5 ? "5+" : petsCount}</strong>{" "}
+                        {pl
+                          ? petsCount === 1
+                            ? "pupil"
+                            : petsCount < 5
+                              ? "pupile"
+                              : "pupili (5+)"
+                          : petsCount === 1
+                            ? "pet"
+                            : "pets"}
+                      </span>
+                    </div>
+
+                    <div
+                      className="waitlist-pills-row"
+                      role="group"
+                      aria-label={
+                        pl
+                          ? "Wybierz liczbę pupili"
+                          : "Select number of pets"
+                      }
+                    >
+                      {[1, 2, 3, 4, 5].map((val) => {
+                        const isSelected =
+                          val === 5 ? petsCount >= 5 : petsCount === val;
+                        const label = val === 5 ? "5+" : String(val);
+                        return (
+                          <button
+                            key={val}
+                            type="button"
+                            className={`waitlist-pill-btn ${isSelected ? "is-active" : ""}`}
+                            onClick={() => setPetsCount(val)}
+                            disabled={isPending}
+                            aria-pressed={isSelected}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
