@@ -118,7 +118,8 @@ Deno.serve(async (req) => {
       });
 
       if (error) {
-        return reply({ error: "save_dose_failed" }, 400);
+        console.error("record_medication_dose error:", error);
+        return reply({ error: "save_dose_failed", details: error.message }, 400);
       }
       return reply({ log });
     }

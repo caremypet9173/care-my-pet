@@ -659,12 +659,14 @@ export function HouseholdSchedule({
             p_schedule_id: dose.schedule_id,
             p_pet_id: dose.pet_id,
             p_dose_date: dose.dose_date,
-            p_scheduled_time: dose.scheduled_time,
+            p_scheduled_time: dose.scheduled_time || "",
             p_status: "taken",
             p_notes: "",
           },
         );
-        if (!rpcError && rpcData) {
+        if (rpcError) {
+          console.error("RPC record_medication_dose error:", rpcError);
+        } else if (rpcData) {
           savedLog = rpcData as MedicationLog;
         }
       }
@@ -682,9 +684,20 @@ export function HouseholdSchedule({
           );
           return [savedLog!, ...filtered];
         });
+      } else {
+        alert(
+          pl
+            ? "Nie udało się zatwierdzić dawki leku. Sprawdź połączenie i spróbuj ponownie."
+            : "Failed to confirm medication dose. Please retry.",
+        );
       }
     } catch (e) {
       console.error("Error recording dose:", e);
+      alert(
+        pl
+          ? "Wystąpił błąd podczas zatwierdzania dawki."
+          : "An error occurred while confirming dose.",
+      );
     } finally {
       setBusyKey(null);
     }
@@ -716,13 +729,25 @@ export function HouseholdSchedule({
           p_log_id: logId,
         });
         if (!rpcError) deleted = true;
+        else console.error("RPC delete_medication_dose_log error:", rpcError);
       }
 
       if (deleted) {
         setMedicationLogs((prev) => prev.filter((l) => l.id !== logId));
+      } else {
+        alert(
+          pl
+            ? "Nie udało się cofnąć zatwierdzenia dawki."
+            : "Failed to undo dose confirmation.",
+        );
       }
     } catch (e) {
       console.error("Error deleting dose log:", e);
+      alert(
+        pl
+          ? "Wystąpił błąd podczas cofania zatwierdzenia."
+          : "An error occurred while undoing confirmation.",
+      );
     } finally {
       setBusyKey(null);
     }
