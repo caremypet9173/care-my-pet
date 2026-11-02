@@ -81,7 +81,7 @@ export function ActiveMedicationsCard({
   }
 
   return (
-    <section className="pet-panel household-summary-reports flex flex-col gap-3.5">
+    <section className="pet-panel household-summary-reports household-summary-meds flex flex-col gap-3">
       <header className="flex items-center justify-between gap-2.5 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 flex items-center justify-center flex-shrink-0">
@@ -140,9 +140,9 @@ export function ActiveMedicationsCard({
       </header>
 
       {displayedSchedules.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/30 gap-2">
-          <span className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
-            <IconPill size={20} />
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/30 gap-2">
+          <span className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+            <IconPill size={18} />
           </span>
           <strong className="text-xs font-medium text-slate-700 dark:text-slate-300">
             {filterMode === "active"
@@ -160,7 +160,7 @@ export function ActiveMedicationsCard({
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800 -mx-1">
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800 -mx-1 flex-1 min-h-0 overflow-y-auto pr-1">
           {displayedSchedules.map((s) => {
             const isFinished = !s.is_active || (s.end_date && s.end_date < todayIso);
             const times =
@@ -173,7 +173,7 @@ export function ActiveMedicationsCard({
             return (
               <li
                 key={s.id}
-                className={`py-3.5 px-2 flex flex-col gap-2 rounded-xl transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${
+                className={`py-2.5 px-2 flex flex-col gap-1.5 rounded-xl transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${
                   isFinished ? "opacity-60" : ""
                 }`}
               >

@@ -528,16 +528,60 @@
 .household-record-stats h2 { font-size: .65rem; text-transform: uppercase; letter-spacing: .05em; }
 .household-record-stats strong { font-size: 1.2rem; display: block; margin-block: .5rem; }
 .household-record-stats p { font-size: .7rem; }
-.household-record-columns { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
-.household-record-columns > div, .household-record-columns > aside { display: flex; flex-direction: column; gap: 1.25rem; }
-.household-record-columns .pet-panel { padding: 1.25rem; margin-bottom: 0; border-radius: .875rem; }
+.household-record-columns { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.25rem; align-items: stretch; }
+.household-record-columns > div, .household-record-columns > aside { display: flex; flex-direction: column; gap: 1.25rem; min-height: 0; }
+.household-record-columns .pet-panel { padding: 1.25rem; margin-bottom: 0; border-radius: .875rem; box-sizing: border-box; }
 .household-record-columns h2 { font-size: .9375rem; }
 .household-record-columns p { font-size: .75rem; }
+
+@media (min-width: 601px) {
+  .household-summary-events,
+  .household-summary-basics {
+    height: 260px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .household-summary-lab,
+  .household-summary-meds {
+    height: 350px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+.household-summary-events,
+.household-summary-lab,
+.household-summary-meds,
+.household-summary-basics {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.household-summary-basics .pet-facts {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: .75rem;
+}
+.household-summary-basics .pet-facts > div {
+  padding-block: .42rem;
+}
+.household-summary-basics .household-summary-weight {
+  margin-top: auto;
+  border-bottom: 0;
+  padding-top: .4rem;
+}
+
 .household-inline-empty { display: flex; align-items: center; gap: 1rem; min-height: 8rem; border-top: 1px solid var(--color-border); }
 .household-inline-empty svg { flex-shrink: 0; color: var(--color-text-muted); }
 .household-weight-empty { display: flex; justify-content: space-between; align-items: center; color: var(--color-primary); min-height: 5rem; margin-block: 1rem; border-block: 1px solid var(--color-border); }
 .household-record .pet-facts { font-size: .75rem; }
-.household-summary-reports ul { list-style: none; padding: 0; margin: .75rem 0; }
+.household-summary-reports ul { list-style: none; padding: 0; margin: .4rem 0; flex: 1; min-height: 0; overflow-y: auto; }
 .household-summary-reports li + li { border-top: 1px solid var(--color-border); }
 .household-summary-reports li a { display: flex; align-items: center; gap: .75rem; min-height: 44px; padding: .85rem 0; color: #164d34; }
 .household-summary-reports li a > span:first-of-type { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -545,11 +589,30 @@
 .household-summary-reports strong { display: block; text-decoration: underline; text-underline-offset: 3px; }
 .household-summary-reports small, .household-summary-weight-date { display: block; margin-top: .3rem; color: #526462; font-weight: 400; }
 .household-summary-link { display: inline-flex; align-items: center; min-height: 44px; color: #164d34; text-decoration: underline; text-underline-offset: 3px; }
+.household-summary-reports .household-summary-link { margin-top: auto; padding-top: .35rem; }
 .pet-facts .household-summary-link { display: flex; }
 .household-summary-weight dd { margin-inline-start: auto; text-align: right; }
 .household-summary-weight .household-summary-link { justify-content: flex-end; }
 .household-summary-reports a:focus-visible, .household-summary-link:focus-visible { outline: 2px solid #32766c; outline-offset: 3px; border-radius: .25rem; }
 .household-record-empty { min-height: 16rem; display: grid; justify-items: start; align-content: center; gap: .75rem; }
+
+.household-summary-reports ul,
+.household-summary-meds ul,
+.household-summary-basics .pet-facts {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.household-summary-reports ul::-webkit-scrollbar,
+.household-summary-meds ul::-webkit-scrollbar,
+.household-summary-basics .pet-facts::-webkit-scrollbar {
+  width: 5px;
+}
+.household-summary-reports ul::-webkit-scrollbar-thumb,
+.household-summary-meds ul::-webkit-scrollbar-thumb,
+.household-summary-basics .pet-facts::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
 
 /* Household Manager & Invitations */
 .household-nav-link {

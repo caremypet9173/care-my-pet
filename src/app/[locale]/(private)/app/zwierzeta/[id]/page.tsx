@@ -96,7 +96,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     ].map(({ label, icon: Icon, value, sub }) => <section key={label}><Icon size={22} aria-hidden="true" /><h2>{label}</h2><strong>{value}</strong><p>{sub}</p></section>)}</div>
     {keyParameters.length>0&&<section className="pet-panel"><h2>{locale==="pl"?"Kluczowe parametry":"Key parameters"}</h2><dl className="pet-facts">{keyParameters.map(({row,date})=><div key={row.id}><dt>{row.name} · {date}</dt><dd><strong>{row.value} {row.unit}</strong>{row.note&&<p className="pet-notes">{row.note}</p>}</dd></div>)}</dl></section>}
     <div className="household-record-columns"><div>
-      <section className="pet-panel household-summary-reports"><h2>{d.events}</h2>
+      <section className="pet-panel household-summary-reports household-summary-events"><h2>{d.events}</h2>
         {healthEvents.length ? <ul>{healthEvents.slice(0,5).map(ev=>{
           const EvIcon = ev.category === "vaccination" ? IconVaccine : ev.category === "prevention" ? IconPill : IconStethoscope;
           return <li key={ev.id}>
@@ -105,13 +105,13 @@ export default async function PetPage({ params, searchParams }: { params: Promis
         })}</ul> : <div className="household-inline-empty"><IconHistory size={26} aria-hidden="true" /><p>{d.noEvents}</p></div>}
         <Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=history`}>{locale==='pl'?'Zobacz oś czasu historii zdrowia →':'View health history timeline →'}</Link>
       </section>
-      <section className="pet-panel household-summary-reports"><h2>{d.latest}</h2>
+      <section className="pet-panel household-summary-reports household-summary-lab"><h2>{d.latest}</h2>
         {reports.length ? <ul>{reports.slice(0,5).map(report=><li key={report.id}>
           <Link href={`/app/zwierzeta/${pet.id}?tab=results&report=${report.id}`}><IconFlask size={20} aria-hidden="true"/><span><strong>{report.title}</strong><small><time dateTime={report.test_date}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(report.test_date))}</time>{report.laboratory&&` · ${report.laboratory}`}</small></span><span aria-hidden="true">→</span></Link>
         </li>)}</ul> : <p>{d.noResults}</p>}
         <Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=results`}>{locale==='pl'?'Zobacz wszystkie badania →':'View all reports →'}</Link>
       </section>
-    </div><aside><section className="pet-panel"><h2>{t.basics}</h2><dl className="pet-facts">
+    </div><aside><section className="pet-panel household-summary-basics"><h2>{t.basics}</h2><dl className="pet-facts">
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Waga i rozwój →':'Weight and growth →'}</Link></dd></div>
     </dl></section>
