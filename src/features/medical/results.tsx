@@ -54,9 +54,40 @@ export function MedicalResults({petId,reports:initialReports,initialReportId}:{p
   // Same-day duplicates and qualifiers are not combined into a misleading trend.
   const uniquePoints=points.filter(p=>points.filter(other=>other.date===p.date).length===1).slice(-12);
   const rows=report?.rows.filter(row=>filter==="all"||row.category===filter)??[];
-  const openReportDetail=(next:MedicalReport)=>{
+  const openReportDetail=async (next:MedicalReport)=>{
     origin.current=next.id;setSelected(next.id);setCollapsed({});setFilter('all');setSource(null);
-    setParameter(next.rows.find(row=>['above','below'].includes(rangeStatus(row)))??next.rows.find(row=>numeric(row.value)!==null)??null);
+    let activeReport = next;
+    if (next.rows.length === 0) {
+      try {
+        const client = createClient();
+        const { data: rowsData } = await client
+          .from("pomiar_parametru")
+          .select("*, correction:measurement_correction(*)")
+          .eq("wynik_id", next.id)
+          .order("ordinal", { ascending: true });
+        if (rowsData && rowsData.length > 0) {
+          const mappedRows = rowsData.map(({ correction, ...row }: any) => ({
+            ...row,
+            original: { value: row.value, unit: row.unit, reference: row.reference },
+            ...(correction
+              ? {
+                  value: correction.value,
+                  unit: correction.unit,
+                  reference: correction.reference,
+                  note: correction.note,
+                  is_key: correction.is_key,
+                  revision: correction.revision,
+                }
+              : { revision: 0 }),
+          }));
+          activeReport = { ...next, rows: mappedRows };
+          setReports((prev) => prev.map((r) => (r.id === next.id ? activeReport : r)));
+        }
+      } catch (err) {
+        console.error("Failed to load report parameters:", err);
+      }
+    }
+    setParameter(activeReport.rows.find(row=>['above','below'].includes(rangeStatus(row)))??activeReport.rows.find(row=>numeric(row.value)!==null)??null);
     setDetail(true);requestAnimationFrame(()=>{detailHeading.current?.focus({preventScroll:true});backToList.current?.scrollIntoView({block:'start',behavior:'instant'});});
   };
   if(!detail)return <div className="medical-results">

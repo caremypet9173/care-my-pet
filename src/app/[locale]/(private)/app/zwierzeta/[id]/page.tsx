@@ -41,8 +41,9 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   const tab = resolvedSearch.tab;
   const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : tab === "weight" ? 4 : tab === "assistant" ? 5 : 0;
   const isAssistantTab = initialTab === 5;
+  const isMedicalTab = initialTab === 2 || initialTab === 3 || !!requestedReport;
   const [reports,weights,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails] = await Promise.all([
-    listReports(pet.id,requestedReport),
+    listReports(pet.id, requestedReport, { full: isMedicalTab }),
     listWeights(pet.id),
     listHealthEvents(pet.id),
     listPetScheduleItems(pet.id),

@@ -78,238 +78,21 @@ import type {
   ProjectedMedicationDose,
 } from "@/features/medications/types";
 
-type FilterCategory = "all" | ScheduleCategory | "lab";
-type ViewMode = "upcoming" | "archive";
-type DisplayLayout = "month" | "week" | "day" | "agenda";
-
-type UnifiedScheduleEntry =
-  | {
-      kind: "schedule_item";
-      key: string;
-      petId: string;
-      category: ScheduleCategory;
-      title: string;
-      date: string;
-      time: string;
-      clinic: string;
-      doctor: string;
-      prepNotes: string;
-      status: "planned" | "completed" | "cancelled";
-      item: ScheduleItem;
-    }
-  | {
-      kind: "due_event";
-      key: string;
-      petId: string;
-      category: ScheduleCategory;
-      title: string;
-      date: string;
-      time: string;
-      clinic: string;
-      doctor: string;
-      batchOrProduct: string;
-      lastEventDate: string;
-      status: "planned";
-      event: HealthEvent;
-    }
-  | {
-      kind: "history_event";
-      key: string;
-      petId: string;
-      category: ScheduleCategory;
-      title: string;
-      date: string;
-      time: string;
-      clinic: string;
-      doctor: string;
-      batchOrProduct: string;
-      description: string;
-      status: "completed";
-      event: HealthEvent;
-    }
-  | {
-      kind: "medical_report";
-      key: string;
-      petId: string;
-      category: "lab";
-      title: string;
-      date: string;
-      time: string;
-      clinic: string;
-      doctor: string;
-      status: "completed";
-      report: CalendarReportSummary;
-    }
-  | {
-      kind: "medication_dose";
-      key: string;
-      petId: string;
-      category: "prevention";
-      title: string;
-      date: string;
-      time: string;
-      clinic: string;
-      doctor: string;
-      prepNotes: string;
-      status: "planned" | "completed" | "skipped";
-      dosage: string;
-      scheduleType: MedicationScheduleType;
-      instructions: string;
-      dose: ProjectedMedicationDose;
-    };
-
-const PL_MONTH_ALIASES: Record<string, string> = {
-  "01": "styczen stycznia sty january jan",
-  "02": "luty lutego lut february feb",
-  "03": "marzec marca mar march",
-  "04": "kwiecien kwietnia kwi april apr",
-  "05": "maj maja may",
-  "06": "czerwiec czerwca cze june jun",
-  "07": "lipiec lipca lip july jul",
-  "08": "sierpien sierpnia sie august aug",
-  "09": "wrzesien wrzesnia wrz september sep",
-  "10": "pazdziernik pazdziernika paz october oct",
-  "11": "listopad listopada lis november nov",
-  "12": "grudzien grudnia gru december dec",
-};
-
-function foldText(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/ł/g, "l");
-}
-
-function buildSearchHaystack(
-  entry: UnifiedScheduleEntry,
-  petName: string,
-): string {
-  const [y = "", m = "", d = ""] = entry.date.split("-");
-  const monthAliases = PL_MONTH_ALIASES[m] ?? "";
-  const categoryAliases =
-    entry.category === "vaccination"
-      ? "szczepienie szczepienia vaccination vaccine"
-      : entry.category === "prevention"
-        ? "profilaktyka odrobaczanie kleszcze leki lek prevention medication"
-        : entry.category === "lab"
-          ? "badanie badania wyniki krew mocz usg rtg lab results report"
-          : "wizyta kontrola badanie visit checkup";
-
-  let weekdayAliases = "";
-  const yearNum = Number.parseInt(y, 10);
-  const monthNum = Number.parseInt(m, 10);
-  const dayNum = Number.parseInt(d, 10);
-  if (
-    Number.isFinite(yearNum) &&
-    Number.isFinite(monthNum) &&
-    Number.isFinite(dayNum)
-  ) {
-    const dow = new Date(Date.UTC(yearNum, monthNum - 1, dayNum)).getUTCDay();
-    const weekdayMap: Record<number, string> = {
-      0: "niedziela niedziele niedz sunday sun",
-      1: "poniedzialek pon monday mon",
-      2: "wtorek wt tuesday tue",
-      3: "sroda srode sr wednesday wed",
-      4: "czwartek czw thursday thu",
-      5: "piatek pt friday fri",
-      6: "sobota sobote sob saturday sat",
-    };
-    weekdayAliases = weekdayMap[dow] ?? "";
-  }
-
-  let timeAliases = "";
-  if (entry.time) {
-    const cleanTime = entry.time.slice(0, 5);
-    const [hh = "", mm = ""] = cleanTime.split(":");
-    const hourNum = Number.parseInt(hh, 10);
-    const unpaddedHour = Number.isFinite(hourNum) ? String(hourNum) : hh;
-    const timeOfDay =
-      !Number.isFinite(hourNum)
-        ? ""
-        : hourNum < 12
-          ? "rano poranek morning"
-          : hourNum < 17
-            ? "popoludniu popoludnie afternoon"
-            : "wieczorem wieczor evening";
-
-    timeAliases = [
-      cleanTime,
-      `${hh}.${mm}`,
-      `${unpaddedHour}:${mm}`,
-      `${unpaddedHour}.${mm}`,
-      `godz ${hh}`,
-      `godz ${unpaddedHour}`,
-      `godzina ${hh}`,
-      `godzina ${unpaddedHour}`,
-      timeOfDay,
-    ].join(" ");
-  }
-
-  const extra =
-    entry.kind === "schedule_item"
-      ? entry.prepNotes
-      : entry.kind === "due_event"
-        ? `${entry.batchOrProduct} ${entry.lastEventDate}`
-        : entry.kind === "history_event"
-          ? `${entry.batchOrProduct} ${entry.description}`
-          : entry.kind === "medication_dose"
-            ? `${entry.dosage} ${entry.instructions} ${entry.scheduleType}`
-            : "";
-
-  return foldText(
-    [
-      entry.title,
-      petName,
-      entry.clinic,
-      entry.doctor,
-      entry.date,
-      `${d}.${m}.${y}`,
-      `${d}/${m}/${y}`,
-      `${Number.parseInt(d, 10)}.${m}.${y}`,
-      `${m}.${y}`,
-      y,
-      monthAliases,
-      weekdayAliases,
-      timeAliases,
-      categoryAliases,
-      extra,
-    ].join(" "),
-  );
-}
-
-function buildMonthGrid(year: number, monthIndex: number) {
-  const firstOfMonth = new Date(Date.UTC(year, monthIndex, 1));
-  const startOffset = (firstOfMonth.getUTCDay() + 6) % 7;
-  const startDate = new Date(Date.UTC(year, monthIndex, 1 - startOffset));
-
-  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
-
-  const cells: {
-    iso: string;
-    dayNumber: number;
-    inCurrentMonth: boolean;
-  }[] = [];
-
-  for (let i = 0; i < totalCells; i++) {
-    const d = new Date(
-      Date.UTC(
-        startDate.getUTCFullYear(),
-        startDate.getUTCMonth(),
-        startDate.getUTCDate() + i,
-      ),
-    );
-    const iso = d.toISOString().slice(0, 10);
-    cells.push({
-      iso,
-      dayNumber: d.getUTCDate(),
-      inCurrentMonth: d.getUTCMonth() === monthIndex,
-    });
-  }
-
-  return cells;
-}
+import {
+  type FilterCategory,
+  type ViewMode,
+  type DisplayLayout,
+  type UnifiedScheduleEntry,
+  PL_MONTH_ALIASES,
+  foldText,
+  buildSearchHaystack,
+  buildMonthGrid,
+} from "./calendar-utils";
+import { CalendarMonthView } from "./views/calendar-month-view";
+import { CalendarWeekView } from "./views/calendar-week-view";
+import { CalendarDayView } from "./views/calendar-day-view";
+import { CalendarAgendaView } from "./views/calendar-agenda-view";
+import { FutureDoseDialog } from "./future-dose-dialog";
 
 export function HouseholdSchedule({
   pets,
@@ -2227,538 +2010,6 @@ export function HouseholdSchedule({
     );
   }
 
-  function renderMonthView() {
-    return (
-      <div className="schedule-month-wrapper">
-        <div className="schedule-month-grid" role="grid">
-          {weekdayLabels.map((label) => (
-            <div
-              key={label}
-              className="schedule-weekday-header"
-              role="columnheader"
-            >
-              {label}
-            </div>
-          ))}
-
-          {monthCells.map((cell) => {
-            const dayItems = entriesByDate.get(cell.iso) ?? [];
-            const isToday = cell.iso === todayIso;
-            const isSelected = cell.iso === selectedDayIso;
-
-            return (
-              <div
-                key={cell.iso}
-                role="gridcell"
-                tabIndex={0}
-                aria-selected={isSelected}
-                onClick={() => goToDayView(cell.iso)}
-                onDoubleClick={() => openNewDialogForDate(cell.iso)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    goToDayView(cell.iso);
-                  }
-                }}
-                className={`schedule-day-cell${!cell.inCurrentMonth ? " is-outside" : ""}${isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""} cursor-pointer`}
-              >
-                <div className="schedule-day-top">
-                  <span className="schedule-day-num">{cell.dayNumber}</span>
-                  <button
-                    type="button"
-                    className="schedule-day-add"
-                    title={
-                      pl
-                        ? `Zaplanuj termin na ${cell.iso}`
-                        : `Schedule on ${cell.iso}`
-                    }
-                    aria-label={
-                      pl
-                        ? `Zaplanuj termin na ${cell.iso}`
-                        : `Schedule on ${cell.iso}`
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedDayIso(cell.iso);
-                      openNewDialogForDate(cell.iso);
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-
-                <div className="schedule-day-events">
-                  {dayItems.slice(0, 3).map((ev) => {
-                    const pName = petMap.get(ev.petId);
-                    const isOverdue =
-                      ev.status === "planned" && ev.date < todayIso;
-                    return (
-                      <button
-                        key={ev.key}
-                        type="button"
-                        title={
-                          pl
-                            ? `${ev.title} — kliknij, aby otworzyć widok dnia`
-                            : `${ev.title} — click to open day view`
-                        }
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          goToDayView(cell.iso);
-                        }}
-                        className={`schedule-day-pill is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${ev.status === "skipped" ? " is-skipped" : ""}${isOverdue ? " is-overdue" : ""}`}
-                      >
-                        {ev.time ? `${ev.time} ` : ""}
-                        {!fixedPetId && pName ? `${pName}: ` : ""}
-                        {ev.title}
-                      </button>
-                    );
-                  })}
-                  {dayItems.length > 3 && (
-                    <small
-                      className="schedule-day-more cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        goToDayView(cell.iso);
-                      }}
-                    >
-                      +{dayItems.length - 3}{" "}
-                      {pl ? "więcej" : "more"}
-                    </small>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="schedule-selected-day-panel">
-          <div className="schedule-selected-day-header">
-            <h3>
-              {pl
-                ? `Terminy w dniu ${formatDate(selectedDayIso)}`
-                : `Items on ${formatDate(selectedDayIso)}`}
-            </h3>
-            <div className="schedule-selected-day-actions">
-              <button
-                type="button"
-                className="history-action-btn"
-                onClick={() => setDisplayLayout("day")}
-                title={pl ? "Przejdź do widoku dnia" : "Go to day view"}
-              >
-                <IconCalendarEvent size={15} aria-hidden="true" />
-                <span>{pl ? "Widok dnia" : "Day view"}</span>
-              </button>
-              <button
-                type="button"
-                className="history-action-btn"
-                onClick={() => {
-                  setEditingMedicationSchedule(null);
-                  setMedicationDefaultDate(selectedDayIso);
-                  setMedicationDialogOpen(true);
-                }}
-                title={pl ? "Zaplanuj lek w tym dniu" : "Schedule medication on this day"}
-              >
-                <IconPill size={15} aria-hidden="true" />
-                <span>{pl ? "Dodaj lek" : "Add medication"}</span>
-              </button>
-              <button
-                type="button"
-                className="history-action-btn is-primary"
-                onClick={() => openNewDialogForDate(selectedDayIso)}
-              >
-                <IconPlus size={15} aria-hidden="true" />
-                <span>
-                  {pl ? "Dodaj termin" : "Add item"}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {selectedDayEntries.length === 0 ? (
-            <p className="schedule-selected-day-empty">
-              {pl
-                ? "Brak zaplanowanych wizyt ani przypomnień w tym dniu. Kliknij przycisk powyżej lub „+” w kratce dnia, aby dodać termin."
-                : "No scheduled visits or reminders on this day. Click the button above or “+” on the day cell to add one."}
-            </p>
-          ) : (
-            <ul className="schedule-compact-list">
-              {selectedDayEntries.map((entry) => renderCompactRow(entry))}
-            </ul>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderWeekView() {
-    return (
-      <div className="schedule-week-wrapper">
-        <div className="schedule-week-grid" role="grid">
-          {weekDays.map((day) => {
-            const dayEntries = entriesByDate.get(day.iso) ?? [];
-            const isSelected = day.iso === selectedDayIso;
-
-            return (
-              <div
-                key={day.iso}
-                className={`schedule-week-col${day.isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""} cursor-pointer`}
-                role="gridcell"
-                onClick={() => goToDayView(day.iso)}
-              >
-                <div
-                  className="schedule-week-col-header"
-                  title={
-                    pl
-                      ? `Kliknij, aby otworzyć widok dnia dla ${day.weekdayFull}`
-                      : `Click to open day view for ${day.weekdayFull}`
-                  }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goToDayView(day.iso);
-                  }}
-                >
-                  <div className="schedule-week-col-header-info">
-                    <span className="schedule-week-weekday">
-                      {day.weekdayName}
-                    </span>
-                    <span
-                      className={`schedule-week-daynum${day.isToday ? " is-today" : ""}`}
-                    >
-                      {day.dayNum}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="schedule-week-quick-add"
-                    title={
-                      pl
-                        ? `Zaplanuj termin na ${day.iso}`
-                        : `Schedule on ${day.iso}`
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedDayIso(day.iso);
-                      openNewDialogForDate(day.iso);
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-
-                <div className="schedule-week-col-body">
-                  {dayEntries.length === 0 ? (
-                    <div
-                      className="schedule-week-empty-slot"
-                      title={
-                        pl
-                          ? `Kliknij, aby dodać termin na ${day.iso}`
-                          : `Click to add item on ${day.iso}`
-                      }
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDayIso(day.iso);
-                        openNewDialogForDate(day.iso);
-                      }}
-                    >
-                      <span>+</span>
-                    </div>
-                  ) : (
-                    dayEntries.map((ev) => {
-                      const pName = petMap.get(ev.petId);
-                      const isOverdue =
-                        ev.status === "planned" && ev.date < todayIso;
-
-                      return (
-                        <div
-                          key={ev.key}
-                          className={`schedule-week-card is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""} cursor-pointer`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            goToDayView(day.iso);
-                          }}
-                        >
-                          <div className="schedule-week-card-top">
-                            {ev.time ? (
-                              <span className="schedule-week-time">
-                                {ev.time}
-                              </span>
-                            ) : (
-                              <span className="schedule-week-category-pill">
-                                {ev.category === "vaccination"
-                                  ? pl ? "Szczepienie" : "Vaccine"
-                                  : ev.category === "prevention"
-                                    ? pl ? "Profilaktyka" : "Prevention"
-                                    : ev.category === "lab"
-                                      ? pl ? "Badanie" : "Lab"
-                                      : pl ? "Wizyta" : "Visit"}
-                              </span>
-                            )}
-                            {pName && !fixedPetId && (
-                              <span className="schedule-week-pet">{pName}</span>
-                            )}
-                          </div>
-
-                          <strong className="schedule-week-title" title={ev.title}>
-                            {ev.title}
-                          </strong>
-
-                          {(ev.clinic || ev.doctor) && (
-                            <span className="schedule-week-place">
-                              {[ev.clinic, ev.doctor].filter(Boolean).join(" · ")}
-                            </span>
-                          )}
-
-                          <div className="schedule-week-card-actions">
-                            {ev.kind === "medical_report" ? (
-                              <Link
-                                href={`/app/zwierzeta/${ev.petId}?tab=results&report=${ev.report.id}`}
-                                className="schedule-week-action-link"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <span>{pl ? "Wyniki →" : "Report →"}</span>
-                              </Link>
-                            ) : (ev.kind === "schedule_item" ||
-                                ev.kind === "due_event") &&
-                              ev.status === "planned" ? (
-                              <button
-                                type="button"
-                                className="schedule-week-action-btn"
-                                disabled={busyKey !== null}
-                                title={pl ? "Oznacz jako wykonane" : "Mark as done"}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCompletingTarget({
-                                    sourceKind: ev.kind,
-                                    sourceId:
-                                      ev.kind === "schedule_item"
-                                        ? ev.item.id
-                                        : ev.event.id,
-                                    petId: ev.petId,
-                                    petName: pName || (pl ? "Pupil" : "Pet"),
-                                    category: ev.category,
-                                    title: ev.title,
-                                    clinic: ev.clinic,
-                                    doctor: ev.doctor,
-                                    batchOrProduct:
-                                      ev.kind === "due_event"
-                                        ? ev.batchOrProduct
-                                        : "",
-                                    prepNotes:
-                                      ev.kind === "schedule_item"
-                                        ? ev.prepNotes
-                                        : "",
-                                  });
-                                }}
-                              >
-                                <IconCheck size={12} aria-hidden="true" />
-                                <span>{pl ? "Wykonane" : "Done"}</span>
-                              </button>
-                            ) : null}
-
-                            {ev.kind === "schedule_item" &&
-                              ev.status === "planned" && (
-                                <button
-                                  type="button"
-                                  className="schedule-week-icon-btn"
-                                  title={pl ? "Edytuj termin" : "Edit item"}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingItem(ev.item);
-                                    setDialogDefaultDate(undefined);
-                                    setDialogOpen(true);
-                                  }}
-                                >
-                                  <IconPencil size={12} aria-hidden="true" />
-                                </button>
-                              )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  function renderDayView() {
-    return (
-      <div className="schedule-day-view-panel">
-        <div className="schedule-day-view-header">
-          <div className="schedule-day-view-title-block flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              className="history-action-btn flex items-center gap-1.5 text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-              onClick={() => setDisplayLayout(previousLayout)}
-              title={
-                previousLayout === "week"
-                  ? pl
-                    ? "Wróć do widoku tygodnia"
-                    : "Back to week view"
-                  : pl
-                    ? "Wróć do widoku miesiąca"
-                    : "Back to month view"
-              }
-            >
-              <IconArrowLeft size={15} aria-hidden="true" />
-              <span>
-                {previousLayout === "week"
-                  ? pl
-                    ? "Widok tygodnia"
-                    : "Week view"
-                  : pl
-                    ? "Widok miesiąca"
-                    : "Month view"}
-              </span>
-            </button>
-            <h3 className="m-0 text-base font-bold">{dayTitle}</h3>
-            {selectedDayIso === todayIso && (
-              <span className="schedule-gcal-today-badge">
-                {pl ? "Dzisiaj" : "Today"}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setEditingMedicationSchedule(null);
-                setMedicationDefaultDate(selectedDayIso);
-                setMedicationDialogOpen(true);
-              }}
-            >
-              <IconPill size={16} aria-hidden="true" />
-              {pl ? "Dodaj lek" : "Add medication"}
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => openNewDialogForDate(selectedDayIso)}
-            >
-              <IconPlus size={16} aria-hidden="true" />
-              {pl ? "Dodaj termin" : "Add item on this day"}
-            </Button>
-          </div>
-        </div>
-
-        {selectedDayEntries.length === 0 ? (
-          <div className="schedule-day-empty-state">
-            <div className="schedule-day-empty-icon">
-              <IconCalendar size={32} stroke={1.5} aria-hidden="true" />
-            </div>
-            <h4>
-              {pl
-                ? `Brak terminów na ${formatDate(selectedDayIso)}`
-                : `No items scheduled on ${formatDate(selectedDayIso)}`}
-            </h4>
-            <p>
-              {pl
-                ? "Nie masz zaplanowanych wizyt u weterynarza, szczepień ani przypomnień na ten termin."
-                : "You have no vet visits, vaccinations, or reminders scheduled for this date."}
-            </p>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => openNewDialogForDate(selectedDayIso)}
-            >
-              <IconPlus size={16} aria-hidden="true" />
-              <span>
-                {pl ? "Zaplanuj wizytę lub badanie" : "Schedule visit or test"}
-              </span>
-            </Button>
-          </div>
-        ) : (
-          <div className="schedule-day-entries-timeline">
-            <ul className="schedule-day-entries-list">
-              {selectedDayEntries.map((entry) => renderDayDetailCard(entry))}
-            </ul>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function renderAgendaView() {
-    if (groupedByMonth.length === 0) {
-      return (
-        <div className="household-calendar-empty">
-          <IconCalendar size={30} stroke={1.4} aria-hidden="true" />
-          <div>
-            <h3>
-              {searchQuery.trim()
-                ? pl
-                  ? `Brak wyników dla „${searchQuery.trim()}”`
-                  : `No matches for “${searchQuery.trim()}”`
-                : viewMode === "upcoming"
-                  ? pl
-                    ? "Brak zaplanowanych terminów dla wybranych filtrów"
-                    : "No scheduled items for selected filters"
-                  : pl
-                    ? "Brak zakończonych lub odwołanych pozycji"
-                    : "No completed or cancelled items"}
-            </h3>
-            <p>
-              {searchQuery.trim()
-                ? pl
-                  ? "Spróbuj wpisać inną nazwę miesiąca (np. „Październik 2026”), nazwę zabiegu lub imię zwierzaka."
-                  : "Try another month name (e.g. “October 2026”), procedure title, or pet name."
-                : pl
-                  ? "Kliknij „Zaplanuj termin”, aby dodać wizytę weterynaryjną z notatkami przedwizytowymi lub przypomnienie o szczepieniu/leku."
-                  : "Click “Schedule item” to add a vet visit with pre-visit notes or a vaccination/medication reminder."}
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="schedule-month-groups">
-        {groupedByMonth.map((group) => {
-          const isCollapsed = !!collapsedMonths[group.ym];
-          return (
-            <div key={group.ym} className="schedule-month-group">
-              <button
-                type="button"
-                className="schedule-month-group-header"
-                aria-expanded={!isCollapsed}
-                onClick={() =>
-                  setCollapsedMonths((prev) => ({
-                    ...prev,
-                    [group.ym]: !prev[group.ym],
-                  }))
-                }
-              >
-                <IconChevronDown
-                  size={16}
-                  aria-hidden="true"
-                  className={`schedule-group-chevron${isCollapsed ? " is-collapsed" : ""}`}
-                />
-                <strong>{group.label}</strong>
-                <span className="schedule-group-count">
-                  {group.items.length}
-                </span>
-              </button>
-
-              {!isCollapsed && (
-                <ul className="schedule-compact-list">
-                  {group.items.map((entry) => renderCompactRow(entry))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <section className="household-calendar" id="terminarz">
       <div className="household-section-heading schedule-heading">
@@ -3259,10 +2510,81 @@ export function HouseholdSchedule({
         </div>
       </div>
 
-      {displayLayout === "month" && renderMonthView()}
-      {displayLayout === "week" && renderWeekView()}
-      {displayLayout === "day" && renderDayView()}
-      {displayLayout === "agenda" && renderAgendaView()}
+      {displayLayout === "month" && (
+        <CalendarMonthView
+          weekdayLabels={weekdayLabels}
+          monthCells={monthCells}
+          entriesByDate={entriesByDate}
+          todayIso={todayIso}
+          selectedDayIso={selectedDayIso}
+          selectedDayEntries={selectedDayEntries}
+          petMap={petMap}
+          fixedPetId={fixedPetId}
+          pl={pl}
+          goToDayView={goToDayView}
+          openNewDialogForDate={openNewDialogForDate}
+          setSelectedDayIso={setSelectedDayIso}
+          setDisplayLayout={setDisplayLayout}
+          onAddMedication={(iso) => {
+            setEditingMedicationSchedule(null);
+            setMedicationDefaultDate(iso);
+            setMedicationDialogOpen(true);
+          }}
+          formatDate={formatDate}
+          renderCompactRow={renderCompactRow}
+        />
+      )}
+      {displayLayout === "week" && (
+        <CalendarWeekView
+          weekDays={weekDays}
+          entriesByDate={entriesByDate}
+          todayIso={todayIso}
+          selectedDayIso={selectedDayIso}
+          petMap={petMap}
+          fixedPetId={fixedPetId}
+          pl={pl}
+          busyKey={busyKey}
+          goToDayView={goToDayView}
+          setSelectedDayIso={setSelectedDayIso}
+          openNewDialogForDate={openNewDialogForDate}
+          onCompleteTarget={setCompletingTarget}
+          onEditItem={(item) => {
+            setEditingItem(item);
+            setDialogDefaultDate(undefined);
+            setDialogOpen(true);
+          }}
+        />
+      )}
+      {displayLayout === "day" && (
+        <CalendarDayView
+          previousLayout={previousLayout}
+          pl={pl}
+          dayTitle={dayTitle}
+          selectedDayIso={selectedDayIso}
+          todayIso={todayIso}
+          selectedDayEntries={selectedDayEntries}
+          setDisplayLayout={setDisplayLayout}
+          onAddMedication={(iso) => {
+            setEditingMedicationSchedule(null);
+            setMedicationDefaultDate(iso);
+            setMedicationDialogOpen(true);
+          }}
+          openNewDialogForDate={openNewDialogForDate}
+          formatDate={formatDate}
+          renderDayDetailCard={renderDayDetailCard}
+        />
+      )}
+      {displayLayout === "agenda" && (
+        <CalendarAgendaView
+          groupedByMonth={groupedByMonth}
+          searchQuery={searchQuery}
+          viewMode={viewMode}
+          pl={pl}
+          collapsedMonths={collapsedMonths}
+          setCollapsedMonths={setCollapsedMonths}
+          renderCompactRow={renderCompactRow}
+        />
+      )}
 
       {dialogOpen && (
         <ScheduleDialog
@@ -3405,109 +2727,5 @@ export function HouseholdSchedule({
         />
       )}
     </section>
-  );
-}
-
-function FutureDoseDialog({
-  dose,
-  petName,
-  onClose,
-}: {
-  dose: ProjectedMedicationDose;
-  petName?: string;
-  onClose: () => void;
-}) {
-  const locale = useLocale();
-  const pl = locale === "pl";
-  const dialog = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const el = dialog.current!;
-    const focus = document.activeElement as HTMLElement | null;
-    const previous = document.body.style.overflow;
-    el.showModal();
-    document.body.style.overflow = "hidden";
-    return () => {
-      el.close();
-      document.body.style.overflow = previous;
-      focus?.focus();
-    };
-  }, []);
-
-  return (
-    <dialog
-      ref={dialog}
-      className="weight-dialog history-dialog"
-      aria-labelledby="future-dose-dialog-title"
-      onCancel={onClose}
-      onClick={(e) => {
-        if (e.target === dialog.current) onClose();
-      }}
-    >
-      <div className="p-1">
-        <header className="flex items-start gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-          <span className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <IconClock size={22} aria-hidden="true" />
-          </span>
-          <div className="flex-1">
-            <h3
-              id="future-dose-dialog-title"
-              className="text-base font-bold text-slate-900 dark:text-slate-100 m-0"
-            >
-              {pl ? "Zaplanowana przyszła dawka" : "Scheduled future dose"}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 m-0">
-              {pl
-                ? "Podanie leku można zatwierdzić dopiero w wyznaczonym dniu"
-                : "Confirmation is available only on dose date"}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="weight-dialog-close"
-            onClick={onClose}
-            aria-label={pl ? "Zamknij" : "Close"}
-          >
-            <IconX size={18} aria-hidden="true" />
-          </button>
-        </header>
-
-        <div className="py-4 space-y-3">
-          <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 text-xs leading-relaxed text-amber-950 dark:text-amber-200">
-            <p className="m-0 font-medium">
-              {pl ? (
-                <>
-                  Lek <strong>„{dose.name}”</strong>
-                  {dose.dosage ? ` (${dose.dosage})` : ""}
-                  {petName ? ` dla pupila ${petName}` : ""} jest zaplanowany na termin{" "}
-                  <strong>{dose.dose_date}</strong>
-                  {dose.scheduled_time ? ` o godz. ${dose.scheduled_time}` : ""}.
-                </>
-              ) : (
-                <>
-                  Medication <strong>"{dose.name}"</strong>
-                  {dose.dosage ? ` (${dose.dosage})` : ""}
-                  {petName ? ` for ${petName}` : ""} is scheduled for{" "}
-                  <strong>{dose.dose_date}</strong>
-                  {dose.scheduled_time ? ` at ${dose.scheduled_time}` : ""}.
-                </>
-              )}
-            </p>
-          </div>
-
-          <p className="text-xs text-slate-600 dark:text-slate-400 m-0 leading-relaxed">
-            {pl
-              ? "Ze względów bezpieczeństwa i rzetelności historii leczenia, zatwierdzenie podania jest możliwe w bieżącym dniu lub dla dawek zaległych. Wróć do tej dawki w wyznaczonym terminie, aby odnotować jej przyjęcie."
-              : "To ensure treatment accuracy, dose confirmation is available on the scheduled date or for overdue doses. Please return on that date to confirm intake."}
-          </p>
-        </div>
-
-        <footer className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-          <Button type="button" variant="primary" size="sm" onClick={onClose}>
-            {pl ? "Rozumiem" : "Got it"}
-          </Button>
-        </footer>
-      </div>
-    </dialog>
   );
 }
