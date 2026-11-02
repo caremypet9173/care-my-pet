@@ -28,7 +28,11 @@ const TreatmentSummaryModal = dynamic(
   () => import("./treatment-summary-modal").then((m) => m.TreatmentSummaryModal),
   { ssr: false },
 );
-import { projectMedicationDoses } from "./projection";
+import {
+  normalizeMedicationSchedule,
+  parseScheduledTimes,
+  projectMedicationDoses,
+} from "./projection";
 import type {
   MedicationLog,
   MedicationSchedule,
@@ -169,10 +173,12 @@ export function ActiveMedicationsCard({
               );
               return [incoming, ...filtered];
             });
+            router.refresh();
           } else if (payload.eventType === "DELETE") {
             const deletedId = (payload.old as { id?: string })?.id;
             if (deletedId) {
               setLogs((prev) => prev.filter((l) => l.id !== deletedId));
+              router.refresh();
             }
           }
         },
@@ -187,20 +193,25 @@ export function ActiveMedicationsCard({
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            const incoming = payload.new as MedicationSchedule;
+            const incoming = normalizeMedicationSchedule(payload.new as any);
             setSchedules((prev) => {
-              if (prev.some((s) => s.id === incoming.id)) return prev;
+              if (prev.some((s) => s.id === incoming.id)) {
+                return prev.map((s) => (s.id === incoming.id ? incoming : s));
+              }
               return [incoming, ...prev];
             });
+            router.refresh();
           } else if (payload.eventType === "UPDATE") {
-            const incoming = payload.new as MedicationSchedule;
+            const incoming = normalizeMedicationSchedule(payload.new as any);
             setSchedules((prev) =>
               prev.map((s) => (s.id === incoming.id ? incoming : s)),
             );
+            router.refresh();
           } else if (payload.eventType === "DELETE") {
             const deletedId = (payload.old as { id?: string })?.id;
             if (deletedId) {
               setSchedules((prev) => prev.filter((s) => s.id !== deletedId));
+              router.refresh();
             }
           }
         },
@@ -210,7 +221,22 @@ export function ActiveMedicationsCard({
     return () => {
       void client.removeChannel(channel);
     };
-  }, [petId]);
+  }, [petId, router]);
+
+  // Automatyczne odświeżenie danych po powrocie do uśpionej karty/odblokowaniu ekranu telefonu
+  useEffect(() => {
+    function handleVisibility() {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        router.refresh();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+  }, [router]);
 
   // Szybka akcja podania lub pominięcia dawki bezpośrednio z karty z optymistyczną aktualizacją UI
   async function handleQuickRecordDose(
@@ -440,12 +466,7 @@ export function ActiveMedicationsCard({
         <ul className="divide-y divide-slate-100 dark:divide-slate-800 -mx-1 flex-1 min-h-0 overflow-y-auto pr-1">
           {displayedSchedules.map((s) => {
             const isFinished = !s.is_active || (s.end_date && s.end_date < todayIso);
-            const times =
-              s.scheduled_times && s.scheduled_times.length > 0
-                ? s.scheduled_times
-                : s.scheduled_time
-                  ? [s.scheduled_time]
-                  : [];
+            const times = parseScheduledTimes(s);
 
             // Projekcja dzisiejszych dawek dla tego konkretnego leku
             const todayDoses = projectMedicationDoses({

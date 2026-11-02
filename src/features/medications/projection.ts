@@ -33,6 +33,55 @@ function addMonths(date: Date, months: number): Date {
   return res;
 }
 
+/**
+ * Bezpiecznie parsuje godziny podawania leku.
+ * Obsługuje format tablicy JS string[] oraz format tablicy PostgreSQL "{08:00,14:00}"
+ * zwracany przez Supabase Realtime (wal2json).
+ */
+export function parseScheduledTimes(sched?: {
+  scheduled_times?: string[] | string | null;
+  scheduled_time?: string | null;
+} | null): string[] {
+  if (!sched) return [];
+  const raw = sched.scheduled_times;
+  if (Array.isArray(raw)) {
+    const valid = raw.filter(
+      (t): t is string => typeof t === "string" && !!t.trim(),
+    );
+    if (valid.length > 0) return valid;
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      const items = trimmed
+        .slice(1, -1)
+        .split(",")
+        .map((s) => s.trim().replace(/^"|"$/g, ""))
+        .filter(Boolean);
+      if (items.length > 0) return items;
+    } else if (trimmed) {
+      return [trimmed];
+    }
+  }
+  if (sched.scheduled_time && typeof sched.scheduled_time === "string") {
+    const trimmed = sched.scheduled_time.trim();
+    if (trimmed) return [trimmed];
+  }
+  return [];
+}
+
+/**
+ * Normalizuje obiekt harmonogramu leku otrzymany np. z Supabase Realtime
+ */
+export function normalizeMedicationSchedule(
+  sched: MedicationSchedule | Record<string, unknown>,
+): MedicationSchedule {
+  return {
+    ...(sched as MedicationSchedule),
+    scheduled_times: parseScheduledTimes(sched as any),
+  };
+}
+
 export function projectMedicationDoses({
   schedules,
   logs,
@@ -69,10 +118,8 @@ export function projectMedicationDoses({
     if (schedStartIso > rangeEnd) continue;
     if (sched.end_date && sched.end_date < rangeStart) continue;
 
-    const times: string[] =
-      Array.isArray(sched.scheduled_times) && sched.scheduled_times.length > 0
-        ? sched.scheduled_times
-        : [sched.scheduled_time || ""];
+    const parsedTimes = parseScheduledTimes(sched);
+    const times: string[] = parsedTimes.length > 0 ? parsedTimes : [sched.scheduled_time || ""];
 
     if (sched.schedule_type === "one_off") {
       if (schedStartIso >= rangeStart && schedStartIso <= rangeEnd) {

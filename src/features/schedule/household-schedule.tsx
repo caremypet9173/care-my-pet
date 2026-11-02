@@ -66,7 +66,11 @@ const SkipDoseDialog = dynamic(
     ),
   { ssr: false },
 );
-import { projectMedicationDoses } from "@/features/medications/projection";
+import {
+  normalizeMedicationSchedule,
+  parseScheduledTimes,
+  projectMedicationDoses,
+} from "@/features/medications/projection";
 import type {
   MedicationLog,
   MedicationSchedule,
@@ -499,10 +503,12 @@ export function HouseholdSchedule({
               );
               return [incoming, ...filtered];
             });
+            router.refresh();
           } else if (payload.eventType === "DELETE") {
             const deletedId = (payload.old as { id?: string })?.id;
             if (deletedId) {
               setMedicationLogs((prev) => prev.filter((l) => l.id !== deletedId));
+              router.refresh();
             }
           }
         },
@@ -517,22 +523,27 @@ export function HouseholdSchedule({
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            const incoming = payload.new as MedicationSchedule;
+            const incoming = normalizeMedicationSchedule(payload.new as any);
             setMedicationSchedules((prev) => {
-              if (prev.some((s) => s.id === incoming.id)) return prev;
+              if (prev.some((s) => s.id === incoming.id)) {
+                return prev.map((s) => (s.id === incoming.id ? incoming : s));
+              }
               return [incoming, ...prev];
             });
+            router.refresh();
           } else if (payload.eventType === "UPDATE") {
-            const incoming = payload.new as MedicationSchedule;
+            const incoming = normalizeMedicationSchedule(payload.new as any);
             setMedicationSchedules((prev) =>
               prev.map((s) => (s.id === incoming.id ? incoming : s)),
             );
+            router.refresh();
           } else if (payload.eventType === "DELETE") {
             const deletedId = (payload.old as { id?: string })?.id;
             if (deletedId) {
               setMedicationSchedules((prev) =>
                 prev.filter((s) => s.id !== deletedId),
               );
+              router.refresh();
             }
           }
         },
@@ -542,7 +553,22 @@ export function HouseholdSchedule({
     return () => {
       void client.removeChannel(channel);
     };
-  }, [fixedPetId]);
+  }, [fixedPetId, router]);
+
+  // Automatyczne odświeżenie danych po powrocie do uśpionej karty/odblokowaniu ekranu telefonu
+  useEffect(() => {
+    function handleVisibility() {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        router.refresh();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+  }, [router]);
 
   const [notifSettings, setNotifSettings] =
     useState<HouseholdNotificationSettings>(() => ({

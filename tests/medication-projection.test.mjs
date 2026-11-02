@@ -325,3 +325,32 @@ test('scenariusz 6: śledzenie zapasu i ewidencja podania przez domownika', () =
   assert.equal(doses[0].log?.administered_by, 'user-2');
   assert.equal(schedules[0].stock_quantity, 14);
 });
+
+test('scenariusz 7: normalizacja godzin w formacie PostgreSQL array string ze zdarzeń Supabase Realtime', () => {
+  const realtimePayload = {
+    id: 'sched-rt',
+    pet_id: 'pet-1',
+    household_id: 'house-1',
+    name: 'Gabapentyna',
+    dosage: 'Kapsułka',
+    schedule_type: 'daily',
+    start_date: '2026-11-02',
+    end_date: null,
+    scheduled_time: '08:00',
+    // Postgres Realtime wal2json często przekazuje typ text[] jako napis "{08:00,14:00,20:00}"
+    scheduled_times: '{08:00,14:00,20:00}',
+    is_active: true,
+  };
+
+  const doses = projectMedicationDoses({
+    schedules: [realtimePayload],
+    logs: [],
+    rangeStart: '2026-11-02',
+    rangeEnd: '2026-11-02',
+  });
+
+  assert.equal(doses.length, 3);
+  assert.equal(doses[0].scheduled_time, '08:00');
+  assert.equal(doses[1].scheduled_time, '14:00');
+  assert.equal(doses[2].scheduled_time, '20:00');
+});
