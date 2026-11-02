@@ -41,13 +41,31 @@ import type {
   ScheduleCategory,
   ScheduleItem,
 } from "./types";
-import {
-  ScheduleCompleteDialog,
-  ScheduleDialog,
-  type CompleteTarget,
-} from "./schedule-dialog";
-import { MedicationDialog } from "@/features/medications/medication-dialog";
-import { SkipDoseDialog } from "@/features/medications/skip-dose-dialog";
+import dynamic from "next/dynamic";
+import type { CompleteTarget } from "./schedule-dialog";
+
+const ScheduleDialog = dynamic(
+  () => import("./schedule-dialog").then((m) => m.ScheduleDialog),
+  { ssr: false },
+);
+const ScheduleCompleteDialog = dynamic(
+  () => import("./schedule-dialog").then((m) => m.ScheduleCompleteDialog),
+  { ssr: false },
+);
+const MedicationDialog = dynamic(
+  () =>
+    import("@/features/medications/medication-dialog").then(
+      (m) => m.MedicationDialog,
+    ),
+  { ssr: false },
+);
+const SkipDoseDialog = dynamic(
+  () =>
+    import("@/features/medications/skip-dose-dialog").then(
+      (m) => m.SkipDoseDialog,
+    ),
+  { ssr: false },
+);
 import { projectMedicationDoses } from "@/features/medications/projection";
 import type {
   MedicationLog,

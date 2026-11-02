@@ -14,9 +14,20 @@ import {
   IconPrinter,
 } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
-import { MedicationDialog } from "./medication-dialog";
-import { SkipDoseDialog } from "./skip-dose-dialog";
-import { TreatmentSummaryModal } from "./treatment-summary-modal";
+import dynamic from "next/dynamic";
+
+const MedicationDialog = dynamic(
+  () => import("./medication-dialog").then((m) => m.MedicationDialog),
+  { ssr: false },
+);
+const SkipDoseDialog = dynamic(
+  () => import("./skip-dose-dialog").then((m) => m.SkipDoseDialog),
+  { ssr: false },
+);
+const TreatmentSummaryModal = dynamic(
+  () => import("./treatment-summary-modal").then((m) => m.TreatmentSummaryModal),
+  { ssr: false },
+);
 import { projectMedicationDoses } from "./projection";
 import type {
   MedicationLog,

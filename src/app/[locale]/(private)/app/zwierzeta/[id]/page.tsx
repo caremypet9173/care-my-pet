@@ -29,6 +29,7 @@ import { MedicalResults } from "@/features/medical/results";
 import { MedicalDocuments } from "@/features/medical/documents";
 import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
 import { getHouseholdDetails } from "@/features/household/data";
+
 export default async function PetPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{tab?:string;report?:string;document?:string}> }) {
   const locale = await getLocale();
   const t = petMessages[locale];
@@ -37,7 +38,22 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   if (!pet) notFound();
   const resolvedSearch = await searchParams;
   const requestedReport = resolvedSearch.report ?? resolvedSearch.document;
-  const [reports,weights,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails] = await Promise.all([listReports(pet.id,requestedReport),listWeights(pet.id),listHealthEvents(pet.id),listPetScheduleItems(pet.id),getHouseholdNotificationSettings(),listAssistantThreads(pet.id),listAssistantMessages(pet.id),getAssistantQuotaUsed(),listPetMedicationSchedules(pet.id),listPetMedicationLogs(pet.id),getHouseholdDetails(pet.gospodarstwo_id)]);
+  const tab = resolvedSearch.tab;
+  const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : tab === "weight" ? 4 : tab === "assistant" ? 5 : 0;
+  const isAssistantTab = initialTab === 5;
+  const [reports,weights,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails] = await Promise.all([
+    listReports(pet.id,requestedReport),
+    listWeights(pet.id),
+    listHealthEvents(pet.id),
+    listPetScheduleItems(pet.id),
+    getHouseholdNotificationSettings(),
+    isAssistantTab ? listAssistantThreads(pet.id) : Promise.resolve(undefined),
+    isAssistantTab ? listAssistantMessages(pet.id) : Promise.resolve(undefined),
+    isAssistantTab ? getAssistantQuotaUsed() : Promise.resolve(undefined),
+    listPetMedicationSchedules(pet.id),
+    listPetMedicationLogs(pet.id),
+    getHouseholdDetails(pet.gospodarstwo_id)
+  ]);
   const memberNames: Record<string, string> = {};
   if (householdDetails?.owner?.user_id) {
     memberNames[householdDetails.owner.user_id] = householdDetails.owner.email?.split("@")[0] || (locale === "pl" ? "Właściciel" : "Owner");
@@ -51,8 +67,6 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     ? householdDetails.owner.user_id
     : householdDetails?.members.find((m) => m.is_self)?.user_id;
   const keyParameters=reports.flatMap(report=>report.rows.filter(row=>row.is_key).map(row=>({row,date:report.test_date})));
-  const tab = resolvedSearch.tab;
-  const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : tab === "weight" ? 4 : tab === "assistant" ? 5 : 0;
   const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date());
   const nextDueCandidate = [
     ...scheduleItems.filter(it => it.status === "planned").map(it => ({ date: it.scheduled_date, title: it.title })),

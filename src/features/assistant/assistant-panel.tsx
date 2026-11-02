@@ -35,25 +35,82 @@ export function AssistantPanel({
 }: {
   petId: string;
   petName: string;
-  initialThreads: AssistantThread[];
-  initialMessages: AssistantMessage[];
-  initialQuotaUsed: number;
+  initialThreads?: AssistantThread[];
+  initialMessages?: AssistantMessage[];
+  initialQuotaUsed?: number;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
 
-  const [threads, setThreads] = useState<AssistantThread[]>(initialThreads);
-  const [messages, setMessages] = useState<AssistantMessage[]>(initialMessages);
+  const [threads, setThreads] = useState<AssistantThread[]>(initialThreads ?? []);
+  const [messages, setMessages] = useState<AssistantMessage[]>(initialMessages ?? []);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
-    initialThreads[0]?.id ?? null,
+    initialThreads?.[0]?.id ?? null,
   );
-  const [quotaUsed, setQuotaUsed] = useState(initialQuotaUsed);
+  const [quotaUsed, setQuotaUsed] = useState(initialQuotaUsed ?? 0);
+  const [loadingInitial, setLoadingInitial] = useState(initialThreads === undefined);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (initialThreads !== undefined) return;
+    let active = true;
+
+    async function loadLazyAssistantData() {
+      setLoadingInitial(true);
+      try {
+        const client = createClient();
+        const [threadsRes, msgsRes, quotaRes] = await Promise.all([
+          client
+            .from("pet_assistant_thread")
+            .select("*")
+            .eq("pet_id", petId)
+            .order("updated_at", { ascending: false })
+            .limit(50),
+          client
+            .from("pet_assistant_message")
+            .select("*")
+            .eq("pet_id", petId)
+            .order("created_at", { ascending: true })
+            .limit(300),
+          client.rpc("get_ai_assistant_quota_used"),
+        ]);
+
+        if (!active) return;
+
+        if (threadsRes.data) {
+          const loadedThreads = threadsRes.data as AssistantThread[];
+          setThreads(loadedThreads);
+          setSelectedThreadId(loadedThreads[0]?.id ?? null);
+        }
+        if (msgsRes.data) {
+          setMessages(
+            (msgsRes.data as Array<Record<string, unknown>>).map((row) => ({
+              ...row,
+              sources: Array.isArray(row.sources) ? row.sources : [],
+              follow_ups: Array.isArray(row.follow_ups) ? row.follow_ups : [],
+            })) as AssistantMessage[],
+          );
+        }
+        if (typeof quotaRes.data === "number") {
+          setQuotaUsed(quotaRes.data);
+        }
+      } catch (err) {
+        console.error("Failed to load assistant data", err);
+      } finally {
+        if (active) setLoadingInitial(false);
+      }
+    }
+
+    void loadLazyAssistantData();
+    return () => {
+      active = false;
+    };
+  }, [petId, initialThreads]);
 
   const activeMessages = useMemo(
     () =>
@@ -303,7 +360,17 @@ export function AssistantPanel({
         </div>
       </section>
 
-      <div className="assistant-workspace">
+      {loadingInitial ? (
+        <section className="pet-panel p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
+          <IconSparkles size={32} className="animate-pulse text-teal-600" />
+          <p className="text-sm font-medium">
+            {pl
+              ? "Wczytywanie historii rozmów z Asystentem AI…"
+              : "Loading AI Assistant conversations…"}
+          </p>
+        </section>
+      ) : (
+        <div className="assistant-workspace">
         <aside
           className="pet-panel assistant-sidebar"
           aria-label={pl ? "Historia rozmów" : "Conversation history"}
@@ -602,6 +669,7 @@ export function AssistantPanel({
           </form>
         </section>
       </div>
+      )}
     </div>
   );
 }
