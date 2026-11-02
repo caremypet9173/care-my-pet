@@ -8,6 +8,7 @@ import {
   IconClock,
   IconDeviceFloppy,
   IconPill,
+  IconPlus,
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
@@ -62,9 +63,15 @@ export function MedicationDialog({
   );
   const [hasEndDate, setHasEndDate] = useState(Boolean(schedule?.end_date));
   const [endDate, setEndDate] = useState(schedule?.end_date ?? "");
-  const [scheduledTime, setScheduledTime] = useState(
-    schedule?.scheduled_time ?? "08:00",
-  );
+  const [scheduledTimes, setScheduledTimes] = useState<string[]>(() => {
+    if (schedule?.scheduled_times && schedule.scheduled_times.length > 0) {
+      return schedule.scheduled_times;
+    }
+    if (schedule?.scheduled_time) {
+      return [schedule.scheduled_time];
+    }
+    return ["08:00"];
+  });
   const [intervalValue, setIntervalValue] = useState<number>(
     schedule?.interval_value ?? 4,
   );
@@ -74,6 +81,31 @@ export function MedicationDialog({
   const [instructions, setInstructions] = useState(
     schedule?.instructions ?? "",
   );
+
+  function addTimeSlot() {
+    setScheduledTimes((prev) => {
+      const last = prev[prev.length - 1] || "08:00";
+      const [h = 8, m = 0] = last.split(":").map(Number);
+      const nextH = (h + 8) % 24;
+      const nextTime = `${String(nextH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      return [...prev, nextTime];
+    });
+  }
+
+  function updateTimeSlot(index: number, val: string) {
+    setScheduledTimes((prev) => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  }
+
+  function removeTimeSlot(index: number) {
+    setScheduledTimes((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  }
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -126,6 +158,20 @@ export function MedicationDialog({
       return;
     }
 
+    const hhMm = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+    const validTimes = Array.from(
+      new Set(scheduledTimes.filter((t) => hhMm.test(t.trim()))),
+    ).sort();
+    if (validTimes.length === 0) {
+      setError(
+        pl
+          ? "Podaj przynajmniej jedną poprawną godzinę podania (np. 08:00)."
+          : "Enter at least one valid time (e.g. 08:00).",
+      );
+      return;
+    }
+    const cleanTime = validTimes[0] ?? "";
+
     setSaving(true);
     setError("");
 
@@ -141,7 +187,8 @@ export function MedicationDialog({
         interval_unit: scheduleType === "interval" ? intervalUnit : null,
         start_date: startDate,
         end_date: hasEndDate && endDate ? endDate : null,
-        scheduled_time: scheduledTime.trim(),
+        scheduled_time: cleanTime,
+        scheduled_times: validTimes,
         instructions: instructions.trim(),
         is_active: true,
       },
@@ -180,6 +227,7 @@ export function MedicationDialog({
             p_scheduled_time: payload.item.scheduled_time,
             p_instructions: payload.item.instructions,
             p_is_active: payload.item.is_active,
+            p_scheduled_times: payload.item.scheduled_times,
           },
         );
 
@@ -444,48 +492,23 @@ export function MedicationDialog({
 
             {/* Pola specyficzne dla wybranego wariantu */}
             {scheduleType === "one_off" && (
-              <>
-                <div>
-                  <label htmlFor="med-oneoff-date">
-                    {pl ? "Data podania *" : "Date *"}
-                  </label>
-                  <input
-                    id="med-oneoff-date"
-                    type="date"
-                    value={startDate}
-                    required
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="med-oneoff-time">
-                    {pl ? "Godzina podania" : "Time"}
-                  </label>
-                  <input
-                    id="med-oneoff-time"
-                    type="time"
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                  />
-                </div>
-              </>
+              <div className="full-width">
+                <label htmlFor="med-oneoff-date">
+                  {pl ? "Data podania *" : "Date *"}
+                </label>
+                <input
+                  id="med-oneoff-date"
+                  type="date"
+                  value={startDate}
+                  required
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
             )}
 
             {scheduleType === "daily" && (
               <>
-                <div>
-                  <label htmlFor="med-daily-time">
-                    {pl ? "Godzina podania *" : "Time *"}
-                  </label>
-                  <input
-                    id="med-daily-time"
-                    type="time"
-                    value={scheduledTime}
-                    required
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                  />
-                </div>
-                <div>
+                <div className="full-width">
                   <label htmlFor="med-daily-start">
                     {pl ? "Data rozpoczęcia *" : "Start date *"}
                   </label>
@@ -591,7 +614,7 @@ export function MedicationDialog({
                   </div>
                 </div>
 
-                <div>
+                <div className="full-width">
                   <label htmlFor="med-interval-start">
                     {pl ? "Pierwsze podanie od *" : "First dose date *"}
                   </label>
@@ -601,18 +624,6 @@ export function MedicationDialog({
                     value={startDate}
                     required
                     onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="med-interval-time">
-                    {pl ? "Godzina podania" : "Time"}
-                  </label>
-                  <input
-                    id="med-interval-time"
-                    type="time"
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
                   />
                 </div>
 
@@ -651,6 +662,83 @@ export function MedicationDialog({
                 </div>
               </>
             )}
+
+            {/* Pory podawania w ciągu wyznaczonego dnia (wspólne dla każdego trybu) */}
+            <div className="full-width rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50/70 dark:bg-slate-900/40">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <div>
+                  <label className="m-0 font-medium text-sm text-slate-800 dark:text-slate-200">
+                    {pl ? "Pory podawania w ciągu dnia *" : "Daily dose times *"}
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {pl
+                      ? "Możesz dodać kilka dawek dziennie (np. rano i wieczorem)"
+                      : "You can add multiple doses per day (e.g. morning & evening)"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setScheduledTimes(["08:00"])}
+                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    1× (08:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduledTimes(["08:00", "20:00"])}
+                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    2× (08:00, 20:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduledTimes(["08:00", "14:00", "20:00"])}
+                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    3× (08:00, 14:00, 20:00)
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {scheduledTimes.map((time, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) => updateTimeSlot(idx, e.target.value)}
+                      className="w-36 rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm font-medium"
+                      required
+                    />
+                    <span className="text-xs text-slate-500 font-medium">
+                      {pl ? `Dawka ${idx + 1}` : `Dose ${idx + 1}`}
+                    </span>
+                    {scheduledTimes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTimeSlot(idx)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-md transition-colors"
+                        title={pl ? "Usuń tę porę" : "Remove this time slot"}
+                        aria-label={pl ? "Usuń tę porę" : "Remove this time slot"}
+                      >
+                        <IconTrash size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={addTimeSlot}
+                className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+              >
+                <IconPlus size={14} />
+                <span>{pl ? "+ Dodaj kolejną porę podania" : "+ Add another dose time"}</span>
+              </button>
+            </div>
 
             {/* Wskazówki i notatki */}
             <div className="full-width">

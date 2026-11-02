@@ -14,6 +14,7 @@ export type MedicationSchedule = {
   start_date: string;
   end_date: string | null;
   scheduled_time: string;
+  scheduled_times?: string[];
   instructions: string;
   is_active: boolean;
   revision: number;

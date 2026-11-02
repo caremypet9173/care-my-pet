@@ -162,7 +162,16 @@ Deno.serve(async (req) => {
       typeof item.end_date === "string" && item.end_date.trim()
         ? item.end_date.trim()
         : null;
-    const scheduledTime = String(item.scheduled_time ?? "").trim();
+    const scheduledTimesRaw = Array.isArray(item.scheduled_times) ? item.scheduled_times : [];
+    const scheduledTimes = Array.from(new Set(
+      scheduledTimesRaw
+        .map((t: unknown) => String(t ?? "").trim())
+        .filter((t: string) => hhMm.test(t))
+    )).sort();
+
+    const scheduledTime = String(
+      item.scheduled_time ?? scheduledTimes[0] ?? "",
+    ).trim();
     const instructions = String(item.instructions ?? "").trim();
     const isActive = item.is_active !== false;
 
@@ -207,6 +216,7 @@ Deno.serve(async (req) => {
         p_scheduled_time: scheduledTime,
         p_instructions: instructions,
         p_is_active: isActive,
+        p_scheduled_times: scheduledTimes.length > 0 ? scheduledTimes : (scheduledTime ? [scheduledTime] : []),
       },
     );
 

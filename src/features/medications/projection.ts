@@ -69,26 +69,31 @@ export function projectMedicationDoses({
     if (schedStartIso > rangeEnd) continue;
     if (sched.end_date && sched.end_date < rangeStart) continue;
 
-    const time = sched.scheduled_time || "";
+    const times: string[] =
+      Array.isArray(sched.scheduled_times) && sched.scheduled_times.length > 0
+        ? sched.scheduled_times
+        : [sched.scheduled_time || ""];
 
     if (sched.schedule_type === "one_off") {
       if (schedStartIso >= rangeStart && schedStartIso <= rangeEnd) {
-        const matchingLog =
-          logMap.get(`${sched.id}|${schedStartIso}|${time}`) ??
-          logMap.get(`${sched.id}|${schedStartIso}|`);
-        doses.push({
-          key: `med-${sched.id}-${schedStartIso}-${time || "0000"}`,
-          schedule_id: sched.id,
-          pet_id: sched.pet_id,
-          name: sched.name,
-          dosage: sched.dosage,
-          schedule_type: "one_off",
-          dose_date: schedStartIso,
-          scheduled_time: time,
-          instructions: sched.instructions,
-          is_completed: matchingLog?.status === "taken",
-          log: matchingLog,
-        });
+        for (const time of times) {
+          const matchingLog =
+            logMap.get(`${sched.id}|${schedStartIso}|${time}`) ??
+            (times.length === 1 ? logMap.get(`${sched.id}|${schedStartIso}|`) : undefined);
+          doses.push({
+            key: `med-${sched.id}-${schedStartIso}-${time || "0000"}`,
+            schedule_id: sched.id,
+            pet_id: sched.pet_id,
+            name: sched.name,
+            dosage: sched.dosage,
+            schedule_type: "one_off",
+            dose_date: schedStartIso,
+            scheduled_time: time,
+            instructions: sched.instructions,
+            is_completed: matchingLog?.status === "taken",
+            log: matchingLog,
+          });
+        }
       }
       continue;
     }
@@ -102,23 +107,25 @@ export function projectMedicationDoses({
 
       while (cur <= end) {
         const curIso = formatUtcDate(cur);
-        const matchingLog =
-          logMap.get(`${sched.id}|${curIso}|${time}`) ??
-          logMap.get(`${sched.id}|${curIso}|`);
+        for (const time of times) {
+          const matchingLog =
+            logMap.get(`${sched.id}|${curIso}|${time}`) ??
+            (times.length === 1 ? logMap.get(`${sched.id}|${curIso}|`) : undefined);
 
-        doses.push({
-          key: `med-${sched.id}-${curIso}-${time || "0000"}`,
-          schedule_id: sched.id,
-          pet_id: sched.pet_id,
-          name: sched.name,
-          dosage: sched.dosage,
-          schedule_type: "daily",
-          dose_date: curIso,
-          scheduled_time: time,
-          instructions: sched.instructions,
-          is_completed: matchingLog?.status === "taken",
-          log: matchingLog,
-        });
+          doses.push({
+            key: `med-${sched.id}-${curIso}-${time || "0000"}`,
+            schedule_id: sched.id,
+            pet_id: sched.pet_id,
+            name: sched.name,
+            dosage: sched.dosage,
+            schedule_type: "daily",
+            dose_date: curIso,
+            scheduled_time: time,
+            instructions: sched.instructions,
+            is_completed: matchingLog?.status === "taken",
+            log: matchingLog,
+          });
+        }
 
         cur = addDays(cur, 1);
       }
@@ -139,23 +146,25 @@ export function projectMedicationDoses({
         steps++;
         if (cur >= rangeStartDate) {
           const curIso = formatUtcDate(cur);
-          const matchingLog =
-            logMap.get(`${sched.id}|${curIso}|${time}`) ??
-            logMap.get(`${sched.id}|${curIso}|`);
+          for (const time of times) {
+            const matchingLog =
+              logMap.get(`${sched.id}|${curIso}|${time}`) ??
+              (times.length === 1 ? logMap.get(`${sched.id}|${curIso}|`) : undefined);
 
-          doses.push({
-            key: `med-${sched.id}-${curIso}-${time || "0000"}`,
-            schedule_id: sched.id,
-            pet_id: sched.pet_id,
-            name: sched.name,
-            dosage: sched.dosage,
-            schedule_type: "interval",
-            dose_date: curIso,
-            scheduled_time: time,
-            instructions: sched.instructions,
-            is_completed: matchingLog?.status === "taken",
-            log: matchingLog,
-          });
+            doses.push({
+              key: `med-${sched.id}-${curIso}-${time || "0000"}`,
+              schedule_id: sched.id,
+              pet_id: sched.pet_id,
+              name: sched.name,
+              dosage: sched.dosage,
+              schedule_type: "interval",
+              dose_date: curIso,
+              scheduled_time: time,
+              instructions: sched.instructions,
+              is_completed: matchingLog?.status === "taken",
+              log: matchingLog,
+            });
+          }
         }
 
         if (intervalUnit === "days") {
