@@ -108,6 +108,14 @@ Deno.serve(async (req) => {
         return reply({ error: "invalid_input" }, 400);
       }
 
+      const nowIso = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Warsaw",
+      }).format(new Date());
+
+      if (doseDate > nowIso) {
+        return reply({ error: "future_dose_not_allowed" }, 400);
+      }
+
       const { data: log, error } = await client.rpc("record_medication_dose", {
         p_schedule_id: scheduleId,
         p_pet_id: pet.id,
