@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
+  IconArrowLeft,
   IconBan,
   IconBell,
   IconCalendar,
@@ -334,6 +335,7 @@ export function HouseholdSchedule({
   >(undefined);
 
   const [displayLayout, setDisplayLayout] = useState<DisplayLayout>("month");
+  const [previousLayout, setPreviousLayout] = useState<DisplayLayout>("month");
   const [petFilter, setPetFilter] = useState<string>(fixedPetId ?? "all");
   const [categoryFilter, setCategoryFilter] = useState<FilterCategory>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("upcoming");
@@ -1019,6 +1021,18 @@ export function HouseholdSchedule({
     setEditingItem(null);
     setDialogDefaultDate(dateIso);
     setDialogOpen(true);
+  }
+
+  function goToDayView(iso: string) {
+    if (displayLayout !== "day") {
+      setPreviousLayout(displayLayout);
+    }
+    setSelectedDayIso(iso);
+    const [y, m] = iso.split("-").map(Number);
+    if (y && m) {
+      setMonthCursor({ year: y, month: m - 1 });
+    }
+    setDisplayLayout("day");
   }
 
   function focusEntryInList(entry: UnifiedScheduleEntry) {
@@ -1820,15 +1834,15 @@ export function HouseholdSchedule({
                 role="gridcell"
                 tabIndex={0}
                 aria-selected={isSelected}
-                onClick={() => setSelectedDayIso(cell.iso)}
+                onClick={() => goToDayView(cell.iso)}
                 onDoubleClick={() => openNewDialogForDate(cell.iso)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setSelectedDayIso(cell.iso);
+                    goToDayView(cell.iso);
                   }
                 }}
-                className={`schedule-day-cell${!cell.inCurrentMonth ? " is-outside" : ""}${isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""}`}
+                className={`schedule-day-cell${!cell.inCurrentMonth ? " is-outside" : ""}${isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""} cursor-pointer`}
               >
                 <div className="schedule-day-top">
                   <span className="schedule-day-num">{cell.dayNumber}</span>
@@ -1866,12 +1880,12 @@ export function HouseholdSchedule({
                         type="button"
                         title={
                           pl
-                            ? `${ev.title} — kliknij, aby zaznaczyć dzień`
-                            : `${ev.title} — click to select day`
+                            ? `${ev.title} — kliknij, aby otworzyć widok dnia`
+                            : `${ev.title} — click to open day view`
                         }
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedDayIso(cell.iso);
+                          goToDayView(cell.iso);
                         }}
                         className={`schedule-day-pill is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""}`}
                       >
@@ -1882,7 +1896,13 @@ export function HouseholdSchedule({
                     );
                   })}
                   {dayItems.length > 3 && (
-                    <small className="schedule-day-more">
+                    <small
+                      className="schedule-day-more cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToDayView(cell.iso);
+                      }}
+                    >
                       +{dayItems.length - 3}{" "}
                       {pl ? "więcej" : "more"}
                     </small>
@@ -1963,9 +1983,9 @@ export function HouseholdSchedule({
             return (
               <div
                 key={day.iso}
-                className={`schedule-week-col${day.isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""}`}
+                className={`schedule-week-col${day.isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""} cursor-pointer`}
                 role="gridcell"
-                onClick={() => setSelectedDayIso(day.iso)}
+                onClick={() => goToDayView(day.iso)}
               >
                 <div
                   className="schedule-week-col-header"
@@ -1976,8 +1996,7 @@ export function HouseholdSchedule({
                   }
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedDayIso(day.iso);
-                    setDisplayLayout("day");
+                    goToDayView(day.iso);
                   }}
                 >
                   <div className="schedule-week-col-header-info">
@@ -2034,10 +2053,10 @@ export function HouseholdSchedule({
                       return (
                         <div
                           key={ev.key}
-                          className={`schedule-week-card is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""}`}
+                          className={`schedule-week-card is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""} cursor-pointer`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedDayIso(day.iso);
+                            goToDayView(day.iso);
                           }}
                         >
                           <div className="schedule-week-card-top">
@@ -2152,8 +2171,33 @@ export function HouseholdSchedule({
     return (
       <div className="schedule-day-view-panel">
         <div className="schedule-day-view-header">
-          <div className="schedule-day-view-title-block">
-            <h3>{dayTitle}</h3>
+          <div className="schedule-day-view-title-block flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              className="history-action-btn flex items-center gap-1.5 text-xs font-semibold py-1 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              onClick={() => setDisplayLayout(previousLayout)}
+              title={
+                previousLayout === "week"
+                  ? pl
+                    ? "Wróć do widoku tygodnia"
+                    : "Back to week view"
+                  : pl
+                    ? "Wróć do widoku miesiąca"
+                    : "Back to month view"
+              }
+            >
+              <IconArrowLeft size={15} aria-hidden="true" />
+              <span>
+                {previousLayout === "week"
+                  ? pl
+                    ? "Widok tygodnia"
+                    : "Week view"
+                  : pl
+                    ? "Widok miesiąca"
+                    : "Month view"}
+              </span>
+            </button>
+            <h3 className="m-0 text-base font-bold">{dayTitle}</h3>
             {selectedDayIso === todayIso && (
               <span className="schedule-gcal-today-badge">
                 {pl ? "Dzisiaj" : "Today"}
