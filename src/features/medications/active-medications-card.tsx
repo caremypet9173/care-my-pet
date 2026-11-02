@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
@@ -141,13 +141,139 @@ export function ActiveMedicationsCard({
     return "";
   }
 
-  // Szybka akcja podania lub pominięcia dawki bezpośrednio z karty
+  // Subskrypcja Supabase Realtime do natychmiastowej synchronizacji dawek między domownikami
+  useEffect(() => {
+    const client = createClient();
+    const channel = client
+      .channel(`realtime-meds-${petId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "medication_logs",
+          filter: `pet_id=eq.${petId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const incoming = payload.new as MedicationLog;
+            setLogs((prev) => {
+              const filtered = prev.filter(
+                (l) =>
+                  l.id !== incoming.id &&
+                  !(
+                    l.schedule_id === incoming.schedule_id &&
+                    l.dose_date === incoming.dose_date &&
+                    l.scheduled_time === incoming.scheduled_time
+                  ),
+              );
+              return [incoming, ...filtered];
+            });
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as { id?: string })?.id;
+            if (deletedId) {
+              setLogs((prev) => prev.filter((l) => l.id !== deletedId));
+            }
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "medication_schedules",
+          filter: `pet_id=eq.${petId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const incoming = payload.new as MedicationSchedule;
+            setSchedules((prev) => {
+              if (prev.some((s) => s.id === incoming.id)) return prev;
+              return [incoming, ...prev];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const incoming = payload.new as MedicationSchedule;
+            setSchedules((prev) =>
+              prev.map((s) => (s.id === incoming.id ? incoming : s)),
+            );
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as { id?: string })?.id;
+            if (deletedId) {
+              setSchedules((prev) => prev.filter((s) => s.id !== deletedId));
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [petId]);
+
+  // Szybka akcja podania lub pominięcia dawki bezpośrednio z karty z optymistyczną aktualizacją UI
   async function handleQuickRecordDose(
     dose: ProjectedMedicationDose,
     status: "taken" | "skipped",
     notes = "",
   ) {
     setBusyDoseKey(dose.key);
+
+    const previousLogs = logs;
+    const previousSchedules = schedules;
+    const matchingSchedule = schedules.find((s) => s.id === dose.schedule_id);
+    const optimisticLogId = `temp-${Date.now()}`;
+    const optimisticLog: MedicationLog = {
+      id: optimisticLogId,
+      schedule_id: dose.schedule_id,
+      pet_id: dose.pet_id,
+      household_id: matchingSchedule?.household_id || "",
+      dose_date: dose.dose_date,
+      scheduled_time: dose.scheduled_time || "",
+      administered_at: new Date().toISOString(),
+      status,
+      administered_by: currentUserId || null,
+      notes,
+      revision: 1,
+      created_by: currentUserId || "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // 1. Natychmiastowa optymistyczna zmiana w interfejsie (0ms)
+    setLogs((prev) => {
+      const filtered = prev.filter(
+        (l) =>
+          !(
+            l.schedule_id === dose.schedule_id &&
+            l.dose_date === dose.dose_date &&
+            (l.scheduled_time === dose.scheduled_time ||
+              (!l.scheduled_time && !dose.scheduled_time))
+          ),
+      );
+      return [optimisticLog, ...filtered];
+    });
+
+    if (status === "taken" && !dose.is_completed) {
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.id === dose.schedule_id && s.stock_quantity != null
+            ? { ...s, stock_quantity: Math.max(0, s.stock_quantity - 1) }
+            : s,
+        ),
+      );
+    } else if (status === "skipped" && dose.is_completed) {
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.id === dose.schedule_id && s.stock_quantity != null
+            ? { ...s, stock_quantity: s.stock_quantity + 1 }
+            : s,
+        ),
+      );
+    }
+
+    // 2. Asynchroniczny zapis na serwerze
     try {
       const client = createClient();
       let savedLog: MedicationLog | null = null;
@@ -191,52 +317,27 @@ export function ActiveMedicationsCard({
       }
 
       if (savedLog) {
-        setLogs((prev) => {
-          const filtered = prev.filter(
-            (l) =>
-              !(
-                l.schedule_id === dose.schedule_id &&
-                l.dose_date === dose.dose_date &&
-                (l.scheduled_time === dose.scheduled_time ||
-                  (!l.scheduled_time && !dose.scheduled_time))
-              ),
-          );
-          return [savedLog!, ...filtered];
-        });
-
-        // Aktualizacja zapasu leku (stock_quantity) w lokalnym stanie
-        if (status === "taken" && !dose.is_completed) {
-          setSchedules((prev) =>
-            prev.map((s) =>
-              s.id === dose.schedule_id && s.stock_quantity != null
-                ? { ...s, stock_quantity: Math.max(0, s.stock_quantity - 1) }
-                : s,
-            ),
-          );
-        } else if (status === "skipped" && dose.is_completed) {
-          setSchedules((prev) =>
-            prev.map((s) =>
-              s.id === dose.schedule_id && s.stock_quantity != null
-                ? { ...s, stock_quantity: s.stock_quantity + 1 }
-                : s,
-            ),
-          );
-        }
-
-        router.refresh();
+        setLogs((prev) =>
+          prev.map((l) => (l.id === optimisticLogId ? savedLog! : l)),
+        );
       } else {
+        // Rollback w przypadku błędu serwera
+        setLogs(previousLogs);
+        setSchedules(previousSchedules);
         alert(
           pl
-            ? "Nie udało się zapisać podania dawki. Spróbuj ponownie."
-            : "Failed to record dose. Please retry.",
+            ? "Nie udało się zapisać podania dawki. Zmiana została cofnięta."
+            : "Failed to record dose. Change was rolled back.",
         );
       }
     } catch (e) {
       console.error("Error recording dose:", e);
+      setLogs(previousLogs);
+      setSchedules(previousSchedules);
       alert(
         pl
-          ? "Wystąpił błąd podczas zatwierdzania dawki."
-          : "Error recording dose.",
+          ? "Wystąpił błąd podczas zatwierdzania dawki. Zmiana została cofnięta."
+          : "Error recording dose. Change was rolled back.",
       );
     } finally {
       setBusyDoseKey(null);

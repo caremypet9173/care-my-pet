@@ -469,6 +469,81 @@ export function HouseholdSchedule({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [miniPickerOpen]);
+
+  // Subskrypcja Supabase Realtime do synchronizacji ewidencji dawek i harmonogramow miedzy domownikami
+  useEffect(() => {
+    const client = createClient();
+    const petFilter = fixedPetId ? `pet_id=eq.${fixedPetId}` : undefined;
+    const channel = client
+      .channel(`realtime-schedule-${fixedPetId || "all"}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "medication_logs",
+          ...(petFilter ? { filter: petFilter } : {}),
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const incoming = payload.new as MedicationLog;
+            setMedicationLogs((prev) => {
+              const filtered = prev.filter(
+                (l) =>
+                  l.id !== incoming.id &&
+                  !(
+                    l.schedule_id === incoming.schedule_id &&
+                    l.dose_date === incoming.dose_date &&
+                    l.scheduled_time === incoming.scheduled_time
+                  ),
+              );
+              return [incoming, ...filtered];
+            });
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as { id?: string })?.id;
+            if (deletedId) {
+              setMedicationLogs((prev) => prev.filter((l) => l.id !== deletedId));
+            }
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "medication_schedules",
+          ...(petFilter ? { filter: petFilter } : {}),
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const incoming = payload.new as MedicationSchedule;
+            setMedicationSchedules((prev) => {
+              if (prev.some((s) => s.id === incoming.id)) return prev;
+              return [incoming, ...prev];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const incoming = payload.new as MedicationSchedule;
+            setMedicationSchedules((prev) =>
+              prev.map((s) => (s.id === incoming.id ? incoming : s)),
+            );
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as { id?: string })?.id;
+            if (deletedId) {
+              setMedicationSchedules((prev) =>
+                prev.filter((s) => s.id !== deletedId),
+              );
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [fixedPetId]);
+
   const [notifSettings, setNotifSettings] =
     useState<HouseholdNotificationSettings>(() => ({
       email_enabled: initialNotificationSettings?.email_enabled ?? true,
@@ -668,6 +743,61 @@ export function HouseholdSchedule({
     }
 
     setBusyKey(dose.key);
+    const previousLogs = medicationLogs;
+    const previousSchedules = medicationSchedules;
+    const matchingSchedule = medicationSchedules.find((s) => s.id === dose.schedule_id);
+
+    const optimisticLogId = `temp-${Date.now()}`;
+    const optimisticLog: MedicationLog = {
+      id: optimisticLogId,
+      schedule_id: dose.schedule_id,
+      pet_id: dose.pet_id,
+      household_id: matchingSchedule?.household_id || "",
+      dose_date: dose.dose_date,
+      scheduled_time: dose.scheduled_time || "",
+      administered_at: new Date().toISOString(),
+      status,
+      administered_by: currentUserId || null,
+      notes,
+      revision: 1,
+      created_by: currentUserId || "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // 1. Natychmiastowa optymistyczna zmiana w interfejsie kalendarza (0ms)
+    setMedicationLogs((prev) => {
+      const filtered = prev.filter(
+        (l) =>
+          !(
+            l.schedule_id === dose.schedule_id &&
+            l.dose_date === dose.dose_date &&
+            (l.scheduled_time === dose.scheduled_time ||
+              (!l.scheduled_time && !dose.scheduled_time))
+          ),
+      );
+      return [optimisticLog, ...filtered];
+    });
+
+    if (status === "taken" && !dose.is_completed) {
+      setMedicationSchedules((prev) =>
+        prev.map((s) =>
+          s.id === dose.schedule_id && s.stock_quantity != null
+            ? { ...s, stock_quantity: Math.max(0, s.stock_quantity - 1) }
+            : s,
+        ),
+      );
+    } else if (status === "skipped" && dose.is_completed) {
+      setMedicationSchedules((prev) =>
+        prev.map((s) =>
+          s.id === dose.schedule_id && s.stock_quantity != null
+            ? { ...s, stock_quantity: s.stock_quantity + 1 }
+            : s,
+        ),
+      );
+    }
+
+    // 2. Asynchroniczny zapis na serwerze
     try {
       const client = createClient();
       let savedLog: MedicationLog | null = null;
@@ -713,52 +843,29 @@ export function HouseholdSchedule({
       }
 
       if (savedLog) {
-        setMedicationLogs((prev) => {
-          const filtered = prev.filter(
-            (l) =>
-              !(
-                l.schedule_id === dose.schedule_id &&
-                l.dose_date === dose.dose_date &&
-                (l.scheduled_time === dose.scheduled_time ||
-                  (!l.scheduled_time && !dose.scheduled_time))
-              ),
-          );
-          return [savedLog!, ...filtered];
-        });
-
-        if (status === "taken" && !dose.is_completed) {
-          setMedicationSchedules((prev) =>
-            prev.map((s) =>
-              s.id === dose.schedule_id && s.stock_quantity != null
-                ? { ...s, stock_quantity: Math.max(0, s.stock_quantity - 1) }
-                : s,
-            ),
-          );
-        } else if (status === "skipped" && dose.is_completed) {
-          setMedicationSchedules((prev) =>
-            prev.map((s) =>
-              s.id === dose.schedule_id && s.stock_quantity != null
-                ? { ...s, stock_quantity: s.stock_quantity + 1 }
-                : s,
-            ),
-          );
-        }
-
+        setMedicationLogs((prev) =>
+          prev.map((l) => (l.id === optimisticLogId ? savedLog! : l)),
+        );
         return true;
       } else {
+        // Rollback w przypadku błędu
+        setMedicationLogs(previousLogs);
+        setMedicationSchedules(previousSchedules);
         alert(
           pl
-            ? "Nie udało się zapisać statusu dawki leku. Sprawdź połączenie i spróbuj ponownie."
-            : "Failed to record medication dose. Please retry.",
+            ? "Nie udało się zapisać statusu dawki leku. Zmiana została wycofana."
+            : "Failed to record medication dose. Change was rolled back.",
         );
         return false;
       }
     } catch (e) {
       console.error("Error recording dose:", e);
+      setMedicationLogs(previousLogs);
+      setMedicationSchedules(previousSchedules);
       alert(
         pl
-          ? "Wystąpił błąd podczas zapisywania statusu dawki."
-          : "An error occurred while saving dose.",
+          ? "Wystąpił błąd podczas zapisywania statusu dawki. Zmiana została wycofana."
+          : "An error occurred while saving dose. Change was rolled back.",
       );
       return false;
     } finally {
@@ -768,6 +875,22 @@ export function HouseholdSchedule({
 
   async function handleDeleteDoseLog(logId: string) {
     setBusyKey(`log-${logId}`);
+    const previousLogs = medicationLogs;
+    const previousSchedules = medicationSchedules;
+
+    // 1. Natychmiastowe optymistyczne cofnięcie wpisu (0ms)
+    const deletedLog = medicationLogs.find((l) => l.id === logId);
+    if (deletedLog && deletedLog.status === "taken" && deletedLog.schedule_id) {
+      setMedicationSchedules((prev) =>
+        prev.map((s) =>
+          s.id === deletedLog.schedule_id && s.stock_quantity != null
+            ? { ...s, stock_quantity: s.stock_quantity + 1 }
+            : s,
+        ),
+      );
+    }
+    setMedicationLogs((prev) => prev.filter((l) => l.id !== logId));
+
     try {
       const client = createClient();
       let deleted = false;
@@ -795,31 +918,24 @@ export function HouseholdSchedule({
         else console.error("RPC delete_medication_dose_log error:", rpcError);
       }
 
-      if (deleted) {
-        const deletedLog = medicationLogs.find((l) => l.id === logId);
-        if (deletedLog && deletedLog.status === "taken" && deletedLog.schedule_id) {
-          setMedicationSchedules((prev) =>
-            prev.map((s) =>
-              s.id === deletedLog.schedule_id && s.stock_quantity != null
-                ? { ...s, stock_quantity: s.stock_quantity + 1 }
-                : s,
-            ),
-          );
-        }
-        setMedicationLogs((prev) => prev.filter((l) => l.id !== logId));
-      } else {
+      if (!deleted) {
+        // Rollback
+        setMedicationLogs(previousLogs);
+        setMedicationSchedules(previousSchedules);
         alert(
           pl
-            ? "Nie udało się cofnąć zatwierdzenia dawki."
-            : "Failed to undo dose confirmation.",
+            ? "Nie udało się cofnąć zatwierdzenia dawki. Zmiana została wycofana."
+            : "Failed to undo dose confirmation. Change was rolled back.",
         );
       }
     } catch (e) {
       console.error("Error deleting dose log:", e);
+      setMedicationLogs(previousLogs);
+      setMedicationSchedules(previousSchedules);
       alert(
         pl
-          ? "Wystąpił błąd podczas cofania zatwierdzenia."
-          : "An error occurred while undoing confirmation.",
+          ? "Wystąpił błąd podczas cofania zatwierdzenia. Zmiana została wycofana."
+          : "An error occurred while undoing confirmation. Change was rolled back.",
       );
     } finally {
       setBusyKey(null);
