@@ -61,7 +61,6 @@ export function MedicationDialog({
   const [startDate, setStartDate] = useState(
     schedule?.start_date ?? defaultDate ?? todayIso(),
   );
-  const [hasEndDate, setHasEndDate] = useState(Boolean(schedule?.end_date));
   const [endDate, setEndDate] = useState(schedule?.end_date ?? "");
   const [scheduledTimes, setScheduledTimes] = useState<string[]>(() => {
     if (schedule?.scheduled_times && schedule.scheduled_times.length > 0) {
@@ -141,7 +140,7 @@ export function MedicationDialog({
       setError(pl ? "Podaj datę rozpoczęcia." : "Select start date.");
       return;
     }
-    if (hasEndDate && endDate && endDate < startDate) {
+    if (endDate && endDate < startDate) {
       setError(
         pl
           ? "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia."
@@ -175,6 +174,9 @@ export function MedicationDialog({
     setSaving(true);
     setError("");
 
+    const cleanEndDate =
+      scheduleType === "one_off" ? null : endDate.trim() ? endDate.trim() : null;
+
     const payload = {
       id,
       pet_id: petId,
@@ -186,7 +188,7 @@ export function MedicationDialog({
         interval_value: scheduleType === "interval" ? intervalValue : null,
         interval_unit: scheduleType === "interval" ? intervalUnit : null,
         start_date: startDate,
-        end_date: hasEndDate && endDate ? endDate : null,
+        end_date: cleanEndDate,
         scheduled_time: cleanTime,
         scheduled_times: validTimes,
         instructions: instructions.trim(),
@@ -369,32 +371,32 @@ export function MedicationDialog({
           </button>
         </header>
 
-        <fieldset disabled={saving || deleting}>
-          <div className="history-dialog-grid">
-            {/* Wybór zwierzaka */}
-            {pets.length > 1 && !defaultPetId ? (
-              <div className="full-width">
-                <label htmlFor="med-pet-select">
-                  {pl ? "Pupil *" : "Pet *"}
-                </label>
-                <select
-                  id="med-pet-select"
-                  value={petId}
-                  onChange={(e) => setPetId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900"
-                >
-                  {pets.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.imie}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-
-            {/* Nazwa leku i dawka */}
+        <fieldset disabled={saving || deleting} className="flex flex-col gap-4">
+          {/* Wybór zwierzaka */}
+          {pets.length > 1 && !defaultPetId ? (
             <div>
-              <label htmlFor="med-name">
+              <label htmlFor="med-pet-select" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {pl ? "Pupil *" : "Pet *"}
+              </label>
+              <select
+                id="med-pet-select"
+                value={petId}
+                onChange={(e) => setPetId(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
+              >
+                {pets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.imie}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {/* Nazwa leku i dawka w 2 kolumnach */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="med-name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {pl ? "Nazwa leku / zabiegu *" : "Medication / treatment *"}
               </label>
               <input
@@ -402,6 +404,7 @@ export function MedicationDialog({
                 value={name}
                 maxLength={120}
                 required
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
                 placeholder={
                   pl
                     ? "np. Flora Balance, Melovem, Wlew z ketaminy"
@@ -412,13 +415,14 @@ export function MedicationDialog({
             </div>
 
             <div>
-              <label htmlFor="med-dosage">
+              <label htmlFor="med-dosage" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {pl ? "Dawka i postać" : "Dosage & form"}
               </label>
               <input
                 id="med-dosage"
                 value={dosage}
                 maxLength={120}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
                 placeholder={
                   pl
                     ? "np. 1 kapsułka, 2.5 ml, 1 tabletka"
@@ -427,73 +431,105 @@ export function MedicationDialog({
                 onChange={(e) => setDosage(e.target.value)}
               />
             </div>
+          </div>
 
-            {/* Wybór scenariusza podawania leku */}
-            <div className="full-width">
-              <label className="block mb-2 font-medium">
-                {pl ? "Wariant dawkowania *" : "Dosage schedule variant *"}
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setScheduleType("one_off")}
-                  className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
-                    scheduleType === "one_off"
-                      ? "border-teal-700 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 ring-2 ring-teal-600/30 font-semibold"
-                      : "border-slate-200 dark:border-slate-700 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-1 text-sm">
+          {/* Wybór scenariusza podawania leku */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              {pl ? "Wariant dawkowania *" : "Dosage schedule variant *"}
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setScheduleType("one_off")}
+                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  scheduleType === "one_off"
+                    ? "border-teal-700 bg-teal-50/90 dark:bg-teal-950/40 text-teal-950 dark:text-teal-100 shadow-xs ring-1 ring-teal-700/50"
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      scheduleType === "one_off"
+                        ? "bg-teal-700 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
                     <IconClock size={16} />
-                    <span>{pl ? "Jednorazowe" : "One-off"}</span>
-                  </div>
-                  <span className="text-xs font-normal opacity-80">
-                    {pl ? "Doraźny lek, szybki zapis" : "Single dose as needed"}
                   </span>
-                </button>
+                  <span className="font-semibold text-sm leading-tight">
+                    {pl ? "Jednorazowe" : "One-off"}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                  {pl ? "Doraźny lek, szybki zapis dawki" : "Single dose as needed"}
+                </span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => setScheduleType("daily")}
-                  className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
-                    scheduleType === "daily"
-                      ? "border-teal-700 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 ring-2 ring-teal-600/30 font-semibold"
-                      : "border-slate-200 dark:border-slate-700 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-1 text-sm">
+              <button
+                type="button"
+                onClick={() => setScheduleType("daily")}
+                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  scheduleType === "daily"
+                    ? "border-teal-700 bg-teal-50/90 dark:bg-teal-950/40 text-teal-950 dark:text-teal-100 shadow-xs ring-1 ring-teal-700/50"
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      scheduleType === "daily"
+                        ? "bg-teal-700 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
                     <IconCalendar size={16} />
-                    <span>{pl ? "Stałe, codzienne" : "Daily routine"}</span>
-                  </div>
-                  <span className="text-xs font-normal opacity-80">
-                    {pl ? "Rutynowe codzienne podania" : "Regular daily intake"}
                   </span>
-                </button>
+                  <span className="font-semibold text-sm leading-tight">
+                    {pl ? "Stałe, codzienne" : "Daily routine"}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                  {pl ? "Rutynowe codzienne podawanie" : "Regular daily intake"}
+                </span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => setScheduleType("interval")}
-                  className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
-                    scheduleType === "interval"
-                      ? "border-teal-700 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 ring-2 ring-teal-600/30 font-semibold"
-                      : "border-slate-200 dark:border-slate-700 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-1 text-sm">
+              <button
+                type="button"
+                onClick={() => setScheduleType("interval")}
+                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  scheduleType === "interval"
+                    ? "border-teal-700 bg-teal-50/90 dark:bg-teal-950/40 text-teal-950 dark:text-teal-100 shadow-xs ring-1 ring-teal-700/50"
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      scheduleType === "interval"
+                        ? "bg-teal-700 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
                     <IconCalendarRepeat size={16} />
-                    <span>{pl ? "Cykliczne" : "Interval"}</span>
-                  </div>
-                  <span className="text-xs font-normal opacity-80">
-                    {pl ? "Powtarzane co X dni / tyg." : "Every X days / weeks"}
                   </span>
-                </button>
-              </div>
+                  <span className="font-semibold text-sm leading-tight">
+                    {pl ? "Cykliczne" : "Interval"}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                  {pl ? "Powtarzane co X dni / tyg." : "Every X days / weeks"}
+                </span>
+              </button>
             </div>
+          </div>
 
-            {/* Pola specyficzne dla wybranego wariantu */}
-            {scheduleType === "one_off" && (
-              <div className="full-width">
-                <label htmlFor="med-oneoff-date">
+          {/* Harmonogram dat zależny od wariantu */}
+          {scheduleType === "one_off" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="med-oneoff-date" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {pl ? "Data podania *" : "Date *"}
                 </label>
                 <input
@@ -501,15 +537,18 @@ export function MedicationDialog({
                   type="date"
                   value={startDate}
                   required
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm"
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-            )}
+            </div>
+          )}
 
-            {scheduleType === "daily" && (
-              <>
-                <div className="full-width">
-                  <label htmlFor="med-daily-start">
+          {scheduleType === "daily" && (
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="med-daily-start" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     {pl ? "Data rozpoczęcia *" : "Start date *"}
                   </label>
                   <input
@@ -517,53 +556,45 @@ export function MedicationDialog({
                     type="date"
                     value={startDate}
                     required
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm"
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                 </div>
-                <div className="full-width">
-                  <div className="flex items-center gap-2 mb-2">
-                    <input
-                      id="med-has-end-date"
-                      type="checkbox"
-                      checked={hasEndDate}
-                      onChange={(e) => setHasEndDate(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-teal-700 focus:ring-teal-500"
-                    />
-                    <label
-                      htmlFor="med-has-end-date"
-                      className="m-0 text-sm font-normal cursor-pointer select-none"
-                    >
-                      {pl
-                        ? "Kuracja czasowa (określona data zakończenia)"
-                        : "Fixed-term treatment (has end date)"}
-                    </label>
-                  </div>
-                  {hasEndDate && (
-                    <div className="max-w-xs">
-                      <label htmlFor="med-daily-end">
-                        {pl ? "Data zakończenia" : "End date"}
-                      </label>
-                      <input
-                        id="med-daily-end"
-                        type="date"
-                        min={startDate}
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
 
-            {scheduleType === "interval" && (
-              <>
-                <div className="full-width">
-                  <label>
+                <div>
+                  <label htmlFor="med-daily-end" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {pl ? "Data zakończenia" : "End date"}{" "}
+                    <span className="font-normal text-slate-400">
+                      {pl ? "(opcjonalnie)" : "(optional)"}
+                    </span>
+                  </label>
+                  <input
+                    id="med-daily-end"
+                    type="date"
+                    min={startDate}
+                    value={endDate}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm"
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {pl
+                  ? "Pozostaw datę zakończenia pustą, jeśli lek jest podawany na stałe (bezterminowo)."
+                  : "Leave end date empty if medication is administered indefinitely."}
+              </p>
+            </div>
+          )}
+
+          {scheduleType === "interval" && (
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     {pl ? "Częstotliwość powtórzeń *" : "Repeat interval *"}
                   </label>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                    <span className="text-xs text-slate-500 font-medium">
                       {pl ? "Co" : "Every"}
                     </span>
                     <input
@@ -574,14 +605,14 @@ export function MedicationDialog({
                       onChange={(e) =>
                         setIntervalValue(Math.max(1, parseInt(e.target.value) || 1))
                       }
-                      className="w-24 text-center font-semibold"
+                      className="w-20 text-center font-semibold rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm"
                     />
                     <select
                       value={intervalUnit}
                       onChange={(e) =>
                         setIntervalUnit(e.target.value as IntervalUnit)
                       }
-                      className="rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900"
+                      className="rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm flex-1"
                     >
                       <option value="days">
                         {intervalValue === 1
@@ -614,8 +645,8 @@ export function MedicationDialog({
                   </div>
                 </div>
 
-                <div className="full-width">
-                  <label htmlFor="med-interval-start">
+                <div>
+                  <label htmlFor="med-interval-start" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     {pl ? "Pierwsze podanie od *" : "First dose date *"}
                   </label>
                   <input
@@ -623,146 +654,146 @@ export function MedicationDialog({
                     type="date"
                     value={startDate}
                     required
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm"
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                 </div>
+              </div>
 
-                <div className="full-width">
-                  <div className="flex items-center gap-2 mb-2">
-                    <input
-                      id="med-interval-has-end"
-                      type="checkbox"
-                      checked={hasEndDate}
-                      onChange={(e) => setHasEndDate(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-teal-700 focus:ring-teal-500"
-                    />
-                    <label
-                      htmlFor="med-interval-has-end"
-                      className="m-0 text-sm font-normal cursor-pointer select-none"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start pt-1">
+                <div>
+                  <label htmlFor="med-interval-end" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {pl ? "Data zakończenia cyklu" : "Cycle end date"}{" "}
+                    <span className="font-normal text-slate-400">
+                      {pl ? "(opcjonalnie)" : "(optional)"}
+                    </span>
+                  </label>
+                  <input
+                    id="med-interval-end"
+                    type="date"
+                    min={startDate}
+                    value={endDate}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm"
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {pl
+                  ? "Pozostaw datę zakończenia pustą, jeśli cykl ma trwać bezterminowo."
+                  : "Leave end date empty if cycle runs indefinitely."}
+              </p>
+            </div>
+          )}
+
+          {/* Pory podawania w ciągu wyznaczonego dnia */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50/80 dark:bg-slate-900/40">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
+                  {pl ? "Pory podawania w ciągu dnia *" : "Daily administration times *"}
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {pl
+                    ? "Możesz dodać kilka dawek dziennie (np. rano i wieczorem)"
+                    : "You can schedule multiple doses per day (e.g. morning and evening)"}
+                </p>
+              </div>
+
+              {/* Presety */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] uppercase font-bold text-slate-400 mr-0.5 hidden md:inline">
+                  {pl ? "Szybki wybór:" : "Presets:"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setScheduledTimes(["08:00"])}
+                  className="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-700 hover:text-teal-800 text-[11px] font-medium text-slate-700 dark:text-slate-300 transition-colors shadow-2xs cursor-pointer"
+                >
+                  1× (08:00)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduledTimes(["08:00", "20:00"])}
+                  className="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-700 hover:text-teal-800 text-[11px] font-medium text-slate-700 dark:text-slate-300 transition-colors shadow-2xs cursor-pointer"
+                >
+                  2× (08:00, 20:00)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduledTimes(["08:00", "14:00", "20:00"])}
+                  className="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-700 hover:text-teal-800 text-[11px] font-medium text-slate-700 dark:text-slate-300 transition-colors shadow-2xs cursor-pointer"
+                >
+                  3× (08:00, 14:00, 20:00)
+                </button>
+              </div>
+            </div>
+
+            {/* Lista slotów czasowych */}
+            <div className="flex flex-wrap gap-2 items-center">
+              {scheduledTimes.map((time, idx) => (
+                <div
+                  key={idx}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs focus-within:border-teal-700 focus-within:ring-2 focus-within:ring-teal-700/20 transition-all"
+                >
+                  <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">
+                    {pl ? `Dawka #${idx + 1}:` : `Dose #${idx + 1}:`}
+                  </span>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => updateTimeSlot(idx, e.target.value)}
+                    className="med-time-input border-0 bg-transparent p-0 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-0 cursor-pointer w-20"
+                    required
+                  />
+                  {scheduledTimes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeTimeSlot(idx)}
+                      className="text-slate-400 hover:text-red-600 transition-colors p-0.5 rounded cursor-pointer"
+                      title={pl ? "Usuń tę porę" : "Remove dose time"}
+                      aria-label={pl ? "Usuń tę porę" : "Remove dose time"}
                     >
-                      {pl
-                        ? "Zakończ cykl po określonej dacie"
-                        : "End cycle after specific date"}
-                    </label>
-                  </div>
-                  {hasEndDate && (
-                    <div className="max-w-xs">
-                      <label htmlFor="med-interval-end">
-                        {pl ? "Data zakończenia cyklu" : "Cycle end date"}
-                      </label>
-                      <input
-                        id="med-interval-end"
-                        type="date"
-                        min={startDate}
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                      />
-                    </div>
+                      <IconTrash size={14} />
+                    </button>
                   )}
                 </div>
-              </>
-            )}
-
-            {/* Pory podawania w ciągu wyznaczonego dnia (wspólne dla każdego trybu) */}
-            <div className="full-width rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50/70 dark:bg-slate-900/40">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                <div>
-                  <label className="m-0 font-medium text-sm text-slate-800 dark:text-slate-200">
-                    {pl ? "Pory podawania w ciągu dnia *" : "Daily dose times *"}
-                  </label>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {pl
-                      ? "Możesz dodać kilka dawek dziennie (np. rano i wieczorem)"
-                      : "You can add multiple doses per day (e.g. morning & evening)"}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setScheduledTimes(["08:00"])}
-                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-                  >
-                    1× (08:00)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScheduledTimes(["08:00", "20:00"])}
-                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-                  >
-                    2× (08:00, 20:00)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScheduledTimes(["08:00", "14:00", "20:00"])}
-                    className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-                  >
-                    3× (08:00, 14:00, 20:00)
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {scheduledTimes.map((time, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => updateTimeSlot(idx, e.target.value)}
-                      className="w-36 rounded-lg border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-900 text-sm font-medium"
-                      required
-                    />
-                    <span className="text-xs text-slate-500 font-medium">
-                      {pl ? `Dawka ${idx + 1}` : `Dose ${idx + 1}`}
-                    </span>
-                    {scheduledTimes.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeTimeSlot(idx)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-md transition-colors"
-                        title={pl ? "Usuń tę porę" : "Remove this time slot"}
-                        aria-label={pl ? "Usuń tę porę" : "Remove this time slot"}
-                      >
-                        <IconTrash size={16} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+              ))}
 
               <button
                 type="button"
                 onClick={addTimeSlot}
-                className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-teal-700/50 hover:border-teal-700 bg-teal-50/50 hover:bg-teal-50 dark:bg-teal-950/20 dark:hover:bg-teal-950/40 text-xs font-semibold text-teal-800 dark:text-teal-300 transition-colors cursor-pointer"
               >
                 <IconPlus size={14} />
-                <span>{pl ? "+ Dodaj kolejną porę podania" : "+ Add another dose time"}</span>
+                <span>{pl ? "+ Dodaj kolejną porę" : "+ Add another time"}</span>
               </button>
-            </div>
-
-            {/* Wskazówki i notatki */}
-            <div className="full-width">
-              <label htmlFor="med-instructions">
-                {pl
-                  ? "Wskazówki dla opiekuna (opcjonalnie)"
-                  : "Instructions & notes (optional)"}
-              </label>
-              <textarea
-                id="med-instructions"
-                rows={2}
-                maxLength={2000}
-                placeholder={
-                  pl
-                    ? "np. Podawać z mokrą karmą, nie podawać na czczo, wymieszać z sosem"
-                    : "e.g. Give with food, do not administer on empty stomach"
-                }
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-              />
             </div>
           </div>
 
-          {error && <p className="weight-error mt-3">{error}</p>}
+          {/* Wskazówki i notatki */}
+          <div>
+            <label htmlFor="med-instructions" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              {pl
+                ? "Wskazówki dla opiekuna (opcjonalnie)"
+                : "Instructions & notes (optional)"}
+            </label>
+            <textarea
+              id="med-instructions"
+              rows={2}
+              maxLength={2000}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
+              placeholder={
+                pl
+                  ? "np. Podawać z mokrą karmą, nie podawać na czczo, wymieszać z sosem"
+                  : "e.g. Give with food, do not administer on empty stomach"
+              }
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+            />
+          </div>
+
+          {error && <p className="weight-error mt-1">{error}</p>}
         </fieldset>
 
         <footer className="flex items-center justify-between gap-3">

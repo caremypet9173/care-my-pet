@@ -422,7 +422,8 @@
 .history-dialog .weight-dialog-icon{width:40px;height:40px}
 .history-dialog fieldset{padding:0 1.35rem;gap:.1rem}
 .history-dialog label{display:block;font-size:.75rem;font-weight:600;margin:.5rem 0 .25rem}
-.history-dialog input,.history-dialog textarea{min-height:38px;padding:.45rem .7rem;font-size:.8125rem}
+.history-dialog input:not([type="checkbox"]):not([type="radio"]):not(.med-time-input),.history-dialog textarea{min-height:38px;padding:.45rem .7rem;font-size:.8125rem}
+.history-dialog input.med-time-input{min-height:unset;height:auto;padding:.15rem .3rem;font-size:.875rem}
 .history-dialog footer{padding:.9rem 1.35rem 1.1rem}
 .history-dialog-icon.is-vaccination{background:#eef2ff;color:#4338ca}
 .history-dialog-icon.is-prevention{background:#fffbeb;color:#b45309}
@@ -433,6 +434,7 @@
 .history-category-option.is-active.is-vaccination{background:#eef2ff;border-color:#4338ca;color:#4338ca;box-shadow:0 0 0 1px #4338ca}
 .history-category-option.is-active.is-prevention{background:#fffbeb;border-color:#b45309;color:#b45309;box-shadow:0 0 0 1px #b45309}
 .history-dialog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;align-items:end}
+.history-dialog-grid > .full-width, .history-dialog-grid > .col-span-full{grid-column:1 / -1}
 
 .history-ai-box{display:grid;gap:.5rem;padding:.65rem .85rem;border-radius:.75rem;border:1px dashed #94b3a3;background:#f4faf6;margin-bottom:.1rem;transition:border-color .15s,background-color .15s,box-shadow .15s}
 .history-ai-box.is-dragging{border-color:#164d34;background:#e4f3ea;box-shadow:0 0 0 3px #164d3424}
