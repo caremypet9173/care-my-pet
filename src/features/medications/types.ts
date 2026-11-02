@@ -51,5 +51,6 @@ export type ProjectedMedicationDose = {
   scheduled_time: string;
   instructions: string;
   is_completed: boolean;
+  is_skipped: boolean;
   log?: MedicationLog;
 };

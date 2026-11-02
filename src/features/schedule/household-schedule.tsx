@@ -47,6 +47,7 @@ import {
   type CompleteTarget,
 } from "./schedule-dialog";
 import { MedicationDialog } from "@/features/medications/medication-dialog";
+import { SkipDoseDialog } from "@/features/medications/skip-dose-dialog";
 import { projectMedicationDoses } from "@/features/medications/projection";
 import type {
   MedicationLog,
@@ -128,7 +129,7 @@ type UnifiedScheduleEntry =
       clinic: string;
       doctor: string;
       prepNotes: string;
-      status: "planned" | "completed";
+      status: "planned" | "completed" | "skipped";
       dosage: string;
       scheduleType: MedicationScheduleType;
       instructions: string;
@@ -336,6 +337,9 @@ export function HouseholdSchedule({
   >(undefined);
   const [futureDoseNotice, setFutureDoseNotice] =
     useState<ProjectedMedicationDose | null>(null);
+  const [skipDoseTarget, setSkipDoseTarget] =
+    useState<ProjectedMedicationDose | null>(null);
+  const [isSavingSkip, setIsSavingSkip] = useState(false);
 
   const [displayLayout, setDisplayLayout] = useState<DisplayLayout>("month");
   const [previousLayout, setPreviousLayout] = useState<DisplayLayout>("month");
@@ -631,10 +635,14 @@ export function HouseholdSchedule({
     [pl],
   );
 
-  async function handleRecordDose(dose: ProjectedMedicationDose) {
+  async function handleRecordDose(
+    dose: ProjectedMedicationDose,
+    status: "taken" | "skipped" = "taken",
+    notes: string = "",
+  ): Promise<boolean> {
     if (dose.dose_date > todayIso) {
       setFutureDoseNotice(dose);
-      return;
+      return false;
     }
 
     setBusyKey(dose.key);
@@ -651,7 +659,8 @@ export function HouseholdSchedule({
               schedule_id: dose.schedule_id,
               dose_date: dose.dose_date,
               scheduled_time: dose.scheduled_time,
-              status: "taken",
+              status,
+              notes,
             },
           },
         );
@@ -670,8 +679,8 @@ export function HouseholdSchedule({
             p_pet_id: dose.pet_id,
             p_dose_date: dose.dose_date,
             p_scheduled_time: dose.scheduled_time || "",
-            p_status: "taken",
-            p_notes: "",
+            p_status: status,
+            p_notes: notes,
           },
         );
         if (rpcError) {
@@ -694,20 +703,23 @@ export function HouseholdSchedule({
           );
           return [savedLog!, ...filtered];
         });
+        return true;
       } else {
         alert(
           pl
-            ? "Nie udało się zatwierdzić dawki leku. Sprawdź połączenie i spróbuj ponownie."
-            : "Failed to confirm medication dose. Please retry.",
+            ? "Nie udało się zapisać statusu dawki leku. Sprawdź połączenie i spróbuj ponownie."
+            : "Failed to record medication dose. Please retry.",
         );
+        return false;
       }
     } catch (e) {
       console.error("Error recording dose:", e);
       alert(
         pl
-          ? "Wystąpił błąd podczas zatwierdzania dawki."
-          : "An error occurred while confirming dose.",
+          ? "Wystąpił błąd podczas zapisywania statusu dawki."
+          : "An error occurred while saving dose.",
       );
+      return false;
     } finally {
       setBusyKey(null);
     }
@@ -860,7 +872,7 @@ export function HouseholdSchedule({
       clinic: "",
       doctor: "",
       prepNotes: dose.instructions,
-      status: dose.is_completed ? "completed" : "planned",
+      status: dose.log?.status === "skipped" ? "skipped" : dose.is_completed ? "completed" : "planned",
       dosage: dose.dosage,
       scheduleType: dose.schedule_type,
       instructions: dose.instructions,
@@ -1289,6 +1301,11 @@ export function HouseholdSchedule({
                   {pl ? "Odwołano" : "Cancelled"}
                 </span>
               )}
+              {entry.status === "skipped" && (
+                <span className="schedule-status-badge is-cancelled border-amber-300 bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
+                  {pl ? "Pominięto" : "Skipped"}
+                </span>
+              )}
               {metaParts.length > 0 && (
                 <span className="schedule-compact-meta">
                   · {metaParts.join(" · ")}
@@ -1426,17 +1443,54 @@ export function HouseholdSchedule({
                       <span>{pl ? "Oczekuje" : "Upcoming"}</span>
                     </button>
                   ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="schedule-mini-btn is-primary font-medium"
+                        disabled={isBusy}
+                        onClick={() => void handleRecordDose(entry.dose, "taken")}
+                        title={pl ? "Zatwierdź podanie leku" : "Confirm medication dose"}
+                      >
+                        <IconCheck size={14} aria-hidden="true" />
+                        <span>{pl ? "Zatwierdź" : "Confirm"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="schedule-mini-btn border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 font-medium cursor-pointer"
+                        disabled={isBusy}
+                        onClick={() => setSkipDoseTarget(entry.dose)}
+                        title={pl ? "Oznacz dawkę jako pominiętą" : "Mark dose as skipped"}
+                      >
+                        <IconBan size={14} aria-hidden="true" />
+                        <span>{pl ? "Pomiń" : "Skip"}</span>
+                      </button>
+                    </>
+                  )
+                ) : entry.status === "skipped" ? (
+                  <>
                     <button
                       type="button"
                       className="schedule-mini-btn is-primary font-medium"
                       disabled={isBusy}
-                      onClick={() => void handleRecordDose(entry.dose)}
-                      title={pl ? "Zatwierdź podanie leku" : "Confirm medication dose"}
+                      onClick={() => void handleRecordDose(entry.dose, "taken")}
+                      title={pl ? "Zmień na podano" : "Mark as taken"}
                     >
                       <IconCheck size={14} aria-hidden="true" />
-                      <span>{pl ? "Zatwierdź podanie" : "Confirm dose"}</span>
+                      <span>{pl ? "Podano" : "Taken"}</span>
                     </button>
-                  )
+                    {entry.dose.log && (
+                      <button
+                        type="button"
+                        className="schedule-mini-btn"
+                        disabled={isBusy}
+                        onClick={() => void handleDeleteDoseLog(entry.dose.log!.id)}
+                        title={pl ? "Cofnij pominięcie" : "Undo skip"}
+                      >
+                        <IconBan size={14} aria-hidden="true" />
+                        <span>{pl ? "Cofnij" : "Undo"}</span>
+                      </button>
+                    )}
+                  </>
                 ) : (
                   entry.dose.log && (
                     <button
@@ -1556,7 +1610,7 @@ export function HouseholdSchedule({
     return (
       <li
         key={entry.key}
-        className={`schedule-day-card is-${entry.category}${isOverdue ? " is-overdue" : ""}${entry.status === "completed" ? " is-completed" : ""}`}
+        className={`schedule-day-card is-${entry.category}${isOverdue ? " is-overdue" : ""}${entry.status === "completed" ? " is-completed" : ""}${entry.status === "skipped" ? " is-skipped" : ""}`}
       >
         <div className="schedule-day-card-time-col">
           <span className="schedule-day-card-time">
@@ -1594,6 +1648,11 @@ export function HouseholdSchedule({
               {entry.status === "cancelled" && (
                 <span className="schedule-status-badge is-cancelled">
                   {pl ? "Odwołano" : "Cancelled"}
+                </span>
+              )}
+              {entry.status === "skipped" && (
+                <span className="schedule-status-badge is-cancelled border-amber-300 bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
+                  {pl ? "Pominięto" : "Skipped"}
                 </span>
               )}
               {isOverdue && (
@@ -1634,6 +1693,12 @@ export function HouseholdSchedule({
                     timeZone: "Europe/Warsaw",
                   }).format(new Date(entry.dose.log.administered_at))}
                   )
+                </span>
+              )}
+              {entry.status === "skipped" && entry.dose.log && (
+                <span className="text-amber-700 dark:text-amber-400 font-medium">
+                  ⊘ {pl ? "Pominięto dawkę" : "Dose skipped"}
+                  {entry.dose.log.notes ? `: ${entry.dose.log.notes}` : ""}
                 </span>
               )}
             </div>
@@ -1792,17 +1857,54 @@ export function HouseholdSchedule({
                       </span>
                     </div>
                   ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="history-action-btn is-primary font-medium"
+                        disabled={isBusy}
+                        onClick={() => void handleRecordDose(entry.dose, "taken")}
+                        title={pl ? "Zatwierdź podanie leku" : "Confirm medication dose"}
+                      >
+                        <IconCheck size={16} aria-hidden="true" />
+                        <span>{pl ? "Zatwierdź podanie" : "Confirm dose"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="history-action-btn border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 font-medium cursor-pointer"
+                        disabled={isBusy}
+                        onClick={() => setSkipDoseTarget(entry.dose)}
+                        title={pl ? "Oznacz tę dawkę jako pominiętą" : "Mark dose as skipped"}
+                      >
+                        <IconBan size={16} aria-hidden="true" />
+                        <span>{pl ? "Pomiń dawkę" : "Skip dose"}</span>
+                      </button>
+                    </div>
+                  )
+                ) : entry.status === "skipped" ? (
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       className="history-action-btn is-primary font-medium"
                       disabled={isBusy}
-                      onClick={() => void handleRecordDose(entry.dose)}
-                      title={pl ? "Zatwierdź podanie leku" : "Confirm medication dose"}
+                      onClick={() => void handleRecordDose(entry.dose, "taken")}
+                      title={pl ? "Zmień na podano" : "Mark as taken"}
                     >
                       <IconCheck size={16} aria-hidden="true" />
-                      <span>{pl ? "Zatwierdź podanie" : "Confirm dose"}</span>
+                      <span>{pl ? "Jednak podano" : "Mark as taken"}</span>
                     </button>
-                  )
+                    {entry.dose.log && (
+                      <button
+                        type="button"
+                        className="history-action-btn"
+                        disabled={isBusy}
+                        onClick={() => void handleDeleteDoseLog(entry.dose.log!.id)}
+                        title={pl ? "Cofnij pominięcie" : "Undo skip"}
+                      >
+                        <IconBan size={15} aria-hidden="true" />
+                        <span>{pl ? "Cofnij pominięcie" : "Undo skip"}</span>
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   entry.dose.log && (
                     <button
@@ -1934,7 +2036,7 @@ export function HouseholdSchedule({
                           e.stopPropagation();
                           goToDayView(cell.iso);
                         }}
-                        className={`schedule-day-pill is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""}`}
+                        className={`schedule-day-pill is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${ev.status === "skipped" ? " is-skipped" : ""}${isOverdue ? " is-overdue" : ""}`}
                       >
                         {ev.time ? `${ev.time} ` : ""}
                         {!fixedPetId && pName ? `${pName}: ` : ""}
@@ -3008,6 +3110,29 @@ export function HouseholdSchedule({
           dose={futureDoseNotice}
           petName={petMap.get(futureDoseNotice.pet_id)}
           onClose={() => setFutureDoseNotice(null)}
+        />
+      )}
+      {skipDoseTarget && (
+        <SkipDoseDialog
+          dose={skipDoseTarget}
+          petName={petMap.get(skipDoseTarget.pet_id)}
+          isSaving={isSavingSkip}
+          onClose={() => setSkipDoseTarget(null)}
+          onConfirm={async (notes) => {
+            setIsSavingSkip(true);
+            try {
+              const success = await handleRecordDose(
+                skipDoseTarget,
+                "skipped",
+                notes,
+              );
+              if (success) {
+                setSkipDoseTarget(null);
+              }
+            } finally {
+              setIsSavingSkip(false);
+            }
+          }}
         />
       )}
     </section>

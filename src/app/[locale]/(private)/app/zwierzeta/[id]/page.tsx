@@ -27,6 +27,7 @@ import "@/styles/medical-profile.css";
 import { listReports } from "@/features/medical/data";
 import { MedicalResults } from "@/features/medical/results";
 import { MedicalDocuments } from "@/features/medical/documents";
+import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
 export default async function PetPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{tab?:string;report?:string;document?:string}> }) {
   const locale = await getLocale();
   const t = petMessages[locale];
@@ -45,6 +46,9 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     ...healthEvents.filter(ev => ev.next_due_date && ev.next_due_date >= todayIso).map(ev => ({ date: ev.next_due_date!, title: ev.title })),
   ].sort((a, b) => a.date.localeCompare(b.date))[0];
   const latestCareEvent = healthEvents.find(ev => ev.category === "vaccination" || ev.category === "prevention");
+  const activeMedications = medicationSchedules.filter(
+    (s) => s.is_active && (!s.end_date || s.end_date >= todayIso),
+  );
   const facts = [
     [t.rasa, pet.rasa ?? t.missing],
     [t.data_urodzenia, pet.data_urodzenia ? new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(pet.data_urodzenia)) + (pet.data_urodzenia_przyblizona ? (locale === "pl" ? " (data przybliżona)" : " (approximate date)") : "") : t.unknown],
@@ -61,10 +65,38 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
       { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },
-      { label: d.care, icon: IconHeart, value: latestCareEvent ? latestCareEvent.event_date : "—", sub: latestCareEvent ? latestCareEvent.title : (locale === "pl" ? "Brak wpisów profilaktyki" : "No prevention entries") },
+      {
+        label: d.care,
+        icon: activeMedications.length > 0 ? IconPill : IconHeart,
+        value:
+          activeMedications.length > 0
+            ? locale === "pl"
+              ? `${activeMedications.length} ${
+                  activeMedications.length === 1
+                    ? "aktywny lek"
+                    : activeMedications.length < 5
+                      ? "aktywne leki"
+                      : "aktywnych leków"
+                }`
+              : `${activeMedications.length} active ${
+                  activeMedications.length === 1 ? "medication" : "medications"
+                }`
+            : latestCareEvent
+              ? latestCareEvent.event_date
+              : "—",
+        sub:
+          activeMedications.length > 0
+            ? activeMedications.map((m) => m.name).join(", ")
+            : latestCareEvent
+              ? latestCareEvent.title
+              : locale === "pl"
+                ? "Brak wpisów profilaktyki"
+                : "No prevention entries",
+      },
     ].map(({ label, icon: Icon, value, sub }) => <section key={label}><Icon size={22} aria-hidden="true" /><h2>{label}</h2><strong>{value}</strong><p>{sub}</p></section>)}</div>
     {keyParameters.length>0&&<section className="pet-panel"><h2>{locale==="pl"?"Kluczowe parametry":"Key parameters"}</h2><dl className="pet-facts">{keyParameters.map(({row,date})=><div key={row.id}><dt>{row.name} · {date}</dt><dd><strong>{row.value} {row.unit}</strong>{row.note&&<p className="pet-notes">{row.note}</p>}</dd></div>)}</dl></section>}
     <div className="household-record-columns"><div>
+      <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} pets={[{ id: pet.id, imie: pet.imie }]} />
       <section className="pet-panel household-summary-reports"><h2>{d.events}</h2>
         {healthEvents.length ? <ul>{healthEvents.slice(0,5).map(ev=>{
           const EvIcon = ev.category === "vaccination" ? IconVaccine : ev.category === "prevention" ? IconPill : IconStethoscope;

@@ -91,6 +91,7 @@ export function projectMedicationDoses({
             scheduled_time: time,
             instructions: sched.instructions,
             is_completed: matchingLog?.status === "taken",
+            is_skipped: matchingLog?.status === "skipped",
             log: matchingLog,
           });
         }
@@ -123,6 +124,7 @@ export function projectMedicationDoses({
             scheduled_time: time,
             instructions: sched.instructions,
             is_completed: matchingLog?.status === "taken",
+            is_skipped: matchingLog?.status === "skipped",
             log: matchingLog,
           });
         }
@@ -162,6 +164,7 @@ export function projectMedicationDoses({
               scheduled_time: time,
               instructions: sched.instructions,
               is_completed: matchingLog?.status === "taken",
+              is_skipped: matchingLog?.status === "skipped",
               log: matchingLog,
             });
           }

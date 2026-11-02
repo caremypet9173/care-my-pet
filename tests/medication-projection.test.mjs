@@ -208,3 +208,60 @@ test('scenariusz 4: ten sam lek podawany kilka razy dziennie (np. 2x dziennie: 0
   assert.equal(doses[1].is_completed, false);
   assert.equal(doses[1].key, 'med-sched-antibiotic-2026-11-02-20:00');
 });
+
+test('scenariusz 5: pominięcie dawki leku (status: skipped)', () => {
+  const schedules = [
+    {
+      id: 'sched-gabapentyna',
+      pet_id: 'pet-1',
+      household_id: 'house-1',
+      name: 'Gabapentyna',
+      dosage: '1 kapsułka',
+      schedule_type: 'daily',
+      interval_value: null,
+      interval_unit: null,
+      start_date: '2026-11-01',
+      end_date: null,
+      scheduled_time: '08:00',
+      scheduled_times: ['08:00'],
+      instructions: 'W kapsułce z przysmakiem',
+      is_active: true,
+      revision: 1,
+      created_by: 'user-1',
+      created_at: '2026-11-01T00:00:00Z',
+      updated_at: '2026-11-01T00:00:00Z',
+    },
+  ];
+
+  const logs = [
+    {
+      id: 'log-skip-1',
+      schedule_id: 'sched-gabapentyna',
+      pet_id: 'pet-1',
+      household_id: 'house-1',
+      dose_date: '2026-11-02',
+      scheduled_time: '08:00',
+      administered_at: '2026-11-02T08:10:00Z',
+      status: 'skipped',
+      administered_by: 'user-1',
+      notes: 'Odmówił zjedzenia smaczka',
+      revision: 1,
+      created_by: 'user-1',
+      created_at: '2026-11-02T08:10:00Z',
+      updated_at: '2026-11-02T08:10:00Z',
+    },
+  ];
+
+  const doses = projectMedicationDoses({
+    schedules,
+    logs,
+    rangeStart: '2026-11-02',
+    rangeEnd: '2026-11-02',
+  });
+
+  assert.equal(doses.length, 1);
+  assert.equal(doses[0].is_completed, false);
+  assert.equal(doses[0].is_skipped, true);
+  assert.equal(doses[0].log?.status, 'skipped');
+  assert.equal(doses[0].log?.notes, 'Odmówił zjedzenia smaczka');
+});
