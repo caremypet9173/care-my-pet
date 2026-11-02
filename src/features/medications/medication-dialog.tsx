@@ -824,16 +824,16 @@ export function MedicationDialog({
 
           {/* Kontrola zapasu w apteczce */}
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-slate-50/60 dark:bg-slate-900/40 flex flex-col gap-2.5">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <label className="inline-flex items-center gap-2.5 cursor-pointer select-none !m-0 !p-0">
                 <input
                   type="checkbox"
                   checked={trackStock}
                   onChange={(e) => setTrackStock(e.target.checked)}
-                  className="rounded border-slate-300 text-teal-700 focus:ring-teal-700 w-4 h-4"
+                  className="!w-4 !h-4 !min-h-0 !p-0 !m-0 rounded border-slate-300 text-teal-700 focus:ring-teal-700 cursor-pointer accent-teal-700 shrink-0"
                 />
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <IconPackage size={15} className="text-teal-700 dark:text-teal-400" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 select-none">
+                  <IconPackage size={16} className="text-teal-700 dark:text-teal-400 shrink-0" />
                   {pl ? "Kontrola zapasu w apteczce" : "Track medication stock"}
                 </span>
               </label>
@@ -845,44 +845,47 @@ export function MedicationDialog({
             {trackStock && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-800/70">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label htmlFor="med-stock-quantity" className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1 !m-0">
                     {pl ? "Pozostały zapas:" : "Current stock:"}
                   </label>
                   <input
+                    id="med-stock-quantity"
                     type="number"
                     min="0"
                     step="1"
                     placeholder="np. 30"
                     value={stockQuantity}
                     onChange={(e) => setStockQuantity(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm font-semibold"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm font-semibold !min-h-[38px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label htmlFor="med-stock-unit" className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1 !m-0">
                     {pl ? "Jednostka zapasu:" : "Unit:"}
                   </label>
                   <input
+                    id="med-stock-unit"
                     type="text"
                     maxLength={30}
                     placeholder={pl ? "np. tabletek, ml" : "e.g. tablets, ml"}
                     value={stockUnit}
                     onChange={(e) => setStockUnit(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm !min-h-[38px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label htmlFor="med-stock-threshold" className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1 !m-0">
                     {pl ? "Ostrzegaj, gdy poniżej:" : "Low stock alert below:"}
                   </label>
                   <input
+                    id="med-stock-threshold"
                     type="number"
                     min="1"
                     step="1"
                     placeholder="np. 5"
                     value={lowStockThreshold}
                     onChange={(e) => setLowStockThreshold(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm font-semibold"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm font-semibold !min-h-[38px]"
                   />
                 </div>
               </div>
