@@ -260,6 +260,20 @@ export function ActiveMedicationsCard({
         </ul>
       )}
 
+      <a
+        href="#terminarz"
+        onClick={(e) => {
+          const el = document.getElementById("terminarz");
+          if (el) {
+            e.preventDefault();
+            el.scrollIntoView({ behavior: "smooth" });
+          }
+        }}
+        className="household-summary-link"
+      >
+        {pl ? "Przejdź do terminarza leków ↓" : "Go to medication schedule ↓"}
+      </a>
+
       {dialogOpen && (
         <MedicationDialog
           pets={pets}

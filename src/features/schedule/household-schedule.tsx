@@ -2491,7 +2491,7 @@ export function HouseholdSchedule({
   }
 
   return (
-    <section className="household-calendar">
+    <section className="household-calendar" id="terminarz">
       <div className="household-section-heading schedule-heading">
         <div>
           <h2>
