@@ -81,51 +81,46 @@ export function ActiveMedicationsCard({
   }
 
   return (
-    <section className="pet-panel household-summary-reports bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
-      <header className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 flex items-center justify-center flex-shrink-0">
-            <IconPill size={18} aria-hidden="true" />
+    <section className="pet-panel household-summary-reports flex flex-col gap-3.5">
+      <header className="flex items-center justify-between gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 flex items-center justify-center flex-shrink-0">
+            <IconPill size={16} aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <span>{pl ? "Aktywne leki i kuracje" : "Active Medications"}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-semibold">
+              <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-semibold">
                 {activeSchedules.length}
               </span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {pl
-                ? `Plan leczenia i suplementacji dla ${petName}`
-                : `Treatment and supplement plan for ${petName}`}
-            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {schedules.length > activeSchedules.length && (
-            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-950 text-xs">
+            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-950 text-[11px]">
               <button
                 type="button"
                 onClick={() => setFilterMode("active")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
                   filterMode === "active"
                     ? "bg-white dark:bg-slate-800 text-teal-800 dark:text-teal-300 shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
-                {pl ? `Aktywne (${activeSchedules.length})` : `Active (${activeSchedules.length})`}
+                {pl ? `Aktywne` : `Active`}
               </button>
               <button
                 type="button"
                 onClick={() => setFilterMode("all")}
-                className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
                   filterMode === "all"
                     ? "bg-white dark:bg-slate-800 text-teal-800 dark:text-teal-300 shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
-                {pl ? `Wszystkie (${schedules.length})` : `All (${schedules.length})`}
+                {pl ? `Wszystkie` : `All`}
               </button>
             </div>
           )}
@@ -136,10 +131,10 @@ export function ActiveMedicationsCard({
               setEditingSchedule(null);
               setDialogOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
-            <IconPlus size={15} />
-            <span>{pl ? "Dodaj lek" : "Add medication"}</span>
+            <IconPlus size={14} />
+            <span>{pl ? "Dodaj lek" : "Add"}</span>
           </button>
         </div>
       </header>

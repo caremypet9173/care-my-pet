@@ -528,8 +528,9 @@
 .household-record-stats h2 { font-size: .65rem; text-transform: uppercase; letter-spacing: .05em; }
 .household-record-stats strong { font-size: 1.2rem; display: block; margin-block: .5rem; }
 .household-record-stats p { font-size: .7rem; }
-.household-record-columns { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 1.5rem; }
-.household-record-columns .pet-panel { padding: 1.25rem; margin-bottom: 1.25rem; border-radius: .875rem; }
+.household-record-columns { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.household-record-columns > div, .household-record-columns > aside { display: flex; flex-direction: column; gap: 1.25rem; }
+.household-record-columns .pet-panel { padding: 1.25rem; margin-bottom: 0; border-radius: .875rem; }
 .household-record-columns h2 { font-size: .9375rem; }
 .household-record-columns p { font-size: .75rem; }
 .household-inline-empty { display: flex; align-items: center; gap: 1rem; min-height: 8rem; border-top: 1px solid var(--color-border); }
@@ -1641,7 +1642,7 @@
   #record-panel-0:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
   #record-panel-0 > .household-record-stats { margin-bottom: 0; order: 2; }
   #record-panel-0 > .household-record-columns { display: contents; }
-  #record-panel-0 > .household-record-columns > aside { order: 1; }
+  #record-panel-0 > .household-record-columns > aside { order: 1; display: grid; gap: 1rem; }
   #record-panel-0 > .household-record-columns > aside > .pet-panel, .shared-vet-page .household-record-columns > aside > .pet-panel { margin-bottom: 0; padding: .9rem 1rem; }
   #record-panel-0 > .household-record-columns > aside h2, .shared-vet-page .household-record-columns > aside h2 { font-size: .85rem; margin-bottom: .35rem; }
   .household-record .pet-facts > div, .shared-vet-page .pet-facts > div { padding-block: .42rem; }
