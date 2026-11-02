@@ -184,6 +184,19 @@ Deno.serve(async (req) => {
     const instructions = String(item.instructions ?? "").trim();
     const isActive = item.is_active !== false;
 
+    const stockQuantity =
+      item.stock_quantity != null && item.stock_quantity !== "" && !Number.isNaN(Number(item.stock_quantity))
+        ? Math.max(0, Number(item.stock_quantity))
+        : null;
+    const lowStockThreshold =
+      item.low_stock_threshold != null && item.low_stock_threshold !== "" && !Number.isNaN(Number(item.low_stock_threshold))
+        ? Math.max(0, Number(item.low_stock_threshold))
+        : 5;
+    const stockUnit =
+      typeof item.stock_unit === "string" && item.stock_unit.trim()
+        ? item.stock_unit.trim().slice(0, 30)
+        : "dawek";
+
     if (
       name.length < 1 ||
       name.length > 120 ||
@@ -226,6 +239,9 @@ Deno.serve(async (req) => {
         p_instructions: instructions,
         p_is_active: isActive,
         p_scheduled_times: scheduledTimes.length > 0 ? scheduledTimes : (scheduledTime ? [scheduledTime] : []),
+        p_stock_quantity: stockQuantity,
+        p_low_stock_threshold: lowStockThreshold,
+        p_stock_unit: stockUnit,
       },
     );
 

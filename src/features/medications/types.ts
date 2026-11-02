@@ -17,6 +17,9 @@ export type MedicationSchedule = {
   scheduled_times?: string[];
   instructions: string;
   is_active: boolean;
+  stock_quantity?: number | null;
+  low_stock_threshold?: number | null;
+  stock_unit?: string | null;
   revision: number;
   created_by: string;
   created_at: string;

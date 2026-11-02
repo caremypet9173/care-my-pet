@@ -298,6 +298,8 @@ export function HouseholdSchedule({
   initialMedicationLogs = [],
   initialNotificationSettings,
   fixedPetId,
+  memberNames = {},
+  currentUserId,
 }: {
   pets: Pick<Pet, "id" | "imie">[];
   initialScheduleItems: ScheduleItem[];
@@ -307,6 +309,8 @@ export function HouseholdSchedule({
   initialMedicationLogs?: MedicationLog[];
   initialNotificationSettings?: HouseholdNotificationSettings;
   fixedPetId?: string;
+  memberNames?: Record<string, string>;
+  currentUserId?: string;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
@@ -703,6 +707,25 @@ export function HouseholdSchedule({
           );
           return [savedLog!, ...filtered];
         });
+
+        if (status === "taken" && !dose.is_completed) {
+          setMedicationSchedules((prev) =>
+            prev.map((s) =>
+              s.id === dose.schedule_id && s.stock_quantity != null
+                ? { ...s, stock_quantity: Math.max(0, s.stock_quantity - 1) }
+                : s,
+            ),
+          );
+        } else if (status === "skipped" && dose.is_completed) {
+          setMedicationSchedules((prev) =>
+            prev.map((s) =>
+              s.id === dose.schedule_id && s.stock_quantity != null
+                ? { ...s, stock_quantity: s.stock_quantity + 1 }
+                : s,
+            ),
+          );
+        }
+
         return true;
       } else {
         alert(
@@ -755,6 +778,16 @@ export function HouseholdSchedule({
       }
 
       if (deleted) {
+        const deletedLog = medicationLogs.find((l) => l.id === logId);
+        if (deletedLog && deletedLog.status === "taken" && deletedLog.schedule_id) {
+          setMedicationSchedules((prev) =>
+            prev.map((s) =>
+              s.id === deletedLog.schedule_id && s.stock_quantity != null
+                ? { ...s, stock_quantity: s.stock_quantity + 1 }
+                : s,
+            ),
+          );
+        }
         setMedicationLogs((prev) => prev.filter((l) => l.id !== logId));
       } else {
         alert(
@@ -1692,12 +1725,41 @@ export function HouseholdSchedule({
                     dateStyle: "short",
                     timeZone: "Europe/Warsaw",
                   }).format(new Date(entry.dose.log.administered_at))}
+                  {` · ${
+                    entry.dose.log.administered_by
+                      ? entry.dose.log.administered_by === currentUserId
+                        ? pl
+                          ? "Ciebie"
+                          : "You"
+                        : memberNames[entry.dose.log.administered_by] ||
+                          (pl ? "domownika" : "member")
+                      : pl
+                        ? "domownika"
+                        : "member"
+                  }`}
                   )
                 </span>
               )}
               {entry.status === "skipped" && entry.dose.log && (
                 <span className="text-amber-700 dark:text-amber-400 font-medium">
-                  ⊘ {pl ? "Pominięto dawkę" : "Dose skipped"}
+                  ⊘ {pl ? "Pominięto dawkę" : "Dose skipped"} (
+                  {new Intl.DateTimeFormat(locale, {
+                    timeStyle: "short",
+                    timeZone: "Europe/Warsaw",
+                  }).format(new Date(entry.dose.log.administered_at))}
+                  {` · ${
+                    entry.dose.log.administered_by
+                      ? entry.dose.log.administered_by === currentUserId
+                        ? pl
+                          ? "Ciebie"
+                          : "You"
+                        : memberNames[entry.dose.log.administered_by] ||
+                          (pl ? "domownika" : "member")
+                      : pl
+                        ? "domownika"
+                        : "member"
+                  }`}
+                  )
                   {entry.dose.log.notes ? `: ${entry.dose.log.notes}` : ""}
                 </span>
               )}

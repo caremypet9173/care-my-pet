@@ -7,6 +7,7 @@ import {
   IconCalendarRepeat,
   IconClock,
   IconDeviceFloppy,
+  IconPackage,
   IconPill,
   IconPlus,
   IconTrash,
@@ -79,6 +80,20 @@ export function MedicationDialog({
   );
   const [instructions, setInstructions] = useState(
     schedule?.instructions ?? "",
+  );
+  const [trackStock, setTrackStock] = useState<boolean>(
+    schedule?.stock_quantity != null,
+  );
+  const [stockQuantity, setStockQuantity] = useState<string>(
+    schedule?.stock_quantity != null ? String(schedule.stock_quantity) : "",
+  );
+  const [lowStockThreshold, setLowStockThreshold] = useState<string>(
+    schedule?.low_stock_threshold != null
+      ? String(schedule.low_stock_threshold)
+      : "5",
+  );
+  const [stockUnit, setStockUnit] = useState<string>(
+    schedule?.stock_unit || (pl ? "tabletek" : "tablets"),
   );
 
   function addTimeSlot() {
@@ -193,6 +208,15 @@ export function MedicationDialog({
         scheduled_times: validTimes,
         instructions: instructions.trim(),
         is_active: true,
+        stock_quantity:
+          trackStock && stockQuantity !== ""
+            ? Math.max(0, Number(stockQuantity))
+            : null,
+        low_stock_threshold:
+          trackStock && lowStockThreshold !== ""
+            ? Math.max(0, Number(lowStockThreshold))
+            : 5,
+        stock_unit: trackStock && stockUnit.trim() ? stockUnit.trim() : pl ? "dawek" : "doses",
       },
     };
 
@@ -213,9 +237,31 @@ export function MedicationDialog({
       }
 
       if (!savedSchedule) {
-        const { data: rpcData, error: rpcError } = await client.rpc(
-          "save_medication_schedule",
-          {
+        let rpcData: unknown = null;
+        let rpcError: { code?: string; message?: string } | null = null;
+
+        const res = await client.rpc("save_medication_schedule", {
+          p_id: payload.id,
+          p_pet_id: payload.pet_id,
+          p_revision: payload.revision,
+          p_name: payload.item.name,
+          p_dosage: payload.item.dosage,
+          p_schedule_type: payload.item.schedule_type,
+          p_interval_value: payload.item.interval_value,
+          p_interval_unit: payload.item.interval_unit,
+          p_start_date: payload.item.start_date,
+          p_end_date: payload.item.end_date,
+          p_scheduled_time: payload.item.scheduled_time,
+          p_instructions: payload.item.instructions,
+          p_is_active: payload.item.is_active,
+          p_scheduled_times: payload.item.scheduled_times,
+          p_stock_quantity: payload.item.stock_quantity,
+          p_low_stock_threshold: payload.item.low_stock_threshold,
+          p_stock_unit: payload.item.stock_unit,
+        });
+
+        if (res.error && (res.error.message?.includes("parameter") || res.error.message?.includes("function"))) {
+          const resFallback = await client.rpc("save_medication_schedule", {
             p_id: payload.id,
             p_pet_id: payload.pet_id,
             p_revision: payload.revision,
@@ -230,8 +276,13 @@ export function MedicationDialog({
             p_instructions: payload.item.instructions,
             p_is_active: payload.item.is_active,
             p_scheduled_times: payload.item.scheduled_times,
-          },
-        );
+          });
+          rpcData = resFallback.data;
+          rpcError = resFallback.error;
+        } else {
+          rpcData = res.data;
+          rpcError = res.error;
+        }
 
         if (rpcError) {
           setError(
@@ -769,6 +820,73 @@ export function MedicationDialog({
                 <span>{pl ? "+ Dodaj kolejną porę" : "+ Add another time"}</span>
               </button>
             </div>
+          </div>
+
+          {/* Kontrola zapasu w apteczce */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-slate-50/60 dark:bg-slate-900/40 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={trackStock}
+                  onChange={(e) => setTrackStock(e.target.checked)}
+                  className="rounded border-slate-300 text-teal-700 focus:ring-teal-700 w-4 h-4"
+                />
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <IconPackage size={15} className="text-teal-700 dark:text-teal-400" />
+                  {pl ? "Kontrola zapasu w apteczce" : "Track medication stock"}
+                </span>
+              </label>
+              <span className="text-[11px] text-slate-400">
+                {pl ? "Automatycznie odlicza podane dawki" : "Decrements when dose is taken"}
+              </span>
+            </div>
+
+            {trackStock && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-800/70">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    {pl ? "Pozostały zapas:" : "Current stock:"}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="np. 30"
+                    value={stockQuantity}
+                    onChange={(e) => setStockQuantity(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    {pl ? "Jednostka zapasu:" : "Unit:"}
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={30}
+                    placeholder={pl ? "np. tabletek, ml" : "e.g. tablets, ml"}
+                    value={stockUnit}
+                    onChange={(e) => setStockUnit(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    {pl ? "Ostrzegaj, gdy poniżej:" : "Low stock alert below:"}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="np. 5"
+                    value={lowStockThreshold}
+                    onChange={(e) => setLowStockThreshold(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-sm font-semibold"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Wskazówki i notatki */}

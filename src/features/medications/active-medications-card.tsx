@@ -4,27 +4,72 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
+  IconAlertTriangle,
+  IconCheck,
   IconClock,
   IconEdit,
   IconNotes,
   IconPill,
   IconPlus,
+  IconPrinter,
 } from "@tabler/icons-react";
+import { createClient } from "@/lib/supabase/client";
 import { MedicationDialog } from "./medication-dialog";
-import type { MedicationSchedule } from "./types";
+import { SkipDoseDialog } from "./skip-dose-dialog";
+import { TreatmentSummaryModal } from "./treatment-summary-modal";
+import { projectMedicationDoses } from "./projection";
+import type {
+  MedicationLog,
+  MedicationSchedule,
+  ProjectedMedicationDose,
+} from "./types";
 
 interface Props {
   petId: string;
   petName: string;
   initialSchedules: MedicationSchedule[];
+  initialLogs?: MedicationLog[];
+  memberNames?: Record<string, string>;
+  currentUserId?: string;
   pets: { id: string; imie: string }[];
+  petData?: {
+    id: string;
+    imie: string;
+    gatunek: string;
+    rasa?: string | null;
+    data_urodzenia?: string | null;
+    data_urodzenia_przyblizona?: boolean | null;
+    plec: string;
+    kastracja?: boolean | null;
+    identyfikacja?: string;
+    numer_id?: string | null;
+    notatki?: string | null;
+  };
+  weight?: { kg: number; measured_on: string } | null;
+  reports?: Array<{
+    id: string;
+    title: string;
+    test_date: string;
+    laboratory?: string | null;
+  }>;
+  keyParameters?: Array<{
+    row: { name: string; value: string; unit: string; note?: string };
+    date: string;
+  }>;
 }
 
 export function ActiveMedicationsCard({
   petId,
   petName,
   initialSchedules,
+  initialLogs = [],
+  memberNames = {},
+  currentUserId,
   pets,
+  petData,
+  weight = null,
+  reports = [],
+  keyParameters = [],
 }: Props) {
   const router = useRouter();
   const locale = useLocale();
@@ -32,10 +77,15 @@ export function ActiveMedicationsCard({
 
   const [schedules, setSchedules] =
     useState<MedicationSchedule[]>(initialSchedules);
+  const [logs, setLogs] = useState<MedicationLog[]>(initialLogs);
   const [filterMode, setFilterMode] = useState<"active" | "all">("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] =
     useState<MedicationSchedule | null>(null);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [skippingDose, setSkippingDose] =
+    useState<ProjectedMedicationDose | null>(null);
+  const [busyDoseKey, setBusyDoseKey] = useState<string | null>(null);
 
   const todayIso = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Warsaw",
@@ -80,9 +130,111 @@ export function ActiveMedicationsCard({
     return "";
   }
 
+  // Szybka akcja podania lub pominięcia dawki bezpośrednio z karty
+  async function handleQuickRecordDose(
+    dose: ProjectedMedicationDose,
+    status: "taken" | "skipped",
+    notes = "",
+  ) {
+    setBusyDoseKey(dose.key);
+    try {
+      const client = createClient();
+      let savedLog: MedicationLog | null = null;
+      try {
+        const { data: fnData, error: fnError } = await client.functions.invoke(
+          "pet-medications",
+          {
+            body: {
+              action: "record_dose",
+              pet_id: dose.pet_id,
+              schedule_id: dose.schedule_id,
+              dose_date: dose.dose_date,
+              scheduled_time: dose.scheduled_time,
+              status,
+              notes,
+            },
+          },
+        );
+        if (!fnError && fnData?.log) {
+          savedLog = fnData.log as MedicationLog;
+        }
+      } catch {
+        // Fallback do RPC
+      }
+
+      if (!savedLog) {
+        const { data: rpcData, error: rpcError } = await client.rpc(
+          "record_medication_dose",
+          {
+            p_schedule_id: dose.schedule_id,
+            p_pet_id: dose.pet_id,
+            p_dose_date: dose.dose_date,
+            p_scheduled_time: dose.scheduled_time || "",
+            p_status: status,
+            p_notes: notes,
+          },
+        );
+        if (!rpcError && rpcData) {
+          savedLog = rpcData as MedicationLog;
+        }
+      }
+
+      if (savedLog) {
+        setLogs((prev) => {
+          const filtered = prev.filter(
+            (l) =>
+              !(
+                l.schedule_id === dose.schedule_id &&
+                l.dose_date === dose.dose_date &&
+                (l.scheduled_time === dose.scheduled_time ||
+                  (!l.scheduled_time && !dose.scheduled_time))
+              ),
+          );
+          return [savedLog!, ...filtered];
+        });
+
+        // Aktualizacja zapasu leku (stock_quantity) w lokalnym stanie
+        if (status === "taken" && !dose.is_completed) {
+          setSchedules((prev) =>
+            prev.map((s) =>
+              s.id === dose.schedule_id && s.stock_quantity != null
+                ? { ...s, stock_quantity: Math.max(0, s.stock_quantity - 1) }
+                : s,
+            ),
+          );
+        } else if (status === "skipped" && dose.is_completed) {
+          setSchedules((prev) =>
+            prev.map((s) =>
+              s.id === dose.schedule_id && s.stock_quantity != null
+                ? { ...s, stock_quantity: s.stock_quantity + 1 }
+                : s,
+            ),
+          );
+        }
+
+        router.refresh();
+      } else {
+        alert(
+          pl
+            ? "Nie udało się zapisać podania dawki. Spróbuj ponownie."
+            : "Failed to record dose. Please retry.",
+        );
+      }
+    } catch (e) {
+      console.error("Error recording dose:", e);
+      alert(
+        pl
+          ? "Wystąpił błąd podczas zatwierdzania dawki."
+          : "Error recording dose.",
+      );
+    } finally {
+      setBusyDoseKey(null);
+    }
+  }
+
   return (
     <section className="pet-panel household-summary-reports household-summary-meds flex flex-col gap-3">
-      <header className="flex items-center justify-between gap-2.5 flex-wrap">
+      <header className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 flex items-center justify-center flex-shrink-0">
             <IconPill size={16} aria-hidden="true" />
@@ -97,7 +249,7 @@ export function ActiveMedicationsCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {schedules.length > activeSchedules.length && (
             <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-950 text-[11px]">
               <button
@@ -123,6 +275,19 @@ export function ActiveMedicationsCard({
                 {pl ? `Wszystkie` : `All`}
               </button>
             </div>
+          )}
+
+          {/* Przycisk karty dla weterynarza */}
+          {petData && (
+            <button
+              type="button"
+              onClick={() => setSummaryModalOpen(true)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-teal-700/50 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium shadow-2xs transition-colors cursor-pointer"
+              title={pl ? "Wygeneruj kartę leczenia i historii dla lekarza weterynarii" : "Generate veterinary treatment summary card"}
+            >
+              <IconPrinter size={13} className="text-teal-700 dark:text-teal-400" />
+              <span className="hidden sm:inline">{pl ? "Karta leczenia" : "Rx Card"}</span>
+            </button>
           )}
 
           <button
@@ -170,6 +335,18 @@ export function ActiveMedicationsCard({
                   ? [s.scheduled_time]
                   : [];
 
+            // Projekcja dzisiejszych dawek dla tego konkretnego leku
+            const todayDoses = projectMedicationDoses({
+              schedules: [s],
+              logs,
+              rangeStart: todayIso,
+              rangeEnd: todayIso,
+            });
+
+            const isLowStock =
+              s.stock_quantity != null &&
+              s.stock_quantity <= (s.low_stock_threshold ?? 5);
+
             return (
               <li
                 key={s.id}
@@ -196,6 +373,17 @@ export function ActiveMedicationsCard({
                         {s.dosage && (
                           <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
                             {s.dosage}
+                          </span>
+                        )}
+                        {s.stock_quantity != null && (
+                          <span
+                            className={`text-[11px] px-1.5 py-0.2 rounded-md font-medium ${
+                              isLowStock
+                                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 font-semibold"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                            }`}
+                          >
+                            {pl ? `Zapas: ${s.stock_quantity} ${s.stock_unit || "dawek"}` : `Stock: ${s.stock_quantity}`}
                           </span>
                         )}
                         {isFinished && (
@@ -231,7 +419,105 @@ export function ActiveMedicationsCard({
                   </button>
                 </div>
 
-                {times.length > 0 && (
+                {/* Alert o niskim zapasie w apteczce */}
+                {isLowStock && !isFinished && (
+                  <div className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-900/60 ml-10">
+                    <IconAlertTriangle size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>
+                      {pl
+                        ? `Kończy się lek: zostało tylko ${s.stock_quantity} ${s.stock_unit || "dawek"} — zamów receptę!`
+                        : `Low medication stock: only ${s.stock_quantity} left — refill required!`}
+                    </span>
+                  </div>
+                )}
+
+                {/* Szybkie zatwierdzanie dzisiejszych dawek leku */}
+                {todayDoses.length > 0 && !isFinished && (
+                  <div className="flex items-center gap-1.5 flex-wrap pl-10 pt-0.5">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-0.5">
+                      <IconClock size={12} />
+                      {pl ? "Dzisiaj:" : "Today:"}
+                    </span>
+                    {todayDoses.map((dose) => {
+                      const isBusy = busyDoseKey === dose.key;
+                      const adminTime = dose.log?.administered_at
+                        ? new Intl.DateTimeFormat(locale, {
+                            timeStyle: "short",
+                            timeZone: "Europe/Warsaw",
+                          }).format(new Date(dose.log.administered_at))
+                        : "";
+                      const adminPerson = dose.log?.administered_by
+                        ? dose.log.administered_by === currentUserId
+                          ? pl
+                            ? "Ciebie"
+                            : "You"
+                          : memberNames[dose.log.administered_by] ||
+                            (pl ? "domownika" : "member")
+                        : pl
+                          ? "domownika"
+                          : "member";
+
+                      if (dose.is_completed) {
+                        return (
+                          <span
+                            key={dose.key}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 text-[11px] font-medium"
+                            title={pl ? `Podano o ${adminTime} przez: ${adminPerson}` : `Given at ${adminTime} by: ${adminPerson}`}
+                          >
+                            <IconCheck size={12} className="text-emerald-600 shrink-0" />
+                            <span className="font-mono font-semibold">{dose.scheduled_time || "—"}</span>
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                              ✓ {adminPerson}
+                            </span>
+                          </span>
+                        );
+                      }
+
+                      if (dose.is_skipped) {
+                        return (
+                          <span
+                            key={dose.key}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200/60 text-[11px] font-medium"
+                            title={dose.log?.notes ? `Pominięto: ${dose.log.notes}` : "Pominięto"}
+                          >
+                            <span className="font-mono">{dose.scheduled_time || "—"}</span>
+                            <span className="text-[10px] text-amber-700 dark:text-amber-400">
+                              ⊘ {pl ? "Pominięto" : "Skipped"}
+                            </span>
+                          </span>
+                        );
+                      }
+
+                      // Dawka oczekująca na podanie (Quick Action)
+                      return (
+                        <div key={dose.key} className="inline-flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleQuickRecordDose(dose, "taken")}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-l-md bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-semibold transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                            title={pl ? `Zatwierdź podanie o ${dose.scheduled_time}` : `Mark dose at ${dose.scheduled_time} as given`}
+                          >
+                            <IconCheck size={12} />
+                            <span>{dose.scheduled_time || (pl ? "Podaj" : "Give")}</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => setSkippingDose(dose)}
+                            className="px-1.5 py-0.5 rounded-r-md bg-teal-800 hover:bg-teal-900 text-teal-100 hover:text-amber-200 text-[10px] font-medium transition-colors cursor-pointer border-l border-teal-600 disabled:opacity-50"
+                            title={pl ? "Pomiń tę dawkę" : "Skip this dose"}
+                          >
+                            {pl ? "Pomiń" : "Skip"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Planowane godziny podawania (gdy brak dawek dzisiaj) */}
+                {todayDoses.length === 0 && times.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap pl-10">
                     <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 flex items-center gap-1">
                       <IconClock size={12} />
@@ -260,6 +546,7 @@ export function ActiveMedicationsCard({
         </ul>
       )}
 
+      {/* Stopka karty z płynnym przewijaniem do sekcji kalendarza */}
       <a
         href="#terminarz"
         onClick={(e) => {
@@ -300,6 +587,32 @@ export function ActiveMedicationsCard({
             setEditingSchedule(null);
             router.refresh();
           }}
+        />
+      )}
+
+      {/* Modal pomijania dawki */}
+      {skippingDose && (
+        <SkipDoseDialog
+          dose={skippingDose}
+          petName={petName}
+          onClose={() => setSkippingDose(null)}
+          onConfirm={async (notes) => {
+            await handleQuickRecordDose(skippingDose, "skipped", notes);
+            setSkippingDose(null);
+          }}
+        />
+      )}
+
+      {/* Modal karty leczenia dla weterynarza */}
+      {summaryModalOpen && petData && (
+        <TreatmentSummaryModal
+          pet={petData}
+          weight={weight}
+          schedules={schedules}
+          logs={logs}
+          reports={reports}
+          keyParameters={keyParameters}
+          onClose={() => setSummaryModalOpen(false)}
         />
       )}
     </section>

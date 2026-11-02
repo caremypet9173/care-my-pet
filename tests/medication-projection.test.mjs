@@ -265,3 +265,63 @@ test('scenariusz 5: pominięcie dawki leku (status: skipped)', () => {
   assert.equal(doses[0].log?.status, 'skipped');
   assert.equal(doses[0].log?.notes, 'Odmówił zjedzenia smaczka');
 });
+
+test('scenariusz 6: śledzenie zapasu i ewidencja podania przez domownika', () => {
+  const schedules = [
+    {
+      id: 'sched-apoquel',
+      pet_id: 'pet-1',
+      household_id: 'house-1',
+      name: 'Apoquel 16mg',
+      dosage: '1 tabletka',
+      schedule_type: 'daily',
+      interval_value: null,
+      interval_unit: null,
+      start_date: '2026-11-01',
+      end_date: null,
+      scheduled_time: '08:00',
+      scheduled_times: ['08:00'],
+      instructions: 'Podać rano z jedzeniem',
+      is_active: true,
+      stock_quantity: 14,
+      low_stock_threshold: 5,
+      stock_unit: 'tabletek',
+      revision: 1,
+      created_by: 'user-1',
+      created_at: '2026-11-01T00:00:00Z',
+      updated_at: '2026-11-01T00:00:00Z',
+    },
+  ];
+
+  const logs = [
+    {
+      id: 'log-taken-1',
+      schedule_id: 'sched-apoquel',
+      pet_id: 'pet-1',
+      household_id: 'house-1',
+      dose_date: '2026-11-02',
+      scheduled_time: '08:00',
+      administered_at: '2026-11-02T08:05:00Z',
+      status: 'taken',
+      administered_by: 'user-2',
+      notes: '',
+      revision: 1,
+      created_by: 'user-2',
+      created_at: '2026-11-02T08:05:00Z',
+      updated_at: '2026-11-02T08:05:00Z',
+    },
+  ];
+
+  const doses = projectMedicationDoses({
+    schedules,
+    logs,
+    rangeStart: '2026-11-02',
+    rangeEnd: '2026-11-02',
+  });
+
+  assert.equal(doses.length, 1);
+  assert.equal(doses[0].is_completed, true);
+  assert.equal(doses[0].is_skipped, false);
+  assert.equal(doses[0].log?.administered_by, 'user-2');
+  assert.equal(schedules[0].stock_quantity, 14);
+});

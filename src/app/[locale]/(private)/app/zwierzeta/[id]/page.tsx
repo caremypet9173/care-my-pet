@@ -28,6 +28,7 @@ import { listReports } from "@/features/medical/data";
 import { MedicalResults } from "@/features/medical/results";
 import { MedicalDocuments } from "@/features/medical/documents";
 import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
+import { getHouseholdDetails } from "@/features/household/data";
 export default async function PetPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{tab?:string;report?:string;document?:string}> }) {
   const locale = await getLocale();
   const t = petMessages[locale];
@@ -36,7 +37,19 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   if (!pet) notFound();
   const resolvedSearch = await searchParams;
   const requestedReport = resolvedSearch.report ?? resolvedSearch.document;
-  const [reports,weights,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs] = await Promise.all([listReports(pet.id,requestedReport),listWeights(pet.id),listHealthEvents(pet.id),listPetScheduleItems(pet.id),getHouseholdNotificationSettings(),listAssistantThreads(pet.id),listAssistantMessages(pet.id),getAssistantQuotaUsed(),listPetMedicationSchedules(pet.id),listPetMedicationLogs(pet.id)]);
+  const [reports,weights,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails] = await Promise.all([listReports(pet.id,requestedReport),listWeights(pet.id),listHealthEvents(pet.id),listPetScheduleItems(pet.id),getHouseholdNotificationSettings(),listAssistantThreads(pet.id),listAssistantMessages(pet.id),getAssistantQuotaUsed(),listPetMedicationSchedules(pet.id),listPetMedicationLogs(pet.id),getHouseholdDetails(pet.gospodarstwo_id)]);
+  const memberNames: Record<string, string> = {};
+  if (householdDetails?.owner?.user_id) {
+    memberNames[householdDetails.owner.user_id] = householdDetails.owner.email?.split("@")[0] || (locale === "pl" ? "Właściciel" : "Owner");
+  }
+  for (const m of householdDetails?.members ?? []) {
+    if (m.user_id && m.email) {
+      memberNames[m.user_id] = m.email.split("@")[0];
+    }
+  }
+  const currentUserId = householdDetails?.owner?.is_self
+    ? householdDetails.owner.user_id
+    : householdDetails?.members.find((m) => m.is_self)?.user_id;
   const keyParameters=reports.flatMap(report=>report.rows.filter(row=>row.is_key).map(row=>({row,date:report.test_date})));
   const tab = resolvedSearch.tab;
   const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : tab === "weight" ? 4 : tab === "assistant" ? 5 : 0;
@@ -115,9 +128,9 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Waga i rozwój →':'Weight and growth →'}</Link></dd></div>
     </dl></section>
-    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} pets={[{ id: pet.id, imie: pet.imie }]} />
+    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} />
   </aside></div>
-    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} />
+    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} />
     </RecordSections>
   </Container>;
 }
