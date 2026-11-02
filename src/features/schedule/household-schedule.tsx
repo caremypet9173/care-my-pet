@@ -44,6 +44,14 @@ import {
   ScheduleDialog,
   type CompleteTarget,
 } from "./schedule-dialog";
+import { MedicationDialog } from "@/features/medications/medication-dialog";
+import { projectMedicationDoses } from "@/features/medications/projection";
+import type {
+  MedicationLog,
+  MedicationSchedule,
+  MedicationScheduleType,
+  ProjectedMedicationDose,
+} from "@/features/medications/types";
 
 type FilterCategory = "all" | ScheduleCategory | "lab";
 type ViewMode = "upcoming" | "archive";
@@ -106,6 +114,23 @@ type UnifiedScheduleEntry =
       doctor: string;
       status: "completed";
       report: CalendarReportSummary;
+    }
+  | {
+      kind: "medication_dose";
+      key: string;
+      petId: string;
+      category: "prevention";
+      title: string;
+      date: string;
+      time: string;
+      clinic: string;
+      doctor: string;
+      prepNotes: string;
+      status: "planned" | "completed";
+      dosage: string;
+      scheduleType: MedicationScheduleType;
+      instructions: string;
+      dose: ProjectedMedicationDose;
     };
 
 const PL_MONTH_ALIASES: Record<string, string> = {
@@ -203,7 +228,9 @@ function buildSearchHaystack(
         ? `${entry.batchOrProduct} ${entry.lastEventDate}`
         : entry.kind === "history_event"
           ? `${entry.batchOrProduct} ${entry.description}`
-          : "";
+          : entry.kind === "medication_dose"
+            ? `${entry.dosage} ${entry.instructions} ${entry.scheduleType}`
+            : "";
 
   return foldText(
     [
@@ -264,6 +291,8 @@ export function HouseholdSchedule({
   initialScheduleItems,
   initialHealthEvents,
   initialReports = [],
+  initialMedicationSchedules = [],
+  initialMedicationLogs = [],
   initialNotificationSettings,
   fixedPetId,
 }: {
@@ -271,6 +300,8 @@ export function HouseholdSchedule({
   initialScheduleItems: ScheduleItem[];
   initialHealthEvents: HealthEvent[];
   initialReports?: CalendarReportSummary[];
+  initialMedicationSchedules?: MedicationSchedule[];
+  initialMedicationLogs?: MedicationLog[];
   initialNotificationSettings?: HouseholdNotificationSettings;
   fixedPetId?: string;
 }) {
@@ -291,6 +322,16 @@ export function HouseholdSchedule({
   const [healthEvents, setHealthEvents] =
     useState<HealthEvent[]>(initialHealthEvents);
   const [reports] = useState<CalendarReportSummary[]>(initialReports);
+  const [medicationSchedules, setMedicationSchedules] =
+    useState<MedicationSchedule[]>(initialMedicationSchedules);
+  const [medicationLogs, setMedicationLogs] =
+    useState<MedicationLog[]>(initialMedicationLogs);
+  const [medicationDialogOpen, setMedicationDialogOpen] = useState(false);
+  const [editingMedicationSchedule, setEditingMedicationSchedule] =
+    useState<MedicationSchedule | null>(null);
+  const [medicationDefaultDate, setMedicationDefaultDate] = useState<
+    string | undefined
+  >(undefined);
 
   const [displayLayout, setDisplayLayout] = useState<DisplayLayout>("month");
   const [petFilter, setPetFilter] = useState<string>(fixedPetId ?? "all");
@@ -585,6 +626,122 @@ export function HouseholdSchedule({
     [pl],
   );
 
+  async function handleRecordDose(dose: ProjectedMedicationDose) {
+    setBusyKey(dose.key);
+    try {
+      const client = createClient();
+      let savedLog: MedicationLog | null = null;
+      try {
+        const { data: fnData, error: fnError } = await client.functions.invoke(
+          "pet-medications",
+          {
+            body: {
+              action: "record_dose",
+              pet_id: dose.pet_id,
+              schedule_id: dose.schedule_id,
+              dose_date: dose.dose_date,
+              scheduled_time: dose.scheduled_time,
+              status: "taken",
+            },
+          },
+        );
+        if (!fnError && fnData?.log) {
+          savedLog = fnData.log as MedicationLog;
+        }
+      } catch {
+        // Fallback do RPC
+      }
+
+      if (!savedLog) {
+        const { data: rpcData, error: rpcError } = await client.rpc(
+          "record_medication_dose",
+          {
+            p_schedule_id: dose.schedule_id,
+            p_pet_id: dose.pet_id,
+            p_dose_date: dose.dose_date,
+            p_scheduled_time: dose.scheduled_time,
+            p_status: "taken",
+            p_notes: "",
+          },
+        );
+        if (!rpcError && rpcData) {
+          savedLog = rpcData as MedicationLog;
+        }
+      }
+
+      if (savedLog) {
+        setMedicationLogs((prev) => {
+          const filtered = prev.filter(
+            (l) =>
+              !(
+                l.schedule_id === dose.schedule_id &&
+                l.dose_date === dose.dose_date &&
+                (l.scheduled_time === dose.scheduled_time ||
+                  (!l.scheduled_time && !dose.scheduled_time))
+              ),
+          );
+          return [savedLog!, ...filtered];
+        });
+      }
+    } catch (e) {
+      console.error("Error recording dose:", e);
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function handleDeleteDoseLog(logId: string) {
+    setBusyKey(`log-${logId}`);
+    try {
+      const client = createClient();
+      let deleted = false;
+      try {
+        const { data: fnData, error: fnError } = await client.functions.invoke(
+          "pet-medications",
+          {
+            body: {
+              action: "delete_dose_log",
+              pet_id: fixedPetId || pets[0]?.id,
+              log_id: logId,
+            },
+          },
+        );
+        if (!fnError && fnData?.deleted) deleted = true;
+      } catch {
+        // Fallback do RPC
+      }
+
+      if (!deleted) {
+        const { error: rpcError } = await client.rpc("delete_medication_dose_log", {
+          p_log_id: logId,
+        });
+        if (!rpcError) deleted = true;
+      }
+
+      if (deleted) {
+        setMedicationLogs((prev) => prev.filter((l) => l.id !== logId));
+      }
+    } catch (e) {
+      console.error("Error deleting dose log:", e);
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  const projectedDoses = useMemo(() => {
+    const startYear = monthCursor.year - 1;
+    const endYear = monthCursor.year + 1;
+    const rangeStart = `${startYear}-01-01`;
+    const rangeEnd = `${endYear}-12-31`;
+
+    return projectMedicationDoses({
+      schedules: medicationSchedules,
+      logs: medicationLogs,
+      rangeStart,
+      rangeEnd,
+    });
+  }, [medicationSchedules, medicationLogs, monthCursor]);
+
   const allEntries = useMemo<UnifiedScheduleEntry[]>(() => {
     const linkedHistoryIds = new Set(
       scheduleItems
@@ -657,17 +814,36 @@ export function HouseholdSchedule({
       report: rep,
     }));
 
+    const medicationEntries: UnifiedScheduleEntry[] = projectedDoses.map((dose) => ({
+      kind: "medication_dose",
+      key: dose.key,
+      petId: dose.pet_id,
+      category: "prevention",
+      title: dose.dosage ? `${dose.name} (${dose.dosage})` : dose.name,
+      date: dose.dose_date,
+      time: dose.scheduled_time,
+      clinic: "",
+      doctor: "",
+      prepNotes: dose.instructions,
+      status: dose.is_completed ? "completed" : "planned",
+      dosage: dose.dosage,
+      scheduleType: dose.schedule_type,
+      instructions: dose.instructions,
+      dose,
+    }));
+
     return [
       ...manualEntries,
       ...dueEntries,
       ...historyActualEntries,
       ...reportEntries,
+      ...medicationEntries,
     ].sort(
       (a, b) =>
         a.date.localeCompare(b.date) ||
         (a.time || "99:99").localeCompare(b.time || "99:99"),
     );
-  }, [scheduleItems, healthEvents, reports]);
+  }, [scheduleItems, healthEvents, reports, projectedDoses]);
 
   const queryTokens = useMemo(() => {
     const folded = foldText(searchQuery.trim());
@@ -974,26 +1150,31 @@ export function HouseholdSchedule({
             ? IconFlask
             : IconStethoscope;
     const categoryLabel =
-      entry.category === "vaccination"
+      entry.kind === "medication_dose"
         ? pl
-          ? "Szczepienie"
-          : "Vaccination"
-        : entry.category === "prevention"
+          ? "Lek"
+          : "Medication"
+        : entry.category === "vaccination"
           ? pl
-            ? "Profilaktyka"
-            : "Prevention"
-          : entry.category === "lab"
+            ? "Szczepienie"
+            : "Vaccination"
+          : entry.category === "prevention"
             ? pl
-              ? "Wynik badania"
-              : "Lab result"
-            : pl
-              ? "Wizyta"
-              : "Visit";
+              ? "Profilaktyka"
+              : "Prevention"
+            : entry.category === "lab"
+              ? pl
+                ? "Wynik badania"
+                : "Lab result"
+              : pl
+                ? "Wizyta"
+                : "Visit";
 
     const isBusy = busyKey === entry.key;
     const hasNotes =
       (entry.kind === "schedule_item" && entry.prepNotes.trim().length > 0) ||
-      (entry.kind === "history_event" && entry.description.trim().length > 0);
+      (entry.kind === "history_event" && entry.description.trim().length > 0) ||
+      (entry.kind === "medication_dose" && entry.instructions.trim().length > 0);
     const notesOpen = expandedNotesKey === entry.key || highlightedKey === entry.key;
 
     const metaParts: string[] = [];
@@ -1004,6 +1185,16 @@ export function HouseholdSchedule({
       entry.batchOrProduct
     ) {
       metaParts.push(entry.batchOrProduct);
+    }
+    if (entry.kind === "medication_dose") {
+      const scheduleLabel =
+        entry.scheduleType === "one_off"
+          ? pl ? "Doraźnie" : "One-off"
+          : entry.scheduleType === "daily"
+            ? pl ? "Codziennie" : "Daily"
+            : pl ? "Cyklicznie" : "Interval";
+      metaParts.push(scheduleLabel);
+      if (entry.dosage) metaParts.push(entry.dosage);
     }
 
     return (
@@ -1170,6 +1361,54 @@ export function HouseholdSchedule({
               </>
             )}
 
+            {entry.kind === "medication_dose" && (
+              <>
+                {entry.status === "planned" ? (
+                  <button
+                    type="button"
+                    className="schedule-mini-btn is-primary font-medium"
+                    disabled={isBusy}
+                    onClick={() => void handleRecordDose(entry.dose)}
+                    title={pl ? "Zatwierdź podanie leku" : "Confirm medication dose"}
+                  >
+                    <IconCheck size={14} aria-hidden="true" />
+                    <span>{pl ? "Zatwierdź podanie" : "Confirm dose"}</span>
+                  </button>
+                ) : (
+                  entry.dose.log && (
+                    <button
+                      type="button"
+                      className="schedule-mini-btn"
+                      disabled={isBusy}
+                      onClick={() => void handleDeleteDoseLog(entry.dose.log!.id)}
+                      title={pl ? "Cofnij zatwierdzenie dawki" : "Undo dose confirmation"}
+                    >
+                      <IconBan size={14} aria-hidden="true" />
+                      <span>{pl ? "Cofnij" : "Undo"}</span>
+                    </button>
+                  )
+                )}
+                <button
+                  type="button"
+                  className="schedule-mini-btn"
+                  disabled={isBusy}
+                  onClick={() => {
+                    const found = medicationSchedules.find(
+                      (s) => s.id === entry.dose.schedule_id,
+                    );
+                    if (found) {
+                      setEditingMedicationSchedule(found);
+                      setMedicationDialogOpen(true);
+                    }
+                  }}
+                  title={pl ? "Edytuj harmonogram tego leku" : "Edit medication schedule"}
+                >
+                  <IconPencil size={13} aria-hidden="true" />
+                  <span>{pl ? "Harmonogram" : "Schedule"}</span>
+                </button>
+              </>
+            )}
+
             {(entry.kind === "due_event" || entry.kind === "history_event") && (
               <Link
                 href={`/app/zwierzeta/${entry.petId}?tab=history`}
@@ -1200,7 +1439,9 @@ export function HouseholdSchedule({
                 ? entry.prepNotes
                 : entry.kind === "history_event"
                   ? entry.description
-                  : ""}
+                  : entry.kind === "medication_dose"
+                    ? entry.instructions
+                    : ""}
             </p>
           </div>
         )}
@@ -1234,17 +1475,20 @@ export function HouseholdSchedule({
             : IconStethoscope;
 
     const categoryLabel =
-      entry.category === "vaccination"
-        ? pl ? "Szczepienie" : "Vaccination"
-        : entry.category === "prevention"
-          ? pl ? "Profilaktyka" : "Prevention"
-          : entry.category === "lab"
-            ? pl ? "Badania i wyniki" : "Lab results"
-            : pl ? "Wizyta weterynaryjna" : "Vet visit";
+      entry.kind === "medication_dose"
+        ? pl ? "Lek / dawka" : "Medication dose"
+        : entry.category === "vaccination"
+          ? pl ? "Szczepienie" : "Vaccination"
+          : entry.category === "prevention"
+            ? pl ? "Profilaktyka" : "Prevention"
+            : entry.category === "lab"
+              ? pl ? "Badania i wyniki" : "Lab results"
+              : pl ? "Wizyta weterynaryjna" : "Vet visit";
 
     const hasNotes =
       (entry.kind === "schedule_item" && Boolean(entry.prepNotes?.trim())) ||
-      (entry.kind === "history_event" && Boolean(entry.description?.trim()));
+      (entry.kind === "history_event" && Boolean(entry.description?.trim())) ||
+      (entry.kind === "medication_dose" && Boolean(entry.instructions?.trim()));
 
     return (
       <li
@@ -1308,6 +1552,30 @@ export function HouseholdSchedule({
             </div>
           )}
 
+          {entry.kind === "medication_dose" && (
+            <div className="schedule-day-card-meta">
+              <span>
+                💊 {entry.scheduleType === "one_off"
+                  ? pl ? "Wariant: jednorazowe (doraźne)" : "Variant: one-off"
+                  : entry.scheduleType === "daily"
+                    ? pl ? "Wariant: stałe, codzienne" : "Variant: daily"
+                    : pl ? "Wariant: cykliczne (interwał)" : "Variant: interval"}
+              </span>
+              {entry.dosage && <span>🏷️ {entry.dosage}</span>}
+              {entry.status === "completed" && entry.dose.log && (
+                <span className="text-teal-700 font-medium">
+                  ✓ {pl ? "Zatwierdzono podanie" : "Administered"} (
+                  {new Intl.DateTimeFormat(locale, {
+                    timeStyle: "short",
+                    dateStyle: "short",
+                    timeZone: "Europe/Warsaw",
+                  }).format(new Date(entry.dose.log.administered_at))}
+                  )
+                </span>
+              )}
+            </div>
+          )}
+
           {hasNotes && (
             <div className="schedule-day-card-notes">
               <IconNotes size={16} aria-hidden="true" />
@@ -1317,16 +1585,22 @@ export function HouseholdSchedule({
                     ? pl
                       ? "Notatki przedwizytowe dla opiekuna:"
                       : "Pre-visit notes:"
-                    : pl
-                      ? "Opis i zalecenia:"
-                      : "Description & recommendations:"}
+                    : entry.kind === "history_event"
+                      ? pl
+                        ? "Opis i zalecenia:"
+                        : "Description & recommendations:"
+                      : pl
+                        ? "Wskazówki podania leku dla opiekuna:"
+                        : "Medication administration instructions:"}
                 </strong>
                 <p>
                   {entry.kind === "schedule_item"
                     ? entry.prepNotes
                     : entry.kind === "history_event"
                       ? entry.description
-                      : ""}
+                      : entry.kind === "medication_dose"
+                        ? entry.instructions
+                        : ""}
                 </p>
               </div>
             </div>
@@ -1428,6 +1702,54 @@ export function HouseholdSchedule({
                   {pl ? "Otwórz wyniki badania →" : "Open lab report →"}
                 </span>
               </Link>
+            )}
+
+            {entry.kind === "medication_dose" && (
+              <>
+                {entry.status === "planned" ? (
+                  <button
+                    type="button"
+                    className="history-action-btn is-primary font-medium"
+                    disabled={isBusy}
+                    onClick={() => void handleRecordDose(entry.dose)}
+                    title={pl ? "Zatwierdź podanie leku" : "Confirm medication dose"}
+                  >
+                    <IconCheck size={16} aria-hidden="true" />
+                    <span>{pl ? "Zatwierdź podanie" : "Confirm dose"}</span>
+                  </button>
+                ) : (
+                  entry.dose.log && (
+                    <button
+                      type="button"
+                      className="history-action-btn"
+                      disabled={isBusy}
+                      onClick={() => void handleDeleteDoseLog(entry.dose.log!.id)}
+                      title={pl ? "Cofnij zatwierdzenie dawki" : "Undo dose confirmation"}
+                    >
+                      <IconBan size={15} aria-hidden="true" />
+                      <span>{pl ? "Cofnij zatwierdzenie" : "Undo confirmation"}</span>
+                    </button>
+                  )
+                )}
+                <button
+                  type="button"
+                  className="history-action-btn"
+                  disabled={isBusy}
+                  onClick={() => {
+                    const found = medicationSchedules.find(
+                      (s) => s.id === entry.dose.schedule_id,
+                    );
+                    if (found) {
+                      setEditingMedicationSchedule(found);
+                      setMedicationDialogOpen(true);
+                    }
+                  }}
+                  title={pl ? "Edytuj harmonogram tego leku" : "Edit medication schedule"}
+                >
+                  <IconPencil size={15} aria-hidden="true" />
+                  <span>{pl ? "Edytuj harmonogram" : "Edit schedule"}</span>
+                </button>
+              </>
             )}
 
             {(entry.kind === "due_event" || entry.kind === "history_event") && (
@@ -1565,12 +1887,25 @@ export function HouseholdSchedule({
               </button>
               <button
                 type="button"
+                className="history-action-btn"
+                onClick={() => {
+                  setEditingMedicationSchedule(null);
+                  setMedicationDefaultDate(selectedDayIso);
+                  setMedicationDialogOpen(true);
+                }}
+                title={pl ? "Zaplanuj lek w tym dniu" : "Schedule medication on this day"}
+              >
+                <IconPill size={15} aria-hidden="true" />
+                <span>{pl ? "Dodaj lek" : "Add medication"}</span>
+              </button>
+              <button
+                type="button"
                 className="history-action-btn is-primary"
                 onClick={() => openNewDialogForDate(selectedDayIso)}
               >
                 <IconPlus size={15} aria-hidden="true" />
                 <span>
-                  {pl ? "Dodaj termin w tym dniu" : "Add item on this day"}
+                  {pl ? "Dodaj termin" : "Add item"}
                 </span>
               </button>
             </div>
@@ -1800,15 +2135,30 @@ export function HouseholdSchedule({
               </span>
             )}
           </div>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => openNewDialogForDate(selectedDayIso)}
-          >
-            <IconPlus size={16} aria-hidden="true" />
-            {pl ? "Dodaj termin na ten dzień" : "Add item on this day"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setEditingMedicationSchedule(null);
+                setMedicationDefaultDate(selectedDayIso);
+                setMedicationDialogOpen(true);
+              }}
+            >
+              <IconPill size={16} aria-hidden="true" />
+              {pl ? "Dodaj lek" : "Add medication"}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => openNewDialogForDate(selectedDayIso)}
+            >
+              <IconPlus size={16} aria-hidden="true" />
+              {pl ? "Dodaj termin" : "Add item on this day"}
+            </Button>
+          </div>
         </div>
 
         {selectedDayEntries.length === 0 ? (
@@ -1956,6 +2306,22 @@ export function HouseholdSchedule({
             <IconBell size={16} aria-hidden="true" />
             <span>{pl ? "Powiadomienia" : "Notifications"}</span>
           </button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setEditingMedicationSchedule(null);
+              setMedicationDefaultDate(
+                displayLayout !== "agenda" ? selectedDayIso : undefined,
+              );
+              setMedicationDialogOpen(true);
+            }}
+          >
+            <IconPill size={16} aria-hidden="true" />
+            {pl ? "Zaplanuj lek" : "Schedule medication"}
+          </Button>
 
           <Button
             type="button"
@@ -2429,6 +2795,13 @@ export function HouseholdSchedule({
             setEditingItem(null);
             setDialogDefaultDate(undefined);
           }}
+          onOpenMedicationSchedule={(pId, date) => {
+            setDialogOpen(false);
+            setEditingItem(null);
+            setEditingMedicationSchedule(null);
+            setMedicationDefaultDate(date || dialogDefaultDate);
+            setMedicationDialogOpen(true);
+          }}
           onSave={(saved) => {
             setScheduleItems((prev) => {
               const exists = prev.some((row) => row.id === saved.id);
@@ -2474,6 +2847,42 @@ export function HouseholdSchedule({
               return [createdEvent, ...next];
             });
             setCompletingTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {medicationDialogOpen && (
+        <MedicationDialog
+          pets={pets}
+          defaultPetId={fixedPetId}
+          defaultDate={medicationDefaultDate}
+          schedule={editingMedicationSchedule}
+          onClose={() => {
+            setMedicationDialogOpen(false);
+            setEditingMedicationSchedule(null);
+            setMedicationDefaultDate(undefined);
+          }}
+          onSave={(saved) => {
+            setMedicationSchedules((prev) => {
+              const exists = prev.some((row) => row.id === saved.id);
+              return exists
+                ? prev.map((row) => (row.id === saved.id ? saved : row))
+                : [...prev, saved];
+            });
+            setSelectedDayIso(saved.start_date);
+            const [y, m] = saved.start_date.split("-").map(Number);
+            if (y && m) setMonthCursor({ year: y, month: m - 1 });
+            setMedicationDialogOpen(false);
+            setEditingMedicationSchedule(null);
+            setMedicationDefaultDate(undefined);
+            router.refresh();
+          }}
+          onDelete={(id) => {
+            setMedicationSchedules((prev) => prev.filter((row) => row.id !== id));
+            setMedicationDialogOpen(false);
+            setEditingMedicationSchedule(null);
+            setMedicationDefaultDate(undefined);
             router.refresh();
           }}
         />

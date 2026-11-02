@@ -16,6 +16,10 @@ import type {
   ScheduleItem,
 } from "@/features/schedule/types";
 import { HouseholdSchedule } from "@/features/schedule/household-schedule";
+import type {
+  MedicationLog,
+  MedicationSchedule,
+} from "@/features/medications/types";
 import type { Pet } from "./types";
 import { PetIcon } from "./pet-icon";
 import { petMessages } from "./messages";
@@ -27,6 +31,8 @@ export function HouseholdDashboard({
   healthEvents = [],
   scheduleItems = [],
   reportsSummary = [],
+  medicationSchedules = [],
+  medicationLogs = [],
   notificationSettings,
   locale,
   canAddPet = true,
@@ -35,6 +41,8 @@ export function HouseholdDashboard({
   healthEvents?: HealthEvent[];
   scheduleItems?: ScheduleItem[];
   reportsSummary?: CalendarReportSummary[];
+  medicationSchedules?: MedicationSchedule[];
+  medicationLogs?: MedicationLog[];
   notificationSettings?: HouseholdNotificationSettings;
   locale: Locale;
   canAddPet?: boolean;
@@ -262,6 +270,8 @@ export function HouseholdDashboard({
         initialScheduleItems={scheduleItems}
         initialHealthEvents={healthEvents}
         initialReports={reportsSummary}
+        initialMedicationSchedules={medicationSchedules}
+        initialMedicationLogs={medicationLogs}
         initialNotificationSettings={notificationSettings}
       />
 

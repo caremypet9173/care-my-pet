@@ -8,6 +8,10 @@ import {
   listHouseholdReportsSummary,
   listHouseholdScheduleItems,
 } from "@/features/schedule/data";
+import {
+  listHouseholdMedicationLogs,
+  listHouseholdMedicationSchedules,
+} from "@/features/medications/data";
 import { getActiveHouseholdContext } from "@/features/household/data";
 import { petMessages } from "@/features/pets/messages";
 import { HouseholdDashboard } from "@/features/pets/household-dashboard";
@@ -23,14 +27,23 @@ export default async function AppPage() {
   const { activeHousehold, isOwner } = await getActiveHouseholdContext();
   const householdId = activeHousehold?.id ?? null;
 
-  const [pets, healthEvents, scheduleItems, notificationSettings, reportsSummary] =
-    await Promise.all([
-      listPets(householdId),
-      listHouseholdHealthEvents(householdId),
-      listHouseholdScheduleItems(householdId),
-      getHouseholdNotificationSettings(householdId),
-      listHouseholdReportsSummary(householdId),
-    ]);
+  const [
+    pets,
+    healthEvents,
+    scheduleItems,
+    notificationSettings,
+    reportsSummary,
+    medicationSchedules,
+    medicationLogs,
+  ] = await Promise.all([
+    listPets(householdId),
+    listHouseholdHealthEvents(householdId),
+    listHouseholdScheduleItems(householdId),
+    getHouseholdNotificationSettings(householdId),
+    listHouseholdReportsSummary(householdId),
+    listHouseholdMedicationSchedules(householdId),
+    listHouseholdMedicationLogs(householdId),
+  ]);
   const d = dashboardMessages[locale];
   const empty = pets?.length === 0;
   const firstPet = locale === "pl" ? "Dodaj pierwszego pupila" : "Add your first pet";
@@ -112,6 +125,8 @@ export default async function AppPage() {
           healthEvents={healthEvents}
           scheduleItems={scheduleItems}
           reportsSummary={reportsSummary}
+          medicationSchedules={medicationSchedules}
+          medicationLogs={medicationLogs}
           notificationSettings={notificationSettings}
           locale={locale}
           canAddPet={isOwner}

@@ -30,6 +30,7 @@ export function ScheduleDialog({
   defaultCategory = "visit",
   onClose,
   onSave,
+  onOpenMedicationSchedule,
 }: {
   pets: Pick<Pet, "id" | "imie">[];
   defaultPetId?: string;
@@ -38,6 +39,7 @@ export function ScheduleDialog({
   defaultCategory?: ScheduleCategory;
   onClose: () => void;
   onSave: (saved: ScheduleItem) => void;
+  onOpenMedicationSchedule?: (petId: string, date: string) => void;
 }) {
   const pl = useLocale() === "pl";
   const dialog = useRef<HTMLDialogElement>(null);
@@ -224,6 +226,27 @@ export function ScheduleDialog({
               </button>
             ))}
           </div>
+
+          {category === "prevention" && onOpenMedicationSchedule && (
+            <div className="flex items-center justify-between gap-3 p-3 bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-lg text-xs text-teal-900 dark:text-teal-200 mt-2 mb-2">
+              <div>
+                <strong>{pl ? "Harmonogram dawek leku" : "Medication schedule"}</strong>
+                <p className="mt-0.5 opacity-80">
+                  {pl
+                    ? "Chcesz zaplanować stałe codzienne podawanie lub dawkowanie cykliczne (np. co 4 tygodnie)?"
+                    : "Want to schedule regular daily intake or recurring doses (e.g. every 4 weeks)?"}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 font-semibold underline hover:no-underline whitespace-nowrap text-teal-800 dark:text-teal-100"
+                onClick={() => onOpenMedicationSchedule(petId, scheduledDate)}
+              >
+                <IconPill size={14} />
+                <span>{pl ? "Otwórz harmonogram →" : "Open scheduler →"}</span>
+              </button>
+            </div>
+          )}
 
           <div className="history-dialog-grid">
             {pets.length > 1 ? (

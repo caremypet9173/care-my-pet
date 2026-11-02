@@ -1,0 +1,180 @@
+import type {
+  MedicationLog,
+  MedicationSchedule,
+  ProjectedMedicationDose,
+} from "./types";
+
+function parseUtcDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function formatUtcDate(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function addDays(date: Date, days: number): Date {
+  const res = new Date(date.getTime());
+  res.setUTCDate(res.getUTCDate() + days);
+  return res;
+}
+
+function addMonths(date: Date, months: number): Date {
+  const res = new Date(date.getTime());
+  const origDay = res.getUTCDate();
+  res.setUTCMonth(res.getUTCMonth() + months);
+  // Obsługa miesięcy o różnej liczbie dni (np. 31 styczeń + 1 miesiąc -> 28/29 luty)
+  if (res.getUTCDate() < origDay) {
+    res.setUTCDate(0);
+  }
+  return res;
+}
+
+export function projectMedicationDoses({
+  schedules,
+  logs,
+  rangeStart,
+  rangeEnd,
+}: {
+  schedules: MedicationSchedule[];
+  logs: MedicationLog[];
+  rangeStart: string;
+  rangeEnd: string;
+}): ProjectedMedicationDose[] {
+  // Mapa logów: klucz `${schedule_id}|${dose_date}|${scheduled_time}`
+  const logMap = new Map<string, MedicationLog>();
+  for (const log of logs) {
+    if (log.schedule_id) {
+      logMap.set(
+        `${log.schedule_id}|${log.dose_date}|${log.scheduled_time}`,
+        log,
+      );
+      // Fallback bez godziny jeśli log pasuje
+      logMap.set(`${log.schedule_id}|${log.dose_date}|`, log);
+    }
+  }
+
+  const doses: ProjectedMedicationDose[] = [];
+
+  for (const sched of schedules) {
+    if (!sched.is_active) continue;
+
+    const schedStartIso = sched.start_date;
+    const schedEndIso = sched.end_date ?? rangeEnd;
+
+    // Jeśli cały harmonogram jest poza zakresem, pomijamy
+    if (schedStartIso > rangeEnd) continue;
+    if (sched.end_date && sched.end_date < rangeStart) continue;
+
+    const time = sched.scheduled_time || "";
+
+    if (sched.schedule_type === "one_off") {
+      if (schedStartIso >= rangeStart && schedStartIso <= rangeEnd) {
+        const matchingLog =
+          logMap.get(`${sched.id}|${schedStartIso}|${time}`) ??
+          logMap.get(`${sched.id}|${schedStartIso}|`);
+        doses.push({
+          key: `med-${sched.id}-${schedStartIso}-${time || "0000"}`,
+          schedule_id: sched.id,
+          pet_id: sched.pet_id,
+          name: sched.name,
+          dosage: sched.dosage,
+          schedule_type: "one_off",
+          dose_date: schedStartIso,
+          scheduled_time: time,
+          instructions: sched.instructions,
+          is_completed: matchingLog?.status === "taken",
+          log: matchingLog,
+        });
+      }
+      continue;
+    }
+
+    if (sched.schedule_type === "daily") {
+      const curStartIso = schedStartIso > rangeStart ? schedStartIso : rangeStart;
+      const curEndIso = schedEndIso < rangeEnd ? schedEndIso : rangeEnd;
+
+      let cur = parseUtcDate(curStartIso);
+      const end = parseUtcDate(curEndIso);
+
+      while (cur <= end) {
+        const curIso = formatUtcDate(cur);
+        const matchingLog =
+          logMap.get(`${sched.id}|${curIso}|${time}`) ??
+          logMap.get(`${sched.id}|${curIso}|`);
+
+        doses.push({
+          key: `med-${sched.id}-${curIso}-${time || "0000"}`,
+          schedule_id: sched.id,
+          pet_id: sched.pet_id,
+          name: sched.name,
+          dosage: sched.dosage,
+          schedule_type: "daily",
+          dose_date: curIso,
+          scheduled_time: time,
+          instructions: sched.instructions,
+          is_completed: matchingLog?.status === "taken",
+          log: matchingLog,
+        });
+
+        cur = addDays(cur, 1);
+      }
+      continue;
+    }
+
+    if (sched.schedule_type === "interval") {
+      const intervalVal = sched.interval_value && sched.interval_value > 0 ? sched.interval_value : 1;
+      const intervalUnit = sched.interval_unit ?? "days";
+
+      let cur = parseUtcDate(schedStartIso);
+      const endLimit = parseUtcDate(schedEndIso < rangeEnd ? schedEndIso : rangeEnd);
+      const rangeStartDate = parseUtcDate(rangeStart);
+
+      // Bezpiecznik maksymalnej liczby iteracji
+      let steps = 0;
+      while (cur <= endLimit && steps < 1000) {
+        steps++;
+        if (cur >= rangeStartDate) {
+          const curIso = formatUtcDate(cur);
+          const matchingLog =
+            logMap.get(`${sched.id}|${curIso}|${time}`) ??
+            logMap.get(`${sched.id}|${curIso}|`);
+
+          doses.push({
+            key: `med-${sched.id}-${curIso}-${time || "0000"}`,
+            schedule_id: sched.id,
+            pet_id: sched.pet_id,
+            name: sched.name,
+            dosage: sched.dosage,
+            schedule_type: "interval",
+            dose_date: curIso,
+            scheduled_time: time,
+            instructions: sched.instructions,
+            is_completed: matchingLog?.status === "taken",
+            log: matchingLog,
+          });
+        }
+
+        if (intervalUnit === "days") {
+          cur = addDays(cur, intervalVal);
+        } else if (intervalUnit === "weeks") {
+          cur = addDays(cur, intervalVal * 7);
+        } else if (intervalUnit === "months") {
+          cur = addMonths(cur, intervalVal);
+        } else {
+          cur = addDays(cur, intervalVal);
+        }
+      }
+    }
+  }
+
+  // Sortowanie po dacie i godzinie
+  return doses.sort(
+    (a, b) =>
+      a.dose_date.localeCompare(b.dose_date) ||
+      (a.scheduled_time || "99:99").localeCompare(b.scheduled_time || "99:99"),
+  );
+}
