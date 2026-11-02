@@ -93,6 +93,14 @@ export function ActiveMedicationsCard({
   const [schedules, setSchedules] =
     useState<MedicationSchedule[]>(initialSchedules);
   const [logs, setLogs] = useState<MedicationLog[]>(initialLogs);
+
+  useEffect(() => {
+    setSchedules(initialSchedules);
+  }, [initialSchedules]);
+
+  useEffect(() => {
+    setLogs(initialLogs);
+  }, [initialLogs]);
   const [filterMode, setFilterMode] = useState<"active" | "all">("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] =
@@ -147,79 +155,110 @@ export function ActiveMedicationsCard({
 
   // Subskrypcja Supabase Realtime do natychmiastowej synchronizacji dawek między domownikami
   useEffect(() => {
+    let isCancelled = false;
     const client = createClient();
-    const channel = client
-      .channel(`realtime-meds-${petId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "medication_logs",
-          filter: `pet_id=eq.${petId}`,
-        },
-        (payload) => {
-          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-            const incoming = payload.new as MedicationLog;
-            setLogs((prev) => {
-              const filtered = prev.filter(
-                (l) =>
-                  l.id !== incoming.id &&
-                  !(
-                    l.schedule_id === incoming.schedule_id &&
-                    l.dose_date === incoming.dose_date &&
-                    l.scheduled_time === incoming.scheduled_time
-                  ),
-              );
-              return [incoming, ...filtered];
-            });
-            router.refresh();
-          } else if (payload.eventType === "DELETE") {
-            const deletedId = (payload.old as { id?: string })?.id;
-            if (deletedId) {
-              setLogs((prev) => prev.filter((l) => l.id !== deletedId));
+    let channel: ReturnType<typeof client.channel> | null = null;
+
+    async function initSubscription() {
+      try {
+        const {
+          data: { session },
+        } = await client.auth.getSession();
+        if (session?.access_token) {
+          await client.realtime.setAuth(session.access_token);
+        }
+      } catch (err) {
+        console.warn("[Realtime] auth initialization warning:", err);
+      }
+
+      if (isCancelled) return;
+
+      channel = client
+        .channel(`realtime-meds-${petId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "medication_logs",
+            filter: `pet_id=eq.${petId}`,
+          },
+          (payload: any) => {
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              const incoming = payload.new as MedicationLog;
+              setLogs((prev) => {
+                const filtered = prev.filter(
+                  (l) =>
+                    l.id !== incoming.id &&
+                    !(
+                      l.schedule_id === incoming.schedule_id &&
+                      l.dose_date === incoming.dose_date &&
+                      l.scheduled_time === incoming.scheduled_time
+                    ),
+                );
+                return [incoming, ...filtered];
+              });
               router.refresh();
-            }
-          }
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "medication_schedules",
-          filter: `pet_id=eq.${petId}`,
-        },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            const incoming = normalizeMedicationSchedule(payload.new as any);
-            setSchedules((prev) => {
-              if (prev.some((s) => s.id === incoming.id)) {
-                return prev.map((s) => (s.id === incoming.id ? incoming : s));
+            } else if (payload.eventType === "DELETE") {
+              const deletedId = (payload.old as { id?: string })?.id;
+              if (deletedId) {
+                setLogs((prev) => prev.filter((l) => l.id !== deletedId));
+                router.refresh();
               }
-              return [incoming, ...prev];
-            });
-            router.refresh();
-          } else if (payload.eventType === "UPDATE") {
-            const incoming = normalizeMedicationSchedule(payload.new as any);
-            setSchedules((prev) =>
-              prev.map((s) => (s.id === incoming.id ? incoming : s)),
-            );
-            router.refresh();
-          } else if (payload.eventType === "DELETE") {
-            const deletedId = (payload.old as { id?: string })?.id;
-            if (deletedId) {
-              setSchedules((prev) => prev.filter((s) => s.id !== deletedId));
+            }
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "medication_schedules",
+            filter: `pet_id=eq.${petId}`,
+          },
+          (payload: any) => {
+            if (payload.eventType === "INSERT") {
+              const incoming = normalizeMedicationSchedule(payload.new as any);
+              setSchedules((prev) => {
+                if (prev.some((s) => s.id === incoming.id)) {
+                  return prev.map((s) => (s.id === incoming.id ? incoming : s));
+                }
+                return [incoming, ...prev];
+              });
               router.refresh();
+            } else if (payload.eventType === "UPDATE") {
+              const incoming = normalizeMedicationSchedule(payload.new as any);
+              setSchedules((prev) =>
+                prev.map((s) => (s.id === incoming.id ? incoming : s)),
+              );
+              router.refresh();
+            } else if (payload.eventType === "DELETE") {
+              const deletedId = (payload.old as { id?: string })?.id;
+              if (deletedId) {
+                setSchedules((prev) => prev.filter((s) => s.id !== deletedId));
+                router.refresh();
+              }
+            }
+          },
+        )
+        .subscribe((status: string, err?: any) => {
+          if (process.env.NODE_ENV !== "production") {
+            if (status === "SUBSCRIBED") {
+              console.log(`[Realtime meds] Subscribed for pet ${petId}`);
+            } else if (status === "CHANNEL_ERROR") {
+              console.error(`[Realtime meds] Channel error for pet ${petId}:`, err);
             }
           }
-        },
-      )
-      .subscribe();
+        });
+    }
+
+    void initSubscription();
 
     return () => {
-      void client.removeChannel(channel);
+      isCancelled = true;
+      if (channel) {
+        void client.removeChannel(channel);
+      }
     };
   }, [petId, router]);
 
