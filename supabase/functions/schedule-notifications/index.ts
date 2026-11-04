@@ -1,5 +1,42 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
 import nodemailer from "npm:nodemailer@6.9.16";
+import webpush from "npm:web-push@3.6.7";
+
+const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "";
+const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "";
+const vapidSubject =
+  Deno.env.get("VAPID_SUBJECT") || "mailto:caremypet9173@gmail.com";
+
+if (vapidPublicKey && vapidPrivateKey) {
+  try {
+    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+  } catch (err) {
+    console.warn("[VAPID Init Warning]", err);
+  }
+}
+
+async function sendWebPush(
+  sub: { endpoint: string; p256dh: string; auth: string },
+  payload: { title: string; body: string; url?: string; tag?: string }
+): Promise<boolean> {
+  if (!vapidPublicKey || !vapidPrivateKey) return false;
+  try {
+    await webpush.sendNotification(
+      {
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: sub.p256dh,
+          auth: sub.auth,
+        },
+      },
+      JSON.stringify(payload)
+    );
+    return true;
+  } catch (err: unknown) {
+    console.warn("[WebPush Send Warning]", err);
+    return false;
+  }
+}
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -203,8 +240,8 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Przypadek 1: Zalogowany użytkownik zapisuje ustawienia lub wysyła testowego maila
-  if (action === "save_settings" || action === "send_test") {
+  // Przypadek 1: Zalogowany użytkownik zapisuje ustawienia, wysyła testowego maila lub testowy push
+  if (action === "save_settings" || action === "send_test" || action === "send_test_push") {
     const token = req.headers.get("Authorization");
     if (!token?.startsWith("Bearer ")) {
       return reply({ error: "unauthorized" }, 401);
@@ -362,6 +399,34 @@ Deno.serve(async (req) => {
         const message = err instanceof Error ? err.message : "smtp_error";
         return reply({ error: "send_failed", detail: message }, 500);
       }
+    }
+
+    if (action === "send_test_push") {
+      const { data: subs, error: subsError } = await adminClient
+        .from("pet_push_subscription")
+        .select("id, endpoint, p256dh, auth")
+        .eq("user_id", user.id);
+
+      if (subsError) {
+        return reply({ error: "database_error", detail: subsError.message }, 500);
+      }
+
+      if (!subs || subs.length === 0) {
+        return reply({ error: "no_push_subscriptions", message: "Brak aktywnych subskrypcji push na tym koncie." }, 404);
+      }
+
+      let sent = 0;
+      for (const sub of subs) {
+        const ok = await sendWebPush(sub, {
+          title: "Care My Pet — Test powiadomień Push",
+          body: "Powiadomienia na Twoim telefonie działają prawidłowo! 🐾",
+          url: "/app",
+          tag: "test-push",
+        });
+        if (ok) sent++;
+      }
+
+      return reply({ ok: true, sent_count: sent, total_subscriptions: subs.length });
     }
   }
 
@@ -542,6 +607,37 @@ Deno.serve(async (req) => {
           });
         }
       }
+    }
+
+    // Web Push Notifications for household devices
+    try {
+      const { data: householdSubs } = await adminClient
+        .from("pet_push_subscription")
+        .select("id, endpoint, p256dh, auth")
+        .eq("household_id", householdId);
+
+      if (householdSubs && householdSubs.length > 0 && items.length > 0) {
+        const first = items[0];
+        const pushTitle =
+          items.length === 1
+            ? `🐾 ${first.petName}: ${first.title}`
+            : `Care My Pet: ${items.length} nadchodzących terminów`;
+        const pushBody =
+          items.length === 1
+            ? `${first.offsetDays === 0 ? "Dzisiaj" : first.offsetDays === 1 ? "Jutro" : "Za 7 dni"}: ${first.title}${first.dueTime ? ` (${first.dueTime})` : ""}`
+            : "Sprawdź dzisiejszy terminarz opieki nad pupilami.";
+
+        for (const sub of householdSubs) {
+          await sendWebPush(sub, {
+            title: pushTitle,
+            body: pushBody,
+            url: `/app/zwierzeta/${first.petId}`,
+            tag: `due-${first.dueDate}-${first.sourceId}`,
+          });
+        }
+      }
+    } catch (pushErr) {
+      console.warn("[WebPush Cron Warning]", pushErr);
     }
   }
 

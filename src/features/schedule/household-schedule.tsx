@@ -14,6 +14,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconClock,
+  IconDeviceMobile,
   IconFlask,
   IconList,
   IconMailForward,
@@ -22,6 +23,7 @@ import {
   IconPill,
   IconPlus,
   IconSearch,
+  IconSend,
   IconStethoscope,
   IconTrash,
   IconVaccine,
@@ -30,6 +32,12 @@ import {
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import {
+  getDevicePushStatus,
+  subscribeToPush,
+  unsubscribeFromPush,
+  type PushStatus,
+} from "./push-subscription";
 import type { Pet } from "@/features/pets/types";
 import type { HealthEvent } from "@/features/history/types";
 import type {
@@ -433,6 +441,22 @@ export function HouseholdSchedule({
     type: "ok" | "error";
     text: string;
   } | null>(null);
+
+  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushTestLoading, setPushTestLoading] = useState(false);
+  const [pushFeedback, setPushFeedback] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (notificationsOpen) {
+      getDevicePushStatus()
+        .then(setPushStatus)
+        .catch(() => undefined);
+    }
+  }, [notificationsOpen]);
 
   const petMap = useMemo(
     () => new Map(pets.map((p) => [p.id, p.imie])),
@@ -1203,6 +1227,107 @@ export function HouseholdSchedule({
       });
     } finally {
       setNotifTesting(false);
+    }
+  }
+
+  async function handleTogglePush() {
+    setPushLoading(true);
+    setPushFeedback(null);
+    try {
+      if (pushStatus?.subscribed) {
+        const ok = await unsubscribeFromPush();
+        if (ok) {
+          const fresh = await getDevicePushStatus();
+          setPushStatus(fresh);
+          setPushFeedback({
+            type: "ok",
+            text: pl
+              ? "Powiadomienia Push zostały wyłączone na tym urządzeniu."
+              : "Push notifications disabled on this device.",
+          });
+        } else {
+          setPushFeedback({
+            type: "error",
+            text: pl
+              ? "Wystąpił problem podczas wyłączania powiadomień Push."
+              : "Could not disable push notifications.",
+          });
+        }
+      } else {
+        const sub = await subscribeToPush();
+        if (sub.ok) {
+          const fresh = await getDevicePushStatus();
+          setPushStatus(fresh);
+          setPushFeedback({
+            type: "ok",
+            text: pl
+              ? "Powiadomienia Push zostały pomyślnie aktywowane na tym urządzeniu!"
+              : "Push notifications enabled on this device!",
+          });
+        } else {
+          const fresh = await getDevicePushStatus();
+          setPushStatus(fresh);
+          setPushFeedback({
+            type: "error",
+            text: pl
+              ? "Nie udało się włączyć powiadomień. Upewnij się, że przeglądarka nie blokuje uprawnień."
+              : "Could not enable push. Make sure browser permissions are allowed.",
+          });
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setPushFeedback({
+        type: "error",
+        text: msg,
+      });
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
+  async function handleSendTestPush() {
+    if (pushTestLoading) return;
+    setPushTestLoading(true);
+    setPushFeedback(null);
+    try {
+      const client = createClient();
+      const { data, error } = await client.functions.invoke(
+        "schedule-notifications",
+        {
+          body: {
+            action: "send_test_push",
+          },
+        },
+      );
+      if (error || !data?.ok) {
+        const msg =
+          data?.message ||
+          data?.error ||
+          (pl
+            ? "Nie udało się wysłać testowego powiadomienia Push. Upewnij się, że masz włączone powiadomienia."
+            : "Could not send test push notification.");
+        setPushFeedback({
+          type: "error",
+          text: msg,
+        });
+        return;
+      }
+      setPushFeedback({
+        type: "ok",
+        text: pl
+          ? `Wysłano testowe powiadomienie Push do zarejestrowanych urządzeń (${data.sent_count ?? 1}).`
+          : `Test push notification sent (${data.sent_count ?? 1} devices).`,
+      });
+    } catch {
+      setPushFeedback({
+        type: "error",
+        text: pl
+          ? "Błąd połączenia podczas wysyłania testu Push."
+          : "Network error while sending test push notification.",
+      });
+    } finally {
+      setPushTestLoading(false);
     }
   }
 
@@ -2074,6 +2199,124 @@ export function HouseholdSchedule({
 
       {notificationsOpen && (
         <div className="schedule-notifications-panel">
+          {/* Sekcja 1: Powiadomienia Web Push (telefon i komputer) */}
+          <div className="schedule-push-card">
+            <div className="schedule-notifications-header">
+              <div className="schedule-push-header-title">
+                <span className="schedule-push-icon-pill">
+                  <IconDeviceMobile size={18} aria-hidden="true" />
+                </span>
+                <div>
+                  <strong>
+                    {pl
+                      ? "Powiadomienia Push (telefon i komputer)"
+                      : "Push notifications (mobile & desktop)"}
+                  </strong>
+                  <p>
+                    {pl
+                      ? "Otrzymuj natychmiastowe alerty o dawkach leków i wizytach bezpośrednio na ekranie blokady telefonu lub w systemie operacyjnym."
+                      : "Receive instant medication dose and visit alerts directly on your mobile lock screen or desktop."}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="schedule-mini-btn"
+                onClick={() => setNotificationsOpen(false)}
+                aria-label={pl ? "Zamknij" : "Close"}
+              >
+                <IconX size={14} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="schedule-push-status-row">
+              <div className="schedule-push-status-info">
+                <span className="schedule-push-status-label">
+                  {pl ? "Status tego urządzenia:" : "Device status:"}
+                </span>
+                {!pushStatus ? (
+                  <span className="schedule-push-badge is-inactive">
+                    {pl ? "Sprawdzanie…" : "Checking…"}
+                  </span>
+                ) : !pushStatus.supported ? (
+                  <span className="schedule-push-badge is-unsupported">
+                    {pl ? "Nieobsługiwane w tej przeglądarce" : "Unsupported in this browser"}
+                  </span>
+                ) : pushStatus.permission === "denied" ? (
+                  <span className="schedule-push-badge is-blocked">
+                    {pl ? "Zablokowane w przeglądarce" : "Blocked in browser"}
+                  </span>
+                ) : pushStatus.subscribed ? (
+                  <span className="schedule-push-badge is-active">
+                    <IconCheck size={13} aria-hidden="true" />
+                    {pl ? "Aktywne na tym telefonie / urządzeniu" : "Active on this device"}
+                  </span>
+                ) : (
+                  <span className="schedule-push-badge is-inactive">
+                    {pl ? "Nieaktywne na tym urządzeniu" : "Inactive on this device"}
+                  </span>
+                )}
+              </div>
+
+              <div className="schedule-push-actions">
+                <Button
+                  type="button"
+                  variant={pushStatus?.subscribed ? "secondary" : "primary"}
+                  size="sm"
+                  disabled={pushLoading || !pushStatus?.supported || pushStatus?.permission === "denied"}
+                  onClick={() => void handleTogglePush()}
+                >
+                  <IconDeviceMobile size={15} aria-hidden="true" />
+                  <span>
+                    {pushLoading
+                      ? pl
+                        ? "Przetwarzanie…"
+                        : "Processing…"
+                      : pushStatus?.subscribed
+                        ? pl
+                          ? "Wyłącz na tym telefonie"
+                          : "Disable on this device"
+                        : pl
+                          ? "Włącz powiadomienia Push"
+                          : "Enable Push notifications"}
+                  </span>
+                </Button>
+
+                {pushStatus?.subscribed && (
+                  <button
+                    type="button"
+                    className="history-action-btn"
+                    disabled={pushTestLoading}
+                    onClick={() => void handleSendTestPush()}
+                  >
+                    <IconSend size={15} aria-hidden="true" />
+                    <span>
+                      {pushTestLoading
+                        ? pl
+                          ? "Wysyłanie…"
+                          : "Sending…"
+                        : pl
+                          ? "Wyślij testowy Push"
+                          : "Send test Push"}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {pushFeedback && (
+              <p
+                className={`schedule-notif-feedback is-${pushFeedback.type}`}
+                role="status"
+              >
+                {pushFeedback.text}
+              </p>
+            )}
+          </div>
+
+          <hr className="schedule-notif-divider" />
+
+          {/* Sekcja 2: Powiadomienia e-mail */}
           <div className="schedule-notifications-header">
             <div>
               <strong>
@@ -2087,14 +2330,6 @@ export function HouseholdSchedule({
                   : "Every morning we check upcoming visits and vaccination due dates and email you a summary."}
               </p>
             </div>
-            <button
-              type="button"
-              className="schedule-mini-btn"
-              onClick={() => setNotificationsOpen(false)}
-              aria-label={pl ? "Zamknij" : "Close"}
-            >
-              <IconX size={14} aria-hidden="true" />
-            </button>
           </div>
 
           <div className="schedule-notifications-controls">
