@@ -1,29 +1,53 @@
+"use client";
+
+import { useLocale } from "next-intl";
 import { Container } from "@/components/layout/container";
 import "@/styles/pets.css";
 import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
 
 export default function PetLoading() {
+  const locale = useLocale();
+  const pl = locale === "pl";
+
   return (
-    <Container className="pets-page household-record" aria-busy="true" aria-label="Ładowanie profilu pupila...">
-      <div className="household-record-toolbar">
-        <div
-          className="skeleton-bone"
-          style={{ width: "6rem", height: "1.25rem", borderRadius: "var(--radius-sm)" }}
-        />
-        <div className="household-record-toolbar-actions" style={{ display: "flex", gap: "0.5rem" }}>
-          <div
-            className="skeleton-bone"
-            style={{ width: "7.5rem", height: "2rem", borderRadius: "var(--radius-control)" }}
-          />
-          <div
-            className="skeleton-bone"
-            style={{ width: "5rem", height: "2rem", borderRadius: "var(--radius-control)" }}
-          />
+    <Container
+      className="pets-page household-record"
+      aria-busy="true"
+      aria-label={pl ? "Wczytywanie profilu pupila..." : "Loading pet profile..."}
+    >
+      <div
+        className="household-record-toolbar"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+        }}
+      >
+        <div className="skeleton-badge">
+          <span className="skeleton-spinner" aria-hidden="true" />
+          <span>{pl ? "Wczytywanie kartoteki pupila…" : "Loading pet record…"}</span>
+        </div>
+        <div className="skeleton-status-text">
+          <small>
+            {pl
+              ? "Pobieranie historii, wyników badań i terminarza…"
+              : "Fetching history, lab results, and schedule…"}
+          </small>
         </div>
       </div>
 
-      <section className="household-cover" style={{ minHeight: "18rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      <section
+        className="household-cover"
+        style={{
+          minHeight: "18rem",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
         <div className="household-cover-top">
           <div
             className="skeleton-bone"
@@ -32,14 +56,20 @@ export default function PetLoading() {
         </div>
 
         <div className="household-profile-glass">
-          <div className="household-profile-identity" style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
+          <div
+            className="household-profile-identity"
+            style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}
+          >
             <div className="household-portrait">
               <div
                 className="skeleton-bone"
                 style={{ width: "4rem", height: "4rem", borderRadius: "9999px" }}
               />
             </div>
-            <div className="household-profile-details" style={{ display: "grid", gap: "0.5rem", minWidth: "12rem" }}>
+            <div
+              className="household-profile-details"
+              style={{ display: "grid", gap: "0.5rem", minWidth: "12rem" }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                 <div className="skeleton-bone" style={{ width: "10rem", height: "1.75rem" }} />
                 <div
@@ -60,7 +90,7 @@ export default function PetLoading() {
               </div>
             </div>
           </div>
-          <div className="household-guardian-note" style={{ flex: 1, minWidth: "12rem" }}>
+          <div className="household-guardian-note" style={{ flex: 1, minWidth: "14rem" }}>
             <div style={{ display: "grid", gap: "0.4rem", width: "100%" }}>
               <div className="skeleton-bone" style={{ width: "5rem", height: "0.875rem" }} />
               <div className="skeleton-bone" style={{ width: "90%", height: "0.875rem" }} />
@@ -103,8 +133,14 @@ export default function PetLoading() {
         style={{ minHeight: "18rem", display: "grid", gap: "1rem", padding: "1.5rem" }}
       >
         <div className="skeleton-bone" style={{ width: "35%", height: "1.5rem" }} />
-        <div className="skeleton-bone" style={{ width: "100%", height: "4rem", borderRadius: "var(--radius-control)" }} />
-        <div className="skeleton-bone" style={{ width: "100%", height: "4rem", borderRadius: "var(--radius-control)" }} />
+        <div
+          className="skeleton-bone"
+          style={{ width: "100%", height: "4rem", borderRadius: "var(--radius-control)" }}
+        />
+        <div
+          className="skeleton-bone"
+          style={{ width: "100%", height: "4rem", borderRadius: "var(--radius-control)" }}
+        />
       </div>
     </Container>
   );

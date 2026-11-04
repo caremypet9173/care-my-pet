@@ -1,9 +1,26 @@
+"use client";
+
+import { useLocale } from "next-intl";
 import { Container } from "@/components/layout/container";
 import "@/styles/pets.css";
 
 export default function AppLoading() {
+  const locale = useLocale();
+  const pl = locale === "pl";
+
   return (
-    <Container className="pets-page" aria-busy="true" aria-label="Ładowanie kartoteki...">
+    <Container
+      className="pets-page"
+      aria-busy="true"
+      aria-label={pl ? "Wczytywanie pulpitu pupili..." : "Loading pet dashboard..."}
+    >
+      <div style={{ marginBottom: "1.25rem" }}>
+        <div className="skeleton-badge">
+          <span className="skeleton-spinner" aria-hidden="true" />
+          <span>{pl ? "Wczytywanie pulpitu opieki…" : "Loading care dashboard…"}</span>
+        </div>
+      </div>
+
       <div className="pets-heading" style={{ marginBottom: "2rem" }}>
         <div>
           <div
@@ -87,9 +104,18 @@ export default function AppLoading() {
           />
         </div>
         <div style={{ display: "grid", gap: "0.75rem" }}>
-          <div className="skeleton-bone" style={{ width: "100%", height: "3.5rem", borderRadius: "var(--radius-control)" }} />
-          <div className="skeleton-bone" style={{ width: "100%", height: "3.5rem", borderRadius: "var(--radius-control)" }} />
-          <div className="skeleton-bone" style={{ width: "100%", height: "3.5rem", borderRadius: "var(--radius-control)" }} />
+          <div
+            className="skeleton-bone"
+            style={{ width: "100%", height: "3.5rem", borderRadius: "var(--radius-control)" }}
+          />
+          <div
+            className="skeleton-bone"
+            style={{ width: "100%", height: "3.5rem", borderRadius: "var(--radius-control)" }}
+          />
+          <div
+            className="skeleton-bone"
+            style={{ width: "100%", height: "3.5rem", borderRadius: "var(--radius-control)" }}
+          />
         </div>
       </div>
     </Container>
