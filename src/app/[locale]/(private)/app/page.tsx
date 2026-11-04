@@ -1,4 +1,5 @@
 import { getLocale } from "next-intl/server";
+import type { Metadata } from "next";
 import { Container } from "@/components/layout/container";
 import { ButtonLink } from "@/components/ui/button";
 import { listPets } from "@/features/pets/data";
@@ -20,6 +21,17 @@ import { IconPlus, IconUpload, IconUsers } from "@tabler/icons-react";
 import "@/styles/pets.css";
 import "@/styles/weight.css";
 import "@/styles/medical.css";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pl = locale === "pl";
+  return {
+    title: pl ? "Pulpit opieki" : "Pet care dashboard",
+    description: pl
+      ? "Podsumowanie zdrowia, terminarz wizyt, aktywne leki i kartoteki Twoich pupili."
+      : "Health summary, visit schedule, active medications, and records for your pets.",
+  };
+}
 
 export default async function AppPage() {
   const locale = await getLocale();

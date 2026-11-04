@@ -1,4 +1,5 @@
 import { getLocale } from "next-intl/server";
+import type { Metadata } from "next";
 import { redirect } from "@/i18n/navigation";
 import { Container } from "@/components/layout/container";
 import { ButtonLink } from "@/components/ui/button";
@@ -8,6 +9,17 @@ import { IconArrowLeft } from "@tabler/icons-react";
 import "@/styles/pets.css";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pl = locale === "pl";
+  return {
+    title: pl ? "Konta rodzinne i współdzielenie" : "Family accounts & sharing",
+    description: pl
+      ? "Zarządzaj współopiekunami, rolami oraz zaproszeniami do wspólnej opieki nad pupilami."
+      : "Manage co-guardians, roles, and invitations for collaborative pet care.",
+  };
+}
 
 export default async function HouseholdPage({
   searchParams,

@@ -1748,3 +1748,24 @@
   .household-record-tabs { gap: .25rem; }
   .household-record-tabs button { font-size: .75rem; }
 }
+
+/* Skeleton loading states */
+@keyframes skeleton-shimmer {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.35; }
+}
+
+.skeleton-bone {
+  background-color: var(--color-surface-sand);
+  border-radius: var(--radius-sm);
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+.skeleton-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-raised);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { getLocale } from "next-intl/server";
+import type { Metadata } from "next";
 import { IconAlertTriangle, IconBan, IconClock } from "@tabler/icons-react";
 import { Container } from "@/components/layout/container";
 import { fetchSharedPetRecord } from "@/features/share/data";
@@ -9,6 +10,17 @@ import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pl = locale === "pl";
+  return {
+    title: pl
+      ? "Karta informacyjna pacjenta"
+      : "Patient summary record",
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function SharedRecordPage({
   params,

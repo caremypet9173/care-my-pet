@@ -29,6 +29,31 @@ import { MedicalResults } from "@/features/medical/results";
 import { MedicalDocuments } from "@/features/medical/documents";
 import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
 import { getHouseholdDetails } from "@/features/household/data";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const locale = await getLocale();
+  const { id } = await params;
+  const pet = await getPet(id);
+  const pl = locale === "pl";
+
+  if (!pet) {
+    return {
+      title: pl ? "Kartoteka pupila" : "Pet record",
+    };
+  }
+
+  return {
+    title: `${pet.imie} — ${pl ? "Kartoteka zdrowia" : "Health record"}`,
+    description: pl
+      ? `Kartoteka zdrowia pupila ${pet.imie}: historia leczenia, wyniki badań laboratoryjnych, waga i kalendarz opieki.`
+      : `Health record for ${pet.imie}: medical history, lab test results, weight tracking, and care calendar.`,
+  };
+}
 
 export default async function PetPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{tab?:string;report?:string;document?:string}> }) {
   const locale = await getLocale();

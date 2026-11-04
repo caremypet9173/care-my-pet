@@ -1,9 +1,22 @@
+import { getLocale } from "next-intl/server";
+import type { Metadata } from "next";
 import { Container } from "@/components/layout/container";
 import { createClient } from "@/lib/supabase/server";
 import { AcceptInvitation } from "@/features/household/accept-invitation";
 import "@/styles/pets.css";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const pl = locale === "pl";
+  return {
+    title: pl
+      ? "Zaproszenie do gospodarstwa"
+      : "Household invitation",
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function InvitationPage({
   params,
