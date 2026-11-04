@@ -6,7 +6,14 @@ import type { Metadata } from "next";
 import { inter, jakarta } from "@/lib/fonts";
 import { CookieNotice } from "@/components/legal/cookie-notice";
 import { NetworkStatus } from "@/components/layout/network-status";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 import "@/styles/globals.css";
+
+export const viewport = {
+  themeColor: "#1d4a40",
+  width: "device-width",
+  initialScale: 1,
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("copy");
@@ -17,6 +24,12 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: t("yourDogOrCatsTestsVisitsAnd"),
     icons: { icon: "/brand/favicon.png", apple: "/brand/apple-touch-icon.png" },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "Care My Pet",
+    },
   };
 }
 
@@ -49,6 +62,7 @@ export default async function RootLayout({
           {children}
           <CookieNotice />
           <NetworkStatus />
+          <PwaProvider />
         </NextIntlClientProvider>
       </body>
     </html>
