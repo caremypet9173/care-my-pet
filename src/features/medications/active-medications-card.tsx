@@ -39,6 +39,10 @@ import type {
   ProjectedMedicationDose,
 } from "./types";
 
+function createTempLogId(): string {
+  return `temp-${Date.now()}`;
+}
+
 interface Props {
   petId: string;
   petName: string;
@@ -90,17 +94,22 @@ export function ActiveMedicationsCard({
   const locale = useLocale();
   const pl = locale === "pl";
 
+  const [prevInitialSchedules, setPrevInitialSchedules] =
+    useState<MedicationSchedule[]>(initialSchedules);
   const [schedules, setSchedules] =
     useState<MedicationSchedule[]>(initialSchedules);
-  const [logs, setLogs] = useState<MedicationLog[]>(initialLogs);
-
-  useEffect(() => {
+  if (initialSchedules !== prevInitialSchedules) {
+    setPrevInitialSchedules(initialSchedules);
     setSchedules(initialSchedules);
-  }, [initialSchedules]);
+  }
 
-  useEffect(() => {
+  const [prevInitialLogs, setPrevInitialLogs] =
+    useState<MedicationLog[]>(initialLogs);
+  const [logs, setLogs] = useState<MedicationLog[]>(initialLogs);
+  if (initialLogs !== prevInitialLogs) {
+    setPrevInitialLogs(initialLogs);
     setLogs(initialLogs);
-  }, [initialLogs]);
+  }
   const [filterMode, setFilterMode] = useState<"active" | "all">("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] =
@@ -183,9 +192,9 @@ export function ActiveMedicationsCard({
             table: "medication_logs",
             filter: `pet_id=eq.${petId}`,
           },
-          (payload: any) => {
+          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
             if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const incoming = payload.new as MedicationLog;
+              const incoming = payload.new as unknown as MedicationLog;
               setLogs((prev) => {
                 const filtered = prev.filter(
                   (l) =>
@@ -216,9 +225,9 @@ export function ActiveMedicationsCard({
             table: "medication_schedules",
             filter: `pet_id=eq.${petId}`,
           },
-          (payload: any) => {
+          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
             if (payload.eventType === "INSERT") {
-              const incoming = normalizeMedicationSchedule(payload.new as any);
+              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
               setSchedules((prev) => {
                 if (prev.some((s) => s.id === incoming.id)) {
                   return prev.map((s) => (s.id === incoming.id ? incoming : s));
@@ -227,7 +236,7 @@ export function ActiveMedicationsCard({
               });
               router.refresh();
             } else if (payload.eventType === "UPDATE") {
-              const incoming = normalizeMedicationSchedule(payload.new as any);
+              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
               setSchedules((prev) =>
                 prev.map((s) => (s.id === incoming.id ? incoming : s)),
               );
@@ -241,7 +250,7 @@ export function ActiveMedicationsCard({
             }
           },
         )
-        .subscribe((status: string, err?: any) => {
+        .subscribe((status: string, err?: Error) => {
           if (process.env.NODE_ENV !== "production") {
             if (status === "SUBSCRIBED") {
               console.log(`[Realtime meds] Subscribed for pet ${petId}`);
@@ -288,7 +297,7 @@ export function ActiveMedicationsCard({
     const previousLogs = logs;
     const previousSchedules = schedules;
     const matchingSchedule = schedules.find((s) => s.id === dose.schedule_id);
-    const optimisticLogId = `temp-${Date.now()}`;
+    const optimisticLogId = createTempLogId();
     const optimisticLog: MedicationLog = {
       id: optimisticLogId,
       schedule_id: dose.schedule_id,

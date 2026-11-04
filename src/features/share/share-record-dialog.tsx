@@ -55,6 +55,11 @@ export function ShareRecordButton({
   );
 }
 
+function isLinkActive(link: PetShareLink): boolean {
+  if (link.revoked_at) return false;
+  return new Date(link.expires_at).getTime() > Date.now();
+}
+
 function ShareRecordDialog({
   petId,
   petName,
@@ -121,11 +126,6 @@ function ShareRecordDialog({
       active = false;
     };
   }, [petId, pl]);
-
-  function isLinkActive(link: PetShareLink): boolean {
-    if (link.revoked_at) return false;
-    return new Date(link.expires_at).getTime() > Date.now();
-  }
 
   function buildShareUrl(token: string): string {
     const origin =

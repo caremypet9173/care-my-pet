@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { MedicalReport, MeasurementCorrection } from "./types";
+import type { Measurement, MedicalReport, MeasurementCorrection } from "./types";
 
 export async function listReports(
   petId: string,
@@ -35,7 +35,7 @@ export async function listReports(
       .in("wynik_id", reportIds)
       .eq("correction.is_key", true);
 
-    const rowsByReportId = new Map<string, any[]>();
+    const rowsByReportId = new Map<string, Measurement[]>();
     for (const row of keyRows ?? []) {
       const list = rowsByReportId.get(row.wynik_id) ?? [];
       const correction = row.correction as MeasurementCorrection | null;

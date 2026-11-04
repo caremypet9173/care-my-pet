@@ -4,11 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
-  IconAlertCircle,
-  IconArrowLeft,
   IconBan,
   IconBell,
-  IconCalendar,
   IconCalendarEvent,
   IconCalendarMonth,
   IconCalendarWeek,
@@ -38,7 +35,6 @@ import type { HealthEvent } from "@/features/history/types";
 import type {
   CalendarReportSummary,
   HouseholdNotificationSettings,
-  ScheduleCategory,
   ScheduleItem,
 } from "./types";
 import dynamic from "next/dynamic";
@@ -68,13 +64,11 @@ const SkipDoseDialog = dynamic(
 );
 import {
   normalizeMedicationSchedule,
-  parseScheduledTimes,
   projectMedicationDoses,
 } from "@/features/medications/projection";
 import type {
   MedicationLog,
   MedicationSchedule,
-  MedicationScheduleType,
   ProjectedMedicationDose,
 } from "@/features/medications/types";
 
@@ -83,7 +77,6 @@ import {
   type ViewMode,
   type DisplayLayout,
   type UnifiedScheduleEntry,
-  PL_MONTH_ALIASES,
   foldText,
   buildSearchHaystack,
   buildMonthGrid,
@@ -93,6 +86,16 @@ import { CalendarWeekView } from "./views/calendar-week-view";
 import { CalendarDayView } from "./views/calendar-day-view";
 import { CalendarAgendaView } from "./views/calendar-agenda-view";
 import { FutureDoseDialog } from "./future-dose-dialog";
+
+function formatMonthHeading(ym: string, locale: string) {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return ym;
+  return new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(y, m - 1, 1)));
+}
 
 export function HouseholdSchedule({
   pets,
@@ -129,31 +132,43 @@ export function HouseholdSchedule({
     [],
   );
 
+  const [prevScheduleItems, setPrevScheduleItems] =
+    useState<ScheduleItem[]>(initialScheduleItems);
   const [scheduleItems, setScheduleItems] =
     useState<ScheduleItem[]>(initialScheduleItems);
+  if (initialScheduleItems !== prevScheduleItems) {
+    setPrevScheduleItems(initialScheduleItems);
+    setScheduleItems(initialScheduleItems);
+  }
+
+  const [prevHealthEvents, setPrevHealthEvents] =
+    useState<HealthEvent[]>(initialHealthEvents);
   const [healthEvents, setHealthEvents] =
     useState<HealthEvent[]>(initialHealthEvents);
+  if (initialHealthEvents !== prevHealthEvents) {
+    setPrevHealthEvents(initialHealthEvents);
+    setHealthEvents(initialHealthEvents);
+  }
+
   const [reports] = useState<CalendarReportSummary[]>(initialReports);
+
+  const [prevMedicationSchedules, setPrevMedicationSchedules] =
+    useState<MedicationSchedule[]>(initialMedicationSchedules);
   const [medicationSchedules, setMedicationSchedules] =
     useState<MedicationSchedule[]>(initialMedicationSchedules);
+  if (initialMedicationSchedules !== prevMedicationSchedules) {
+    setPrevMedicationSchedules(initialMedicationSchedules);
+    setMedicationSchedules(initialMedicationSchedules);
+  }
+
+  const [prevMedicationLogs, setPrevMedicationLogs] =
+    useState<MedicationLog[]>(initialMedicationLogs);
   const [medicationLogs, setMedicationLogs] =
     useState<MedicationLog[]>(initialMedicationLogs);
-
-  useEffect(() => {
-    setMedicationSchedules(initialMedicationSchedules);
-  }, [initialMedicationSchedules]);
-
-  useEffect(() => {
+  if (initialMedicationLogs !== prevMedicationLogs) {
+    setPrevMedicationLogs(initialMedicationLogs);
     setMedicationLogs(initialMedicationLogs);
-  }, [initialMedicationLogs]);
-
-  useEffect(() => {
-    setScheduleItems(initialScheduleItems);
-  }, [initialScheduleItems]);
-
-  useEffect(() => {
-    setHealthEvents(initialHealthEvents);
-  }, [initialHealthEvents]);
+  }
   const [medicationDialogOpen, setMedicationDialogOpen] = useState(false);
   const [editingMedicationSchedule, setEditingMedicationSchedule] =
     useState<MedicationSchedule | null>(null);
@@ -238,17 +253,19 @@ export function HouseholdSchedule({
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [miniPickerOpen, setMiniPickerOpen] = useState(false);
+  const [prevMiniPickerOpen, setPrevMiniPickerOpen] = useState(false);
   const miniPickerRef = useRef<HTMLDivElement>(null);
   const [miniMonthCursor, setMiniMonthCursor] = useState<{
     year: number;
     month: number;
   }>(() => monthCursor);
 
-  useEffect(() => {
+  if (miniPickerOpen !== prevMiniPickerOpen) {
+    setPrevMiniPickerOpen(miniPickerOpen);
     if (miniPickerOpen) {
       setMiniMonthCursor(monthCursor);
     }
-  }, [miniPickerOpen, monthCursor]);
+  }
 
   useEffect(() => {
     if (!miniPickerOpen) return;
@@ -304,9 +321,9 @@ export function HouseholdSchedule({
             table: "medication_logs",
             ...(petFilter ? { filter: petFilter } : {}),
           },
-          (payload: any) => {
+          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
             if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const incoming = payload.new as MedicationLog;
+              const incoming = payload.new as unknown as MedicationLog;
               setMedicationLogs((prev) => {
                 const filtered = prev.filter(
                   (l) =>
@@ -337,9 +354,9 @@ export function HouseholdSchedule({
             table: "medication_schedules",
             ...(petFilter ? { filter: petFilter } : {}),
           },
-          (payload: any) => {
+          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
             if (payload.eventType === "INSERT") {
-              const incoming = normalizeMedicationSchedule(payload.new as any);
+              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
               setMedicationSchedules((prev) => {
                 if (prev.some((s) => s.id === incoming.id)) {
                   return prev.map((s) => (s.id === incoming.id ? incoming : s));
@@ -348,7 +365,7 @@ export function HouseholdSchedule({
               });
               router.refresh();
             } else if (payload.eventType === "UPDATE") {
-              const incoming = normalizeMedicationSchedule(payload.new as any);
+              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
               setMedicationSchedules((prev) =>
                 prev.map((s) => (s.id === incoming.id ? incoming : s)),
               );
@@ -364,7 +381,7 @@ export function HouseholdSchedule({
             }
           },
         )
-        .subscribe((status: string, err?: any) => {
+        .subscribe((status: string, err?: Error) => {
           if (process.env.NODE_ENV !== "production") {
             if (status === "SUBSCRIBED") {
               console.log(`[Realtime schedule] Subscribed for ${fixedPetId || "all"}`);
@@ -434,16 +451,6 @@ export function HouseholdSchedule({
       month: "short",
       timeZone: "UTC",
     }).format(new Date(iso));
-
-  const formatMonthHeading = (ym: string) => {
-    const [y, m] = ym.split("-").map(Number);
-    if (!y || !m) return ym;
-    return new Intl.DateTimeFormat(locale, {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(Date.UTC(y, m - 1, 1)));
-  };
 
   const monthTitle = useMemo(() => {
     const d = new Date(Date.UTC(monthCursor.year, monthCursor.month, 1));
@@ -958,7 +965,7 @@ export function HouseholdSchedule({
       if (!last || last.ym !== ym) {
         groups.push({
           ym,
-          label: formatMonthHeading(ym),
+          label: formatMonthHeading(ym, locale),
           items: [entry],
         });
       } else {
@@ -1076,18 +1083,6 @@ export function HouseholdSchedule({
       setMonthCursor({ year: y, month: m - 1 });
     }
     setDisplayLayout("day");
-  }
-
-  function focusEntryInList(entry: UnifiedScheduleEntry) {
-    const ym = entry.date.slice(0, 7);
-    setCollapsedMonths((prev) => ({ ...prev, [ym]: false }));
-    setSearchQuery("");
-    setViewMode(entry.status === "planned" ? "upcoming" : "archive");
-    setSelectedDayIso(entry.date);
-    const [y, m] = entry.date.split("-").map(Number);
-    if (y && m) setMonthCursor({ year: y, month: m - 1 });
-    setDisplayLayout("agenda");
-    setHighlightedKey(entry.key);
   }
 
   async function handleStatusChange(

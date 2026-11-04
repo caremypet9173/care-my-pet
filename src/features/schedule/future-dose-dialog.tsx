@@ -83,7 +83,7 @@ export function FutureDoseDialog({
                 </>
               ) : (
                 <>
-                  Medication <strong>"{dose.name}"</strong>
+                  Medication <strong>&ldquo;{dose.name}&rdquo;</strong>
                   {dose.dosage ? ` (${dose.dosage})` : ""}
                   {petName ? ` for ${petName}` : ""} is scheduled for{" "}
                   <strong>{dose.dose_date}</strong>

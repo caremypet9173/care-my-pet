@@ -7,7 +7,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { medicalMessages } from "./messages";
 import { numeric, rangeStatus, sameParameter } from "./comparison";
-import type { MedicalReport, Measurement } from "./types";
+import type { MedicalReport, Measurement, MeasurementCorrection } from "./types";
 import {TrendParameterPicker} from "./trend-parameter-picker";
 import {ReportList} from "./report-list";
 import { LabComparisonMatrix } from "./lab-comparison-matrix";
@@ -66,7 +66,13 @@ export function MedicalResults({petId,reports:initialReports,initialReportId}:{p
           .eq("wynik_id", next.id)
           .order("ordinal", { ascending: true });
         if (rowsData && rowsData.length > 0) {
-          const mappedRows = rowsData.map(({ correction, ...row }: any) => ({
+          const mappedRows: Measurement[] = (
+            rowsData as unknown as Array<
+              Measurement & {
+                correction?: MeasurementCorrection | null;
+              }
+            >
+          ).map(({ correction, ...row }) => ({
             ...row,
             original: { value: row.value, unit: row.unit, reference: row.reference },
             ...(correction

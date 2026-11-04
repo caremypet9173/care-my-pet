@@ -27,34 +27,20 @@ export function HouseholdHeaderSwitcher({
   activeHouseholdId,
   locale,
 }: HouseholdHeaderSwitcherProps) {
+  const [prevActiveId, setPrevActiveId] = useState(activeHouseholdId);
   const [currentId, setCurrentId] = useState<string | null>(activeHouseholdId);
+
+  // Synchronizacja przy zmianie propsa serwerowego bez kaskadowego efektu
+  if (activeHouseholdId !== prevActiveId) {
+    setPrevActiveId(activeHouseholdId);
+    setCurrentId(activeHouseholdId);
+  }
+
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const pl = locale === "pl";
-
-  // Synchronizacja przy zmianie propsa
-  useEffect(() => {
-    if (activeHouseholdId) {
-      setCurrentId(activeHouseholdId);
-    }
-  }, [activeHouseholdId]);
-
-  // Odczyt aktualnego ciasteczka po zamontowaniu (np. po nawigacji klienta)
-  useEffect(() => {
-    try {
-      const match = document.cookie.match(/(?:^|;\s*)care_active_household_id=([^;]+)/);
-      if (match && match[1]) {
-        const cookieId = decodeURIComponent(match[1]);
-        if (cookieId && availableHouseholds.some((h) => h.id === cookieId)) {
-          setCurrentId(cookieId);
-        }
-      }
-    } catch {
-      // Ignoruj błędy odczytu ciasteczka
-    }
-  }, [availableHouseholds]);
 
   // Nasłuchiwanie na globalne zdarzenie zmiany aktywnego gospodarstwa
   useEffect(() => {

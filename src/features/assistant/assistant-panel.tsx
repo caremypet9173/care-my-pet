@@ -26,6 +26,10 @@ import type {
 const MAX_MESSAGE_CHARS = 800;
 const DAILY_MESSAGE_LIMIT = 20;
 
+function createTempId(prefix = "temp"): string {
+  return `${prefix}-${Date.now()}`;
+}
+
 export function AssistantPanel({
   petId,
   petName,
@@ -188,8 +192,8 @@ export function AssistantPanel({
     setError("");
     setSending(true);
 
-    const tempThreadId = selectedThreadId ?? `temp-thread-${Date.now()}`;
-    const optimisticId = `temp-${Date.now()}`;
+    const tempThreadId = selectedThreadId ?? createTempId("temp-thread");
+    const optimisticId = createTempId("temp");
     const optimisticUserMsg: AssistantMessage = {
       id: optimisticId,
       thread_id: tempThreadId,

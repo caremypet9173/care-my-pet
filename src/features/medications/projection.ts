@@ -78,7 +78,12 @@ export function normalizeMedicationSchedule(
 ): MedicationSchedule {
   return {
     ...(sched as MedicationSchedule),
-    scheduled_times: parseScheduledTimes(sched as any),
+    scheduled_times: parseScheduledTimes(
+      sched as {
+        scheduled_times?: string[] | string | null;
+        scheduled_time?: string | null;
+      },
+    ),
   };
 }
 
