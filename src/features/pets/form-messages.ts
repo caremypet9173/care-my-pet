@@ -10,6 +10,7 @@ const pl = {
   photoError: "Wybierz poprawne zdjęcie JPG, PNG lub WebP do 10 MB (maks. 40 megapikseli).", uploadError: "Nie udało się przesłać zdjęcia. Dane formularza zostały zachowane. Spróbuj ponownie.",
   cropTitle: "Dopasuj zdjęcie", cropHint: "Przeciągnij zdjęcie lub użyj suwaków, aby precyzyjnie wykadrować pyszczek w okręgu profilowym.", zoom: "Skala powiększenia", horizontal: "Przesunięcie poziome", vertical: "Przesunięcie pionowe", rotate: "Obróć o 90°", reset: "Domyślnie", savePhoto: "Zapisz zdjęcie", loading: "Wczytywanie zdjęcia…", cropError: "Nie udało się przygotować zdjęcia. Spróbuj innego pliku.", cropPrivacy: "Oryginalny plik pozostaje na urządzeniu. Zapiszemy tylko przycięty awatar.",
   catHint: "Kot lub kotka", dogHint: "Pies lub suczka", approximateLabel: "data przybliżona",
+  cancelWarning: "Opuścić stronę i utracić niezapisane dane profilu?",
 };
 const en: typeof pl = {
   title: "Let’s meet your pet", intro: "Start with their name and species. You can fill in the rest later.",
@@ -22,5 +23,6 @@ const en: typeof pl = {
   photoError: "Choose a valid JPG, PNG or WebP up to 10 MB (maximum 40 megapixels).", uploadError: "Could not upload the photo. Your form data has been kept. Please try again.",
   cropTitle: "Adjust photo", cropHint: "Drag the photo or use the sliders to position your pet’s face inside the profile circle.", zoom: "Zoom", horizontal: "Horizontal position", vertical: "Vertical position", rotate: "Rotate 90°", reset: "Reset", savePhoto: "Save photo", loading: "Loading photo…", cropError: "Could not prepare the photo. Try a different file.", cropPrivacy: "The original stays on your device. Only the cropped avatar will be uploaded.",
   catHint: "Cat or kitten", dogHint: "Dog or puppy", approximateLabel: "approximate date",
+  cancelWarning: "Leave this page and discard unsaved profile data?",
 };
 export const petFormMessages: Record<Locale, typeof pl> = { pl, en };

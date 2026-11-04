@@ -5,6 +5,7 @@ import { routing } from "@/i18n/routing";
 import type { Metadata } from "next";
 import { inter, jakarta } from "@/lib/fonts";
 import { CookieNotice } from "@/components/legal/cookie-notice";
+import { NetworkStatus } from "@/components/layout/network-status";
 import "@/styles/globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -47,6 +48,7 @@ export default async function RootLayout({
         <NextIntlClientProvider>
           {children}
           <CookieNotice />
+          <NetworkStatus />
         </NextIntlClientProvider>
       </body>
     </html>

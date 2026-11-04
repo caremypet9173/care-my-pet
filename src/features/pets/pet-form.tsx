@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocale } from "next-intl";
 import { IconCat, IconDog, IconPaw, IconCamera, IconShieldLock, IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "@/i18n/navigation";
@@ -34,10 +34,21 @@ export function PetForm({ pet }: { pet?: Pet }) {
   const [removePhoto, setRemovePhoto] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [photoError, setPhotoError] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const summary = useRef<HTMLDivElement>(null); const details = useRef<HTMLDetailsElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const PetSymbol = species === "cat" ? IconCat : species === "dog" ? IconDog : IconPaw;
+
+  useEffect(() => {
+    if (!isDirty || busy) return;
+    const guard = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [isDirty, busy]);
   function report(next: Record<string, string>) {
     setErrors(next);
     if (Object.keys(next).some(key => ["numer_id", "notatki", "identyfikacja", "kastracja"].includes(key)) && details.current) details.current.open = true;
@@ -45,7 +56,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
   }
   function acceptPhoto(blob: Blob) {
     const reader = new FileReader();
-    reader.onload = () => { setPhoto(blob); setPreview(String(reader.result)); setRemovePhoto(false); setCropFile(null); setPhotoError(""); };
+    reader.onload = () => { setPhoto(blob); setPreview(String(reader.result)); setRemovePhoto(false); setCropFile(null); setPhotoError(""); setIsDirty(true); };
     reader.onerror = () => setPhotoError(d.photoError);
     reader.readAsDataURL(blob);
   }
@@ -89,6 +100,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
       }
       if (!data?.pet?.id) throw new Error("Missing pet");
       saved = true;
+      setIsDirty(false);
       if (pet?.avatar_path && pet.avatar_path !== avatarPath) await client.storage.from("pet-avatars").remove([pet.avatar_path]).catch(() => undefined);
       router.push(`/app/zwierzeta/${data.pet.id}`); router.refresh();
     } catch { setError(t.failed); }
@@ -100,6 +112,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
   const fieldError = (name: string) => errors[name] ? <p className="pet-field-error" id={`${name}-error`}>{errors[name]}</p> : null;
   return <>
     <form ref={formRef} className="pet-registration" onSubmit={submit} noValidate onChange={event => {
+      setIsDirty(true);
       const field = event.target;
       if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) && errors[field.name] && field.validity.valid
         && (field.name !== "imie" || field.value.trim())) {
@@ -117,7 +130,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
             setPhotoError(""); setCropFile(file);
           }} />
           <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()}><IconCamera size={16} aria-hidden="true" />{preview ? d.changePhoto : d.addPhoto}</Button>
-          {preview && <Button variant="ghost" size="sm" onClick={() => { setPhoto(null); setPreview(null); setRemovePhoto(true); }}>{d.removePhoto}</Button>}
+          {preview && <Button variant="ghost" size="sm" onClick={() => { setPhoto(null); setPreview(null); setRemovePhoto(true); setIsDirty(true); }}>{d.removePhoto}</Button>}
           <small>{d.photoHint}</small><p className="pet-photo-privacy"><IconShieldLock size={18} aria-hidden="true" />{d.privatePhoto}</p>
         </div>{photoError && <p className="pet-field-error" role="alert">{photoError}</p>}</aside>
         <div className="pet-registration-fields">
@@ -135,7 +148,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
         </div>
       </fieldset>
       {error && <p className="pet-error" role="alert">{error}</p>}
-      <div className="pet-registration-actions"><small>{d.requiredHint}</small>{busy ? <Button variant="ghost" disabled>{t.cancel}</Button> : <ButtonLink variant="ghost" href={pet ? `/app/zwierzeta/${pet.id}` : "/app"}>{t.cancel}</ButtonLink>}<Button type="submit" loading={busy}>{pet ? t.save : d.create}<IconArrowRight size={17} aria-hidden="true" /></Button></div>
+      <div className="pet-registration-actions"><small>{d.requiredHint}</small>{busy ? <Button variant="ghost" disabled>{t.cancel}</Button> : <ButtonLink variant="ghost" href={pet ? `/app/zwierzeta/${pet.id}` : "/app"} onClick={event => { if (isDirty && !window.confirm(d.cancelWarning)) event.preventDefault(); }}>{t.cancel}</ButtonLink>}<Button type="submit" loading={busy}>{pet ? t.save : d.create}<IconArrowRight size={17} aria-hidden="true" /></Button></div>
     </form>
     {cropFile && <PhotoCropDialog file={cropFile} onCancel={() => setCropFile(null)} onSave={acceptPhoto} />}
   </>;

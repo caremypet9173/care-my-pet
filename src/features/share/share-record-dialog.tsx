@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
-import QRCode from "qrcode";
 import {
   IconBan,
   IconCheck,
@@ -147,6 +146,8 @@ function ShareRecordDialog({
       }
       const url = buildShareUrl(selectedLink.token);
       try {
+        const qrModule = await import("qrcode");
+        const QRCode = qrModule.default ?? qrModule;
         const svg = await QRCode.toString(url, {
           type: "svg",
           margin: 1,
