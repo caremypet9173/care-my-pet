@@ -30,14 +30,14 @@ import type { DischargeParsedState } from "./discharge-types";
 import { FormattedMedicalText } from "./formatted-text";
 import {
   getPdfImportHistory,
-  getSuggestedNextRange,
-  recordPdfImport,
+  getSuggestedNextPages,
+  recordPdfImportPages,
   type ImportedPdfHistory,
 } from "./pdf-history";
 import {
   MAX_DISCHARGE_PAGES,
   inspectPdf,
-  slicePdfPages,
+  sliceSelectedPdfPages,
   type PdfInfo,
 } from "./pdf-page-utils";
 import { DischargePdfPageViewer } from "./discharge-pdf-page-viewer";
@@ -52,6 +52,16 @@ interface DischargeImportDialogProps {
 
 type TabKey = "labs" | "events" | "weights" | "meds";
 type ImportStep = "upload" | "configure" | "analyzing" | "review" | "success";
+
+function formatPagesSummary(pages: number[]): string {
+  if (!pages || pages.length === 0) return "brak";
+  if (pages.length === 1) return `strona ${pages[0]}`;
+  const isContinuous = pages.every((p, idx) => idx === 0 || p === pages[idx - 1] + 1);
+  if (isContinuous) {
+    return `strony ${pages[0]}–${pages[pages.length - 1]}`;
+  }
+  return `strony ${pages.join(", ")}`;
+}
 
 export function DischargeImportDialog({
   pet,
@@ -70,12 +80,10 @@ export function DischargeImportDialog({
   const [rawSha256, setRawSha256] = useState<string>("");
   const [pdfHistory, setPdfHistory] = useState<ImportedPdfHistory | null>(null);
 
-  const [previewPage, setPreviewPage] = useState<number>(1);
-  const [customStart, setCustomStart] = useState<number>(1);
-  const [customEnd, setCustomEnd] = useState<number>(1);
-  const [activeRange, setActiveRange] = useState<{
-    start: number;
-    end: number;
+  const [selectedPages, setSelectedPages] = useState<number[]>([]);
+  const [scrollToPageTarget, setScrollToPageTarget] = useState<number | null>(null);
+  const [activePagesInfo, setActivePagesInfo] = useState<{
+    pages: number[];
     total: number;
   } | null>(null);
 
@@ -118,11 +126,12 @@ export function DischargeImportDialog({
     setPdfInfo(null);
     setRawSha256("");
     setPdfHistory(null);
-    setPreviewPage(1);
+    setSelectedPages([]);
+    setScrollToPageTarget(null);
     setFile(null);
     setSha256("");
     setDischarge(null);
-    setActiveRange(null);
+    setActivePagesInfo(null);
     setError(null);
     setSaveResult(null);
   }
@@ -158,10 +167,11 @@ export function DischargeImportDialog({
       const history = getPdfImportHistory(pet.id, computedHash);
       setPdfHistory(history);
 
-      const suggested = getSuggestedNextRange(info.pageCount, history, MAX_DISCHARGE_PAGES);
-      setCustomStart(suggested.start);
-      setCustomEnd(suggested.end);
-      setPreviewPage(suggested.start);
+      const suggested = getSuggestedNextPages(info.pageCount, history, MAX_DISCHARGE_PAGES);
+      setSelectedPages(suggested.pages);
+      if (suggested.pages.length > 0) {
+        setScrollToPageTarget(suggested.pages[0]);
+      }
 
       setStep("configure");
     } catch (err) {
@@ -185,74 +195,65 @@ export function DischargeImportDialog({
     }
   }
 
-  function applyPresetRange(start: number, end: number) {
+  function handleTogglePage(pageNumber: number) {
     if (!pdfInfo) return;
-    const clampedStart = Math.max(1, Math.min(start, pdfInfo.pageCount));
-    const clampedEnd = Math.max(clampedStart, Math.min(end, pdfInfo.pageCount));
-    setCustomStart(clampedStart);
-    setCustomEnd(clampedEnd);
-    setPreviewPage(clampedStart);
     setError(null);
-  }
 
-  function handlePageClick(pageNumber: number) {
-    if (!pdfInfo) return;
-    setPreviewPage(pageNumber);
-
-    // Jeśli kliknięto stronę po lewej lub obecny zakres był pełny, zresetuj początek
-    if (pageNumber < customStart || customStart === customEnd) {
-      const newEnd = Math.min(pageNumber + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount);
-      setCustomStart(pageNumber);
-      setCustomEnd(newEnd);
-    } else {
-      // Kliknięto stronę po prawej stronie od początku
-      const count = pageNumber - customStart + 1;
-      if (count <= MAX_DISCHARGE_PAGES) {
-        setCustomEnd(pageNumber);
-      } else {
-        // Jeśli przekracza limit stron, ustaw nowe okno od klikniętej
-        setCustomStart(pageNumber);
-        setCustomEnd(Math.min(pageNumber + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount));
+    setSelectedPages((prev) => {
+      if (prev.includes(pageNumber)) {
+        return prev.filter((p) => p !== pageNumber);
       }
+      if (prev.length >= MAX_DISCHARGE_PAGES) {
+        setError(
+          `Osiągnięto limit ${MAX_DISCHARGE_PAGES} stron na jedną analizę. Odznacz inną stronę, aby dodać stronę ${pageNumber}.`,
+        );
+        return prev;
+      }
+      return [...prev, pageNumber].sort((a, b) => a - b);
+    });
+  }
+
+  function handlePillClick(pageNumber: number) {
+    handleTogglePage(pageNumber);
+    setScrollToPageTarget(pageNumber);
+  }
+
+  function handleSelectFirstPages(count = MAX_DISCHARGE_PAGES) {
+    if (!pdfInfo) return;
+    setError(null);
+    const limit = Math.min(count, pdfInfo.pageCount);
+    const pages: number[] = [];
+    for (let p = 1; p <= limit; p++) pages.push(p);
+    setSelectedPages(pages);
+    setScrollToPageTarget(1);
+  }
+
+  function handleSelectUnimportedPages() {
+    if (!pdfInfo) return;
+    setError(null);
+    const history = getPdfImportHistory(pet.id, rawSha256);
+    const suggested = getSuggestedNextPages(pdfInfo.pageCount, history, MAX_DISCHARGE_PAGES);
+    setSelectedPages(suggested.pages);
+    if (suggested.pages.length > 0) {
+      setScrollToPageTarget(suggested.pages[0]);
     }
   }
 
-  function handleSetStartFromPreview(page: number) {
-    if (!pdfInfo) return;
-    const count = customEnd - page + 1;
-    if (page <= customEnd && count <= MAX_DISCHARGE_PAGES && count > 0) {
-      setCustomStart(page);
-    } else {
-      setCustomStart(page);
-      setCustomEnd(Math.min(page + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount));
-    }
-  }
-
-  function handleSetEndFromPreview(page: number) {
-    if (!pdfInfo) return;
-    const count = page - customStart + 1;
-    if (page >= customStart && count <= MAX_DISCHARGE_PAGES) {
-      setCustomEnd(page);
-    } else {
-      setCustomStart(Math.max(1, page - MAX_DISCHARGE_PAGES + 1));
-      setCustomEnd(page);
-    }
+  function handleClearSelection() {
+    setError(null);
+    setSelectedPages([]);
   }
 
   async function handleStartExtraction() {
     if (!rawFile || !pdfInfo) return;
 
-    const start = customStart;
-    const end = customEnd;
-    const count = end - start + 1;
-
-    if (start < 1 || end > pdfInfo.pageCount || end < start) {
-      setError(`Nieprawidłowy zakres stron (podaj od 1 do ${pdfInfo.pageCount}).`);
+    if (selectedPages.length === 0) {
+      setError("Wybierz przynajmniej jedną stronę do analizy.");
       return;
     }
-    if (count > MAX_DISCHARGE_PAGES) {
+    if (selectedPages.length > MAX_DISCHARGE_PAGES) {
       setError(
-        `Wybrany zakres obejmuje ${count} stron. Maksymalny dopuszczalny limit to ${MAX_DISCHARGE_PAGES} stron w jednej turze.`,
+        `Wybrano ${selectedPages.length} stron. Maksymalny dopuszczalny limit to ${MAX_DISCHARGE_PAGES} stron w jednej turze.`,
       );
       return;
     }
@@ -261,9 +262,9 @@ export function DischargeImportDialog({
     setStep("analyzing");
 
     try {
-      const fileToProcess = await slicePdfPages(rawFile, start, end);
+      const fileToProcess = await sliceSelectedPdfPages(rawFile, selectedPages);
       setFile(fileToProcess);
-      setActiveRange({ start, end, total: pdfInfo.pageCount });
+      setActivePagesInfo({ pages: selectedPages, total: pdfInfo.pageCount });
 
       const result = await extractClinicalDischarge(pet.id, fileToProcess);
       setDischarge(result.discharge);
@@ -277,21 +278,22 @@ export function DischargeImportDialog({
   }
 
   function handleNextChunkImport() {
-    if (!rawFile || !pdfInfo || !activeRange) return;
-    const nextStart = activeRange.end + 1;
-    if (nextStart > pdfInfo.pageCount) return;
+    if (!rawFile || !pdfInfo) return;
 
-    const nextEnd = Math.min(nextStart + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount);
-    setCustomStart(nextStart);
-    setCustomEnd(nextEnd);
-
-    // Refresh history
+    // Odśwież historię z localStorage
     const history = getPdfImportHistory(pet.id, rawSha256);
     setPdfHistory(history);
+
+    const suggested = getSuggestedNextPages(pdfInfo.pageCount, history, MAX_DISCHARGE_PAGES);
+    setSelectedPages(suggested.pages);
+    if (suggested.pages.length > 0) {
+      setScrollToPageTarget(suggested.pages[0]);
+    }
 
     setDischarge(null);
     setSaveResult(null);
     setFile(null);
+    setActivePagesInfo(null);
     setStep("configure");
   }
 
@@ -364,14 +366,13 @@ export function DischargeImportDialog({
         state: discharge,
       });
 
-      // Zapisz zaimportowany zakres w historii przeglądarki
-      if (activeRange && rawSha256) {
-        const updatedHistory = recordPdfImport(
+      // Zapisz zaimportowane strony w historii przeglądarki
+      if (activePagesInfo && rawSha256) {
+        const updatedHistory = recordPdfImportPages(
           pet.id,
           rawSha256,
           rawFile?.name || file.name,
-          activeRange.start,
-          activeRange.end,
+          activePagesInfo.pages,
         );
         if (updatedHistory) setPdfHistory(updatedHistory);
       }
@@ -407,19 +408,11 @@ export function DischargeImportDialog({
       !pet.imie.toLowerCase().includes(discharge.patient_name.toLowerCase()),
   );
 
-  // Wyliczenie stron w selektorze
-  const currentTargetCount = Math.max(0, customEnd - customStart + 1);
-  const isCustomRangeValid =
-    customStart >= 1 &&
-    pdfInfo !== null &&
-    customEnd <= pdfInfo.pageCount &&
-    customEnd >= customStart &&
-    customEnd - customStart + 1 <= MAX_DISCHARGE_PAGES;
-
   const importedSet = new Set(pdfHistory?.allImportedPages || []);
-  const suggestedRange = pdfInfo
-    ? getSuggestedNextRange(pdfInfo.pageCount, pdfHistory, MAX_DISCHARGE_PAGES)
-    : null;
+  const selectedSet = new Set(selectedPages);
+  const totalPagesCount = pdfInfo?.pageCount || 0;
+  const remainingPagesCount = Math.max(0, totalPagesCount - importedSet.size);
+  const hasRemainingUnimportedPages = totalPagesCount > 0 && remainingPagesCount > 0;
 
   return (
     <dialog
@@ -522,16 +515,15 @@ export function DischargeImportDialog({
               <div className="discharge-preview-col">
                 <DischargePdfPageViewer
                   file={rawFile}
-                  activePage={previewPage}
-                  onPageChange={setPreviewPage}
-                  selectedStart={customStart}
-                  selectedEnd={customEnd}
-                  onSetStart={handleSetStartFromPreview}
-                  onSetEnd={handleSetEndFromPreview}
+                  totalPages={pdfInfo.pageCount}
+                  selectedPages={selectedPages}
+                  importedPages={pdfHistory?.allImportedPages || []}
+                  onTogglePage={handleTogglePage}
+                  activeScrollToPage={scrollToPageTarget}
                 />
               </div>
 
-              {/* Kolumna 2: Sterowanie, historia i wybór zakresu */}
+              {/* Kolumna 2: Sterowanie, historia i wybór stron */}
               <div className="discharge-controls-col">
                 {/* Karta pliku */}
                 <div className="discharge-file-card">
@@ -571,12 +563,12 @@ export function DischargeImportDialog({
                         aria-hidden="true"
                       />
                       <div>
-                        <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz zakres stron do analizy</h4>
+                        <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz pojedyncze strony do analizy</h4>
                         <p>
-                          Ze względu na techniczne limity wielkości odpowiedzi modeli AI oraz ciągłość
-                          badań laboratoryjnych, jednorazowo analizujemy do{" "}
-                          <strong>{MAX_DISCHARGE_PAGES} stron</strong>. W ten sposób chronimy wyniki
-                          badań i opisy wizyt przed przypadkowym ucięciem w połowie.
+                          Ze względu na limity wielkości odpowiedzi modeli AI oraz ochronę ciągłości badań,
+                          jednorazowo analizujemy maksymalnie{" "}
+                          <strong>{MAX_DISCHARGE_PAGES} stron</strong>. Przewijaj podgląd po lewej i
+                          wybierz strony, które chcesz przetworzyć.
                         </p>
                       </div>
                     </div>
@@ -585,19 +577,19 @@ export function DischargeImportDialog({
                       <div className="discharge-step-item">
                         <span className="discharge-step-number">1</span>
                         <div>
-                          <strong>Sprawdź na podglądzie po lewej treść stron</strong>
+                          <strong>Przeglądaj treść na scrollowanym podglądzie</strong>
                           <p>
-                            Klikaj strony lub użyj przycisków &quot;Ustaw jako początek/koniec&quot; bezpośrednio na podglądzie.
+                            Kliknij bezpośrednio w kartę strony lub jej pole wyboru po lewej stronie, aby dodać ją do analizy.
                           </p>
                         </div>
                       </div>
                       <div className="discharge-step-item">
                         <span className="discharge-step-number">2</span>
                         <div>
-                          <strong>Zaimportuj pozostałe strony w kolejnym kroku</strong>
+                          <strong>Zaimportuj pozostałe strony w kolejnej turze</strong>
                           <p>
                             Po zapisaniu możesz wybrać ten sam plik ponownie – aplikacja pamięta, które
-                            strony już dodano, i podpowie kolejny fragment.
+                            strony już dodano do kartoteki.
                           </p>
                         </div>
                       </div>
@@ -606,9 +598,8 @@ export function DischargeImportDialog({
                     <div className="discharge-guide-tip">
                       <IconInfoCircle size={16} aria-hidden="true" />
                       <span>
-                        <strong>Wskazówka:</strong> Sprawdź na podglądzie po lewej, czy badanie nie
-                        zaczyna się na dole strony – lepiej zakończyć partię przed rozpoczęciem
-                        nowego badania, a kolejne zacząć od nowej strony.
+                        <strong>Wskazówka:</strong> Sprawdź na podglądzie, gdzie kończą się poszczególne
+                        badania. Zaznaczaj pełne wizyty, aby uniknąć ucięcia wyników badań w połowie.
                       </span>
                     </div>
                   </div>
@@ -619,14 +610,14 @@ export function DischargeImportDialog({
                       <strong>Dokument mieści się w limicie</strong>
                       <p>
                         Plik ma {pdfInfo.pageCount} stron (mieści się w limicie {MAX_DISCHARGE_PAGES}{" "}
-                        stron). Możesz przeanalizować cały plik naraz lub wybrać określony fragment.
+                        stron). Wszystkie strony zostały domyślnie zaznaczone, ale możesz dostosować wybór.
                       </p>
                     </div>
                   </div>
                 )}
 
                 {/* Sekcja historii wcześniejszych importów tego pliku */}
-                {pdfHistory && pdfHistory.importedRanges.length > 0 && (
+                {pdfHistory && pdfHistory.allImportedPages.length > 0 && (
                   <div className="discharge-history-card">
                     <div className="discharge-history-header">
                       <IconHistory
@@ -637,28 +628,20 @@ export function DischargeImportDialog({
                       <div className="discharge-history-content">
                         <strong>Wcześniej zaimportowano już strony z tego pliku:</strong>
                         <div className="discharge-history-ranges">
-                          {pdfHistory.importedRanges.map((r, idx) => (
-                            <span
-                              key={`${r.start}-${r.end}-${idx}`}
-                              className="discharge-history-tag"
-                            >
-                              ✓ Strony {r.start}–{r.end}
-                            </span>
-                          ))}
+                          <span className="discharge-history-tag">
+                            ✓ {formatPagesSummary(pdfHistory.allImportedPages)}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    {suggestedRange && suggestedRange.hasUnimported && (
+                    {hasRemainingUnimportedPages && (
                       <button
                         type="button"
                         className="discharge-suggested-btn"
-                        onClick={() =>
-                          applyPresetRange(suggestedRange.start, suggestedRange.end)
-                        }
+                        onClick={handleSelectUnimportedPages}
                       >
                         <span>
-                          Zaznacz sugerowane kolejne strony ({suggestedRange.start}–
-                          {suggestedRange.end})
+                          Zaznacz kolejne niezaimportowane strony (do {MAX_DISCHARGE_PAGES} stron)
                         </span>
                         <IconArrowRight size={14} aria-hidden="true" />
                       </button>
@@ -669,13 +652,27 @@ export function DischargeImportDialog({
                 {/* Interaktywny selektor stron */}
                 <div className="discharge-range-selector-box">
                   <div className="discharge-selector-header">
-                    <h4>Wybór stron do ekstrakcji:</h4>
+                    <div className="discharge-selector-title-wrap">
+                      <h4>Wybierz strony do analizy:</h4>
+                      <span
+                        className={`discharge-counter-chip${
+                          selectedPages.length === 0
+                            ? " is-empty"
+                            : selectedPages.length === MAX_DISCHARGE_PAGES
+                            ? " is-limit"
+                            : " is-active"
+                        }`}
+                      >
+                        {selectedPages.length} z {MAX_DISCHARGE_PAGES} stron
+                      </span>
+                    </div>
+
                     <div className="discharge-quick-presets">
                       {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
                         <button
                           type="button"
                           className="discharge-preset-pill"
-                          onClick={() => applyPresetRange(1, pdfInfo.pageCount)}
+                          onClick={() => handleSelectFirstPages(pdfInfo.pageCount)}
                         >
                           Wszystkie strony (1–{pdfInfo.pageCount})
                         </button>
@@ -684,132 +681,93 @@ export function DischargeImportDialog({
                           <button
                             type="button"
                             className="discharge-preset-pill"
-                            onClick={() =>
-                              applyPresetRange(
-                                1,
-                                Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount),
-                              )
-                            }
+                            onClick={() => handleSelectFirstPages(MAX_DISCHARGE_PAGES)}
                           >
-                            Część 1 (str. 1–{Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount)})
+                            Pierwsze 10 (str. 1–10)
                           </button>
-                          {pdfInfo.pageCount > MAX_DISCHARGE_PAGES && (
-                            <button
-                              type="button"
-                              className="discharge-preset-pill"
-                              onClick={() =>
-                                applyPresetRange(
-                                  MAX_DISCHARGE_PAGES + 1,
-                                  Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount),
-                                )
-                              }
-                            >
-                              Część 2 (str. {MAX_DISCHARGE_PAGES + 1}–
-                              {Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount)})
-                            </button>
-                          )}
-                          {suggestedRange && suggestedRange.hasUnimported && (
+                          {hasRemainingUnimportedPages && (
                             <button
                               type="button"
                               className="discharge-preset-pill is-suggested"
-                              onClick={() =>
-                                applyPresetRange(suggestedRange.start, suggestedRange.end)
-                              }
+                              onClick={handleSelectUnimportedPages}
                             >
-                              Pozostałe ({suggestedRange.start}–{suggestedRange.end})
+                              Niezaimportowane
                             </button>
                           )}
                         </>
                       )}
+                      {selectedPages.length > 0 && (
+                        <button
+                          type="button"
+                          className="discharge-preset-pill"
+                          onClick={handleClearSelection}
+                        >
+                          Wyczyść
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {/* Wizualna mapa kafelków stron */}
-                  <div className="discharge-page-strip" role="group" aria-label="Kafelki stron">
+                  {/* Wizualna siatka guzików stron */}
+                  <div
+                    className="discharge-page-strip"
+                    role="group"
+                    aria-label="Kafelki wyboru pojedynczych stron"
+                  >
                     {Array.from({ length: pdfInfo.pageCount }, (_, i) => i + 1).map((pNum) => {
                       const isImported = importedSet.has(pNum);
-                      const isSelected = pNum >= customStart && pNum <= customEnd;
-                      const isCurrentPreview = pNum === previewPage;
+                      const isSelected = selectedSet.has(pNum);
                       return (
                         <button
                           key={pNum}
                           type="button"
                           className={`discharge-page-pill${isImported ? " is-imported" : ""}${
                             isSelected ? " is-selected" : ""
-                          }${isCurrentPreview ? " is-previewing" : ""}`}
-                          onClick={() => handlePageClick(pNum)}
+                          }`}
+                          onClick={() => handlePillClick(pNum)}
                           title={`Strona ${pNum}${
-                            isImported ? " (już zaimportowana)" : ""
-                          }${isCurrentPreview ? " [oglądasz na podglądzie]" : ""}`}
+                            isSelected ? " (zaznaczona do analizy)" : ""
+                          }${isImported ? " [wcześniej zaimportowana]" : ""}`}
                         >
                           <span>{pNum}</span>
-                          {isImported && <IconCheck size={10} aria-hidden="true" />}
+                          {isSelected && <IconCheck size={11} aria-hidden="true" />}
+                          {!isSelected && isImported && (
+                            <IconHistory size={10} aria-hidden="true" />
+                          )}
                         </button>
                       );
                     })}
                   </div>
+
                   <div className="discharge-strip-legend">
                     <span>
-                      <span className="discharge-legend-dot is-imported" /> Już zaimportowane
+                      <span className="discharge-legend-dot is-selected" /> Wybrana do analizy (maks. {MAX_DISCHARGE_PAGES})
                     </span>
                     <span>
-                      <span className="discharge-legend-dot is-selected" /> Wybrane do analizy
+                      <span className="discharge-legend-dot is-imported" /> Wcześniej zaimportowana
                     </span>
                     <span>
-                      <span className="discharge-legend-dot is-previewing" /> Aktualny podgląd
+                      <span className="discharge-legend-dot" /> Dostępna
                     </span>
                   </div>
 
-                  {/* Pola numeryczne Od / Do */}
-                  <div className="discharge-inputs-row">
-                    <div className="discharge-input-inline">
-                      <label htmlFor="range-start">Od strony:</label>
-                      <input
-                        id="range-start"
-                        type="number"
-                        min={1}
-                        max={pdfInfo.pageCount}
-                        value={customStart}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!Number.isNaN(val)) setCustomStart(val);
-                        }}
-                      />
-                    </div>
-                    <div className="discharge-input-inline">
-                      <label htmlFor="range-end">Do strony:</label>
-                      <input
-                        id="range-end"
-                        type="number"
-                        min={customStart}
-                        max={pdfInfo.pageCount}
-                        value={customEnd}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!Number.isNaN(val)) setCustomEnd(val);
-                        }}
-                      />
-                    </div>
-
-                    <div className="discharge-target-summary">
-                      {currentTargetCount > MAX_DISCHARGE_PAGES ? (
-                        <span className="text-red-700 font-bold">
-                          ⚠️ Wybrano {currentTargetCount} stron (maks. {MAX_DISCHARGE_PAGES} stron / turę)
-                        </span>
-                      ) : currentTargetCount > 0 ? (
-                        <span className="text-emerald-800 font-semibold">
-                          ✓ Wybrano {currentTargetCount}{" "}
-                          {currentTargetCount === 1
-                            ? "stronę"
-                            : currentTargetCount < 5
-                            ? "strony"
-                            : "stron"}{" "}
-                          (strony {customStart}–{customEnd})
-                        </span>
-                      ) : (
-                        <span className="text-red-600">Nieprawidłowy zakres stron</span>
-                      )}
-                    </div>
+                  {/* Podsumowanie zaznaczonych stron */}
+                  <div className="discharge-selection-summary-text">
+                    {selectedPages.length > 0 ? (
+                      <span>
+                        ✓ Wybrano do analizy ({selectedPages.length}{" "}
+                        {selectedPages.length === 1
+                          ? "stronę"
+                          : selectedPages.length < 5
+                          ? "strony"
+                          : "stron"}
+                        ): <strong>{formatPagesSummary(selectedPages)}</strong>. Klikaj strony na podglądzie po lewej lub guziki powyżej, aby zmienić wybór.
+                      </span>
+                    ) : (
+                      <span className="text-amber-800">
+                        Nie wybrano żadnej strony. Kliknij stronę na podglądzie po lewej lub guzik z numerem strony, aby zaznaczyć ją do analizy.
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -831,15 +789,15 @@ export function DischargeImportDialog({
               <Button
                 type="button"
                 variant="primary"
-                disabled={!isCustomRangeValid || currentTargetCount === 0}
+                disabled={selectedPages.length === 0 || selectedPages.length > MAX_DISCHARGE_PAGES}
                 onClick={() => void handleStartExtraction()}
               >
                 <IconSparkles size={16} aria-hidden="true" />
                 <span>
-                  Rozpocznij analizę ({currentTargetCount}{" "}
-                  {currentTargetCount === 1
-                    ? "strona"
-                    : currentTargetCount < 5
+                  Rozpocznij analizę ({selectedPages.length}{" "}
+                  {selectedPages.length === 1
+                    ? "stronę"
+                    : selectedPages.length < 5
                     ? "strony"
                     : "stron"}
                   )
@@ -862,9 +820,9 @@ export function DischargeImportDialog({
             <ul className="discharge-analyzing-steps">
               <li className="is-active">
                 Wczytywanie stron dokumentu ({file?.name}
-                {activeRange && (
+                {activePagesInfo && (
                   <span>
-                    , strony {activeRange.start}–{activeRange.end} z {activeRange.total}
+                    , {formatPagesSummary(activePagesInfo.pages)} z {activePagesInfo.total}
                   </span>
                 )}
                 )
@@ -883,12 +841,14 @@ export function DischargeImportDialog({
               <div className="discharge-boundary-alert-banner" role="alert">
                 <IconAlertTriangle size={22} className="text-amber-800 shrink-0" aria-hidden="true" />
                 <div>
-                  <strong>Uwaga: badanie ucięte na końcu wybranego zakresu!</strong>
+                  <strong>Uwaga: badanie ucięte na końcu wybranego fragmentu!</strong>
                   <p>{discharge.boundary_alert.cut_off_description}</p>
                   <p className="discharge-boundary-tip">
-                    💡 Wskazówka: Przy kolejnym imporcie zalecamy uwzględnić stronę{" "}
-                    <strong>{activeRange?.end}</strong> jako stronę początkową nowej partii, aby
-                    model scalił to badanie w całości bez brakujących parametrów.
+                    💡 Wskazówka: Przy kolejnej turze importu zalecamy uwzględnić stronę{" "}
+                    <strong>
+                      {activePagesInfo?.pages[activePagesInfo.pages.length - 1]}
+                    </strong>{" "}
+                    jako stronę początkową nowej partii, aby model scalił to badanie w całości bez brakujących parametrów.
                   </p>
                 </div>
               </div>
@@ -922,9 +882,9 @@ export function DischargeImportDialog({
                     🐾 Pacjent: <strong>{discharge.patient_name}</strong>
                   </span>
                 )}
-                {activeRange && (
+                {activePagesInfo && (
                   <span className="discharge-range-badge">
-                    📄 Strony {activeRange.start}–{activeRange.end} z {activeRange.total}
+                    📄 {formatPagesSummary(activePagesInfo.pages)} z {activePagesInfo.total}
                   </span>
                 )}
               </div>
@@ -1366,17 +1326,18 @@ export function DischargeImportDialog({
             </div>
 
             {/* Opcja kontynuacji kolejnej części jeśli dokument miał więcej stron */}
-            {activeRange && activeRange.end < activeRange.total && (
+            {hasRemainingUnimportedPages && (
               <div className="discharge-remaining-chunk-banner">
                 <div>
-                  <strong>Dostępna kolejna część dokumentu!</strong>
+                  <strong>Dostępne kolejne strony dokumentu!</strong>
                   <p>
-                    W pliku pozostały jeszcze strony {activeRange.end + 1}–{activeRange.total}.
-                    Aplikacja zapamiętała już zaimportowane strony {activeRange.start}–{activeRange.end}.
+                    W pliku pozostały jeszcze niezaimportowane strony (pozostało {remainingPagesCount}{" "}
+                    {remainingPagesCount === 1 ? "strona" : remainingPagesCount < 5 ? "strony" : "stron"}).
+                    Aplikacja zapamiętała już wybrane wcześniej strony.
                   </p>
                 </div>
                 <Button type="button" variant="secondary" onClick={handleNextChunkImport}>
-                  <span>Zaimportuj kolejną część</span>
+                  <span>Zaimportuj pozostałe strony</span>
                   <IconArrowRight size={16} aria-hidden="true" />
                 </Button>
               </div>

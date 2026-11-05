@@ -5,6 +5,7 @@ import {
   computePageChunks,
   inspectPdf,
   slicePdfPages,
+  sliceSelectedPdfPages,
 } from '../src/features/medical/pdf-page-utils.ts';
 
 async function createSamplePdf(pageCount) {
@@ -76,6 +77,37 @@ test('slicePdfPages rejects ranges exceeding MAX_DISCHARGE_PAGES or bounds', asy
   );
   await assert.rejects(
     () => slicePdfPages(pdfFile, 10, 16),
+    /przekracza liczbę stron/
+  );
+});
+
+test('sliceSelectedPdfPages extracts arbitrary non-contiguous pages', async () => {
+  const pdfFile = await createSamplePdf(16);
+  // Pick arbitrary pages: 2, 5, 8, 12
+  const sliced = await sliceSelectedPdfPages(pdfFile, [8, 2, 12, 5, 2]); // duplicate 2 and out-of-order
+  const info = await inspectPdf(sliced);
+  assert.equal(info.pageCount, 4);
+  assert.equal(sliced.name, 'sample_wybrane_2_5_8_12.pdf');
+});
+
+test('sliceSelectedPdfPages returns original file when all pages selected and <= 10', async () => {
+  const pdfFile = await createSamplePdf(6);
+  const sliced = await sliceSelectedPdfPages(pdfFile, [1, 2, 3, 4, 5, 6]);
+  assert.equal(sliced, pdfFile);
+});
+
+test('sliceSelectedPdfPages rejects empty, out-of-bounds, or > 10 pages', async () => {
+  const pdfFile = await createSamplePdf(15);
+  await assert.rejects(
+    () => sliceSelectedPdfPages(pdfFile, []),
+    /Wybierz przynajmniej jedną stronę/
+  );
+  await assert.rejects(
+    () => sliceSelectedPdfPages(pdfFile, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+    /Maksymalny dopuszczalny limit to 10 stron/
+  );
+  await assert.rejects(
+    () => sliceSelectedPdfPages(pdfFile, [1, 20]),
     /przekracza liczbę stron/
   );
 });

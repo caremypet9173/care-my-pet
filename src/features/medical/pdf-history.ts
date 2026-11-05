@@ -78,6 +78,81 @@ export function recordPdfImport(
   }
 }
 
+export function recordPdfImportPages(
+  petId: string,
+  sha256: string,
+  fileName: string,
+  pages: number[],
+): ImportedPdfHistory | null {
+  if (typeof window === "undefined" || !petId || !sha256) return null;
+  if (!pages || pages.length === 0) return null;
+
+  try {
+    const existing = getPdfImportHistory(petId, sha256);
+    const sorted = Array.from(new Set(pages.filter((p) => p > 0))).sort((a, b) => a - b);
+    if (sorted.length === 0) return null;
+
+    const newRange: ImportedRange = {
+      start: sorted[0],
+      end: sorted[sorted.length - 1],
+      date: new Date().toISOString(),
+    };
+
+    const ranges = existing ? [...existing.importedRanges, newRange] : [newRange];
+    const pageSet = new Set<number>(existing?.allImportedPages || []);
+    sorted.forEach((p) => pageSet.add(p));
+    const allPages = Array.from(pageSet).sort((a, b) => a - b);
+
+    const updated: ImportedPdfHistory = {
+      sha256,
+      fileName,
+      importedRanges: ranges,
+      allImportedPages: allPages,
+    };
+
+    localStorage.setItem(getStorageKey(petId, sha256), JSON.stringify(updated));
+    return updated;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Zwraca listę numerów stron sugerowanych do kolejnej tury importu.
+ * Preferuje strony jeszcze niezaimportowane (do maksymalnie maxPages stron).
+ */
+export function getSuggestedNextPages(
+  totalPages: number,
+  history: ImportedPdfHistory | null,
+  maxPages = 10,
+): { pages: number[]; hasUnimported: boolean } {
+  if (totalPages <= 0) {
+    return { pages: [], hasUnimported: false };
+  }
+
+  const importedSet = new Set(history?.allImportedPages || []);
+  const unimported: number[] = [];
+
+  for (let p = 1; p <= totalPages; p++) {
+    if (!importedSet.has(p)) {
+      unimported.push(p);
+      if (unimported.length >= maxPages) break;
+    }
+  }
+
+  if (unimported.length > 0) {
+    return { pages: unimported, hasUnimported: true };
+  }
+
+  // Wszystkie strony były zaimportowane: sugeruj pierwsze maxPages
+  const defaultPages: number[] = [];
+  const limit = Math.min(totalPages, maxPages);
+  for (let p = 1; p <= limit; p++) {
+    defaultPages.push(p);
+  }
+  return { pages: defaultPages, hasUnimported: false };
+}
+
 /**
  * Wyznacza sugerowany kolejny zakres stron do zaimportowania na podstawie
  * dotychczasowej historii i maksymalnego limitu (10 stron).

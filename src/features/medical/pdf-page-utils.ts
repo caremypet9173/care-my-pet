@@ -125,3 +125,71 @@ export async function slicePdfPages(
     lastModified: Date.now(),
   });
 }
+
+/**
+ * Wyodrębnia dowolny zbiór wybranych pojedynczych stron (indeksy 1-based).
+ * Strony są sortowane rosnąco i deduplikowane.
+ * Maksymalna dozwolona liczba stron to MAX_DISCHARGE_PAGES (10).
+ */
+export async function sliceSelectedPdfPages(
+  file: File,
+  selectedPages: number[],
+): Promise<File> {
+  const uniquePages = Array.from(
+    new Set(
+      selectedPages
+        .map((p) => Math.floor(Number(p)))
+        .filter((p) => !Number.isNaN(p) && p > 0),
+    ),
+  ).sort((a, b) => a - b);
+
+  if (uniquePages.length === 0) {
+    throw new Error("Wybierz przynajmniej jedną stronę do analizy.");
+  }
+
+  if (uniquePages.length > MAX_DISCHARGE_PAGES) {
+    throw new Error(
+      `Wybrano ${uniquePages.length} stron. Maksymalny dopuszczalny limit to ${MAX_DISCHARGE_PAGES} stron na jedną analizę.`,
+    );
+  }
+
+  const buffer = await file.arrayBuffer();
+  const srcDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+  const totalPages = srcDoc.getPageCount();
+
+  for (const pageNum of uniquePages) {
+    if (pageNum > totalPages) {
+      throw new Error(
+        `Wybrana strona (${pageNum}) przekracza liczbę stron w dokumencie (${totalPages}).`,
+      );
+    }
+  }
+
+  // Jeśli wybrano dokładnie wszystkie strony od 1 do totalPages
+  if (
+    uniquePages.length === totalPages &&
+    uniquePages[0] === 1 &&
+    uniquePages[uniquePages.length - 1] === totalPages
+  ) {
+    return file;
+  }
+
+  const subDoc = await PDFDocument.create();
+  const pageIndices = uniquePages.map((p) => p - 1);
+  const copiedPages = await subDoc.copyPages(srcDoc, pageIndices);
+  copiedPages.forEach((page) => subDoc.addPage(page));
+
+  const slicedBytes = await subDoc.save();
+
+  const originalBase = file.name.replace(/\.pdf$/i, "");
+  const pagesSummary =
+    uniquePages.length <= 4
+      ? uniquePages.join("_")
+      : `${uniquePages[0]}-${uniquePages[uniquePages.length - 1]}_${uniquePages.length}str`;
+  const slicedName = `${originalBase}_wybrane_${pagesSummary}.pdf`;
+
+  return new File([slicedBytes as unknown as BlobPart], slicedName, {
+    type: "application/pdf",
+    lastModified: Date.now(),
+  });
+}

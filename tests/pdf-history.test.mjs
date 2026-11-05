@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   getPdfImportHistory,
   recordPdfImport,
+  recordPdfImportPages,
   getSuggestedNextRange,
+  getSuggestedNextPages,
 } from '../src/features/medical/pdf-history.ts';
 
 // Simple mock for localStorage in Node test runner
@@ -52,4 +54,28 @@ test('getSuggestedNextRange detects when all pages are already imported', () => 
   const history = getPdfImportHistory(petId, sha256);
   const nextRange = getSuggestedNextRange(15, history, 10);
   assert.equal(nextRange.hasUnimported, false);
+});
+
+test('recordPdfImportPages saves arbitrary pages and getSuggestedNextPages suggests next unimported', () => {
+  const petId = 'pet-456';
+  const sha256 = 'xyz999';
+  recordPdfImportPages(petId, sha256, 'wypis-manius.pdf', [1, 2, 3, 4, 5]);
+
+  const history = getPdfImportHistory(petId, sha256);
+  assert.ok(history);
+  assert.deepEqual(history.allImportedPages, [1, 2, 3, 4, 5]);
+
+  const next = getSuggestedNextPages(16, history, 10);
+  assert.equal(next.hasUnimported, true);
+  // Next 10 unimported pages should be 6..15
+  assert.deepEqual(next.pages, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+
+  // Record second batch
+  recordPdfImportPages(petId, sha256, 'wypis-manius.pdf', [6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+  const history2 = getPdfImportHistory(petId, sha256);
+  assert.equal(history2.allImportedPages.length, 15);
+
+  const next2 = getSuggestedNextPages(16, history2, 10);
+  assert.equal(next2.hasUnimported, true);
+  assert.deepEqual(next2.pages, [16]);
 });
