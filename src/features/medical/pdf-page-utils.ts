@@ -1,6 +1,6 @@
 import { PDFDocument } from "pdf-lib";
 
-export const MAX_DISCHARGE_PAGES = 20;
+export const MAX_DISCHARGE_PAGES = 10;
 
 export interface PdfInfo {
   pageCount: number;

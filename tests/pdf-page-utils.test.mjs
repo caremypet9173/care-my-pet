@@ -16,27 +16,27 @@ async function createSamplePdf(pageCount) {
   return new File([bytes], 'sample.pdf', { type: 'application/pdf' });
 }
 
-test('computePageChunks creates correct single chunk for <= 20 pages', () => {
-  const chunks = computePageChunks(16, 20);
+test('computePageChunks creates correct single chunk for <= 10 pages', () => {
+  const chunks = computePageChunks(8, 10);
   assert.equal(chunks.length, 1);
   assert.equal(chunks[0].start, 1);
-  assert.equal(chunks[0].end, 16);
-  assert.equal(chunks[0].pageCount, 16);
-  assert.equal(chunks[0].label, 'Wszystkie strony (1–16)');
+  assert.equal(chunks[0].end, 8);
+  assert.equal(chunks[0].pageCount, 8);
+  assert.equal(chunks[0].label, 'Wszystkie strony (1–8)');
 });
 
-test('computePageChunks creates sequential chunks for > 20 pages', () => {
-  const chunks = computePageChunks(35, 20);
+test('computePageChunks creates sequential chunks for > 10 pages', () => {
+  const chunks = computePageChunks(16, 10);
   assert.equal(chunks.length, 2);
   assert.equal(chunks[0].start, 1);
-  assert.equal(chunks[0].end, 20);
-  assert.equal(chunks[0].pageCount, 20);
-  assert.equal(chunks[0].label, 'Część 1 (strony 1–20)');
+  assert.equal(chunks[0].end, 10);
+  assert.equal(chunks[0].pageCount, 10);
+  assert.equal(chunks[0].label, 'Część 1 (strony 1–10)');
 
-  assert.equal(chunks[1].start, 21);
-  assert.equal(chunks[1].end, 35);
-  assert.equal(chunks[1].pageCount, 15);
-  assert.equal(chunks[1].label, 'Część 2 (strony 21–35)');
+  assert.equal(chunks[1].start, 11);
+  assert.equal(chunks[1].end, 16);
+  assert.equal(chunks[1].pageCount, 6);
+  assert.equal(chunks[1].label, 'Część 2 (strony 11–16)');
 });
 
 test('inspectPdf counts pages accurately', async () => {
@@ -63,7 +63,7 @@ test('slicePdfPages cuts sub-range of pages', async () => {
 test('slicePdfPages rejects ranges exceeding MAX_DISCHARGE_PAGES or bounds', async () => {
   const pdfFile = await createSamplePdf(15);
   await assert.rejects(
-    () => slicePdfPages(pdfFile, 1, 25),
+    () => slicePdfPages(pdfFile, 1, 12),
     /Maksymalny dopuszczalny limit/
   );
   await assert.rejects(
@@ -75,7 +75,7 @@ test('slicePdfPages rejects ranges exceeding MAX_DISCHARGE_PAGES or bounds', asy
     /Strona końcowa nie może być mniejsza/
   );
   await assert.rejects(
-    () => slicePdfPages(pdfFile, 10, 18),
+    () => slicePdfPages(pdfFile, 10, 16),
     /przekracza liczbę stron/
   );
 });

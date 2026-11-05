@@ -474,7 +474,7 @@ export function DischargeImportDialog({
               </h3>
               <p>
                 Obsługujemy wielostronicowe pliki PDF (np. z Klinika XP, Provet, Vet-Gabinet) do 12 MB.
-                Jednorazowy limit analizy to 20 stron.
+                Jednorazowy limit analizy to {MAX_DISCHARGE_PAGES} stron.
               </p>
               <div className="discharge-dropzone-features">
                 <span>🩺 Badania krwi, moczu i USG</span>
@@ -525,9 +525,9 @@ export function DischargeImportDialog({
                     <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz zakres stron do analizy</h4>
                     <p>
                       Ze względu na techniczne limity wielkości odpowiedzi modeli AI oraz ciągłość
-                      badań laboratoryjnych, jednorazowo analizujemy do <strong>20 stron</strong>.
-                      W ten sposób chronimy wyniki badań i opisy wizyt przed przypadkowym ucięciem
-                      w połowie.
+                      badań laboratoryjnych, jednorazowo analizujemy do{" "}
+                      <strong>{MAX_DISCHARGE_PAGES} stron</strong>. W ten sposób chronimy wyniki
+                      badań i opisy wizyt przed przypadkowym ucięciem w połowie.
                     </p>
                   </div>
                 </div>
@@ -538,7 +538,7 @@ export function DischargeImportDialog({
                     <div>
                       <strong>Zaznacz zakres stron do analizy w tej turze</strong>
                       <p>
-                        Wybierz do 20 stron (np. od początku lub do końca konkretnego panelu badań).
+                        Wybierz do {MAX_DISCHARGE_PAGES} stron (np. od początku lub do końca konkretnego panelu badań).
                       </p>
                     </div>
                   </div>
@@ -623,19 +623,25 @@ export function DischargeImportDialog({
                       <button
                         type="button"
                         className="discharge-preset-pill"
-                        onClick={() => applyPresetRange(1, Math.min(20, pdfInfo.pageCount))}
+                        onClick={() =>
+                          applyPresetRange(1, Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount))
+                        }
                       >
-                        Część 1 (str. 1–{Math.min(20, pdfInfo.pageCount)})
+                        Część 1 (str. 1–{Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount)})
                       </button>
-                      {pdfInfo.pageCount > 20 && (
+                      {pdfInfo.pageCount > MAX_DISCHARGE_PAGES && (
                         <button
                           type="button"
                           className="discharge-preset-pill"
                           onClick={() =>
-                            applyPresetRange(21, Math.min(40, pdfInfo.pageCount))
+                            applyPresetRange(
+                              MAX_DISCHARGE_PAGES + 1,
+                              Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount),
+                            )
                           }
                         >
-                          Część 2 (str. 21–{Math.min(40, pdfInfo.pageCount)})
+                          Część 2 (str. {MAX_DISCHARGE_PAGES + 1}–
+                          {Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount)})
                         </button>
                       )}
                       {suggestedRange && suggestedRange.hasUnimported && (

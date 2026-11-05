@@ -80,12 +80,12 @@ export function recordPdfImport(
 
 /**
  * Wyznacza sugerowany kolejny zakres stron do zaimportowania na podstawie
- * dotychczasowej historii i maksymalnego limitu (20 stron).
+ * dotychczasowej historii i maksymalnego limitu (10 stron).
  */
 export function getSuggestedNextRange(
   totalPages: number,
   history: ImportedPdfHistory | null,
-  maxPages = 20,
+  maxPages = 10,
 ): { start: number; end: number; hasUnimported: boolean } {
   if (totalPages <= 0) {
     return { start: 1, end: 1, hasUnimported: false };

@@ -184,8 +184,8 @@ Deno.serve(async req => {
       if(!fileMatches(file,body.mime))return reply({error:'invalid_file'},400);
       if(body.mime==='application/pdf'){
         const pageCount = countPdfPages(file);
-        if(pageCount > 20){
-          return reply({error:'page_limit_exceeded',page_count:pageCount,max_allowed:20,message:`Dokument ma ${pageCount} stron. Maksymalny dopuszczalny limit pojedynczej analizy to 20 stron. Wybierz zakres stron w oknie importu.`},400);
+        if(pageCount > 10){
+          return reply({error:'page_limit_exceeded',page_count:pageCount,max_allowed:10,message:`Dokument ma ${pageCount} stron. Maksymalny dopuszczalny limit pojedynczej analizy to 10 stron. Wybierz zakres stron w oknie importu.`},400);
         }
       }
       const {data:allowed,error:quotaError}=await client.rpc('take_medical_read_quota');
