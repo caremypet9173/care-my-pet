@@ -233,7 +233,7 @@ export function DischargeImportDialog({
   }
 
   function handleTogglePage(pageNumber: number) {
-    if (!pdfInfo) return;
+    if (!pdfInfo || isAllPagesAlreadyImported) return;
     setError(null);
 
     setSelectedPages((prev) => {
@@ -575,8 +575,9 @@ export function DischargeImportDialog({
                   totalPages={pdfInfo.pageCount}
                   selectedPages={selectedPages}
                   importedPages={pdfHistory?.allImportedPages || []}
-                  onTogglePage={handleTogglePage}
+                  onTogglePage={isAllPagesAlreadyImported ? () => {} : handleTogglePage}
                   activeScrollToPage={scrollToPageTarget}
+                  readOnly={isAllPagesAlreadyImported}
                 />
               </div>
 
@@ -610,310 +611,306 @@ export function DischargeImportDialog({
                   </div>
                 </div>
 
-                {/* Informacja o statusie dokumentu: w całości zaimportowany, zbyt duży (>10 stron) lub mieszczący się w limicie */}
                 {isAllPagesAlreadyImported ? (
-                  <div className="discharge-all-imported-banner" role="status">
-                    <div className="discharge-all-imported-header">
-                      <IconCheck
-                        size={26}
-                        className="text-emerald-700 shrink-0"
-                        aria-hidden="true"
-                      />
+                  <div className="discharge-duplicate-card" role="alert">
+                    <div className="discharge-duplicate-header">
+                      <div className="discharge-duplicate-icon">
+                        <IconCheck size={28} aria-hidden="true" />
+                      </div>
                       <div>
-                        <h4>Ten dokument został już w całości zaimportowany!</h4>
-                        <p>
-                          Wszystkie <strong>{totalPagesCount} {totalPagesCount === 1 ? "strona" : totalPagesCount < 5 ? "strony" : "stron"}</strong> tego pliku zostały już wcześniej zapisane w kartotece pupila.
+                        <h3>Ten dokument jest już w kartotece</h3>
+                        <p className="discharge-duplicate-file">
+                          Wszystkie <strong>{pdfInfo.pageCount} stron</strong> tego pliku zostały już pomyślnie zaimportowane.
                         </p>
                       </div>
                     </div>
-                    <div className="discharge-all-imported-details">
+                    <div className="discharge-duplicate-body">
                       <p>
-                        Wszystkie badania laboratoryjne, wizyty i pomiary wagi z tego wypisu znajdują się już na profilu pupila – nie musisz importować go ponownie.
+                        Wszystkie badania laboratoryjne, wizyty lekarskie i pomiary wagi z tego wypisu znajdują się w kartotece pupila.
                       </p>
-                      <div className="discharge-all-imported-tip">
-                        <IconInfoCircle size={16} aria-hidden="true" />
-                        <span>
-                          Jeśli mimo to chcesz przeanalizować określone strony ponownie (np. po modyfikacji pliku lub w celu nadpisania danych), zaznacz wybrane strony na podglądzie po lewej lub skorzystaj z przycisków poniżej.
-                        </span>
-                      </div>
+                      <p className="discharge-duplicate-hint">
+                        Nie ma potrzeby ponownego odczytu ani dodawania tego samego dokumentu.
+                      </p>
                     </div>
-                  </div>
-                ) : pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? (
-                  <div className="discharge-oversize-guide">
-                    <div className="discharge-guide-header">
-                      <IconAlertTriangle
-                        size={24}
-                        className="text-amber-800 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <div>
-                        <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz pojedyncze strony do analizy</h4>
-                        <p>
-                          Ze względu na limity wielkości odpowiedzi modeli AI oraz ochronę ciągłości badań,
-                          jednorazowo analizujemy maksymalnie{" "}
-                          <strong>{MAX_DISCHARGE_PAGES} stron</strong>. Przewijaj podgląd po lewej i
-                          wybierz strony, które chcesz przetworzyć.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="discharge-guide-steps">
-                      <div className="discharge-step-item">
-                        <span className="discharge-step-number">1</span>
-                        <div>
-                          <strong>Przeglądaj treść na scrollowanym podglądzie</strong>
-                          <p>
-                            Kliknij bezpośrednio w kartę strony lub jej pole wyboru po lewej stronie, aby dodać ją do analizy.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="discharge-step-item">
-                        <span className="discharge-step-number">2</span>
-                        <div>
-                          <strong>Zaimportuj pozostałe strony w kolejnej turze</strong>
-                          <p>
-                            Po zapisaniu możesz wybrać ten sam plik ponownie – aplikacja pamięta, które
-                            strony już dodano do kartoteki.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="discharge-guide-tip">
-                      <IconInfoCircle size={16} aria-hidden="true" />
-                      <span>
-                        <strong>Wskazówka:</strong> Sprawdź na podglądzie, gdzie kończą się poszczególne
-                        badania. Zaznaczaj pełne wizyty, aby uniknąć ucięcia wyników badań w połowie.
-                      </span>
+                    <div className="discharge-duplicate-actions">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={handleCloseDialog}
+                      >
+                        Przejdź do kartoteki pupila
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                          setStep("upload");
+                          setRawFile(null);
+                          setPdfInfo(null);
+                          setSelectedPages([]);
+                        }}
+                      >
+                        Wybierz inny plik
+                      </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="discharge-limit-notice">
-                    <IconCheck size={20} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                    <div>
-                      <strong>Dokument mieści się w limicie</strong>
-                      <p>
-                        Plik ma {pdfInfo.pageCount} stron (mieści się w limicie {MAX_DISCHARGE_PAGES}{" "}
-                        stron). Wszystkie strony zostały domyślnie zaznaczone, ale możesz dostosować wybór.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  <>
+                    {/* Ostrzeżenie i szczegółowa instrukcja dla opiekuna gdy > 10 stron */}
+                    {pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? (
+                      <div className="discharge-oversize-guide">
+                        <div className="discharge-guide-header">
+                          <IconAlertTriangle
+                            size={24}
+                            className="text-amber-800 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <div>
+                            <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz pojedyncze strony do analizy</h4>
+                            <p>
+                              Ze względu na limity wielkości odpowiedzi modeli AI oraz ochronę ciągłości badań,
+                              jednorazowo analizujemy maksymalnie{" "}
+                              <strong>{MAX_DISCHARGE_PAGES} stron</strong>. Przewijaj podgląd po lewej i
+                              wybierz strony, które chcesz przetworzyć.
+                            </p>
+                          </div>
+                        </div>
 
-                {/* Sekcja historii wcześniejszych importów tego pliku (gdy plik jest zaimportowany częściowo) */}
-                {pdfHistory && pdfHistory.allImportedPages.length > 0 && !isAllPagesAlreadyImported && (
-                  <div className="discharge-history-card">
-                    <div className="discharge-history-header">
-                      <IconHistory
-                        size={18}
-                        className="text-emerald-700 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <div className="discharge-history-content">
-                        <strong>Wcześniej zaimportowano już strony z tego pliku:</strong>
-                        <div className="discharge-history-ranges">
-                          <span className="discharge-history-tag">
-                            ✓ {formatPagesSummary(pdfHistory.allImportedPages)}
+                        <div className="discharge-guide-steps">
+                          <div className="discharge-step-item">
+                            <span className="discharge-step-number">1</span>
+                            <div>
+                              <strong>Przeglądaj treść na scrollowanym podglądzie</strong>
+                              <p>
+                                Kliknij bezpośrednio w kartę strony lub jej pole wyboru po lewej stronie, aby dodać ją do analizy.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="discharge-step-item">
+                            <span className="discharge-step-number">2</span>
+                            <div>
+                              <strong>Zaimportuj pozostałe strony w kolejnej turze</strong>
+                              <p>
+                                Po zapisaniu możesz wybrać ten sam plik ponownie – aplikacja pamięta, które
+                                strony już dodano do kartoteki.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="discharge-guide-tip">
+                          <IconInfoCircle size={16} aria-hidden="true" />
+                          <span>
+                            <strong>Wskazówka:</strong> Sprawdź na podglądzie, gdzie kończą się poszczególne
+                            badania. Zaznaczaj pełne wizyty, aby uniknąć ucięcia wyników badań w połowie.
                           </span>
                         </div>
                       </div>
-                    </div>
-                    {hasRemainingUnimportedPages && (
-                      <button
-                        type="button"
-                        className="discharge-suggested-btn"
-                        onClick={handleSelectUnimportedPages}
-                      >
-                        <span>
-                          Zaznacz kolejne niezaimportowane strony (do {MAX_DISCHARGE_PAGES} stron)
-                        </span>
-                        <IconArrowRight size={14} aria-hidden="true" />
-                      </button>
+                    ) : (
+                      <div className="discharge-limit-notice">
+                        <IconCheck size={20} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                        <div>
+                          <strong>Dokument mieści się w limicie</strong>
+                          <p>
+                            Plik ma {pdfInfo.pageCount} stron (mieści się w limicie {MAX_DISCHARGE_PAGES}{" "}
+                            stron). Wszystkie strony zostały domyślnie zaznaczone, ale możesz dostosować wybór.
+                          </p>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                )}
 
-                {/* Interaktywny selektor stron */}
-                <div className="discharge-range-selector-box">
-                  <div className="discharge-selector-header">
-                    <div className="discharge-selector-title-wrap">
-                      <h4>Wybierz strony do analizy:</h4>
-                      <span
-                        className={`discharge-counter-chip${
-                          selectedPages.length === 0
-                            ? " is-empty"
-                            : selectedPages.length === MAX_DISCHARGE_PAGES
-                            ? " is-limit"
-                            : " is-active"
-                        }`}
-                      >
-                        {selectedPages.length} z {MAX_DISCHARGE_PAGES} stron
-                      </span>
-                    </div>
+                    {/* Sekcja historii wcześniejszych importów tego pliku (gdy plik jest zaimportowany częściowo) */}
+                    {pdfHistory && pdfHistory.allImportedPages.length > 0 && (
+                      <div className="discharge-history-card">
+                        <div className="discharge-history-header">
+                          <IconHistory
+                            size={18}
+                            className="text-emerald-700 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <div className="discharge-history-content">
+                            <strong>Wcześniej zaimportowano już strony z tego pliku:</strong>
+                            <div className="discharge-history-ranges">
+                              <span className="discharge-history-tag">
+                                ✓ {formatPagesSummary(pdfHistory.allImportedPages)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        {hasRemainingUnimportedPages && (
+                          <button
+                            type="button"
+                            className="discharge-suggested-btn"
+                            onClick={handleSelectUnimportedPages}
+                          >
+                            <span>
+                              Zaznacz kolejne niezaimportowane strony (do {MAX_DISCHARGE_PAGES} stron)
+                            </span>
+                            <IconArrowRight size={14} aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                    )}
 
-                    <div className="discharge-quick-presets">
-                      {isAllPagesAlreadyImported ? (
-                        <>
-                          <span className="discharge-preset-pill is-imported-badge">
-                            ✓ Wszystkie strony zaimportowane
+                    {/* Interaktywny selektor stron */}
+                    <div className="discharge-range-selector-box">
+                      <div className="discharge-selector-header">
+                        <div className="discharge-selector-title-wrap">
+                          <h4>Wybierz strony do analizy:</h4>
+                          <span
+                            className={`discharge-counter-chip${
+                              selectedPages.length === 0
+                                ? " is-empty"
+                                : selectedPages.length === MAX_DISCHARGE_PAGES
+                                ? " is-limit"
+                                : " is-active"
+                            }`}
+                          >
+                            {selectedPages.length} z {MAX_DISCHARGE_PAGES} stron
                           </span>
-                          <button
-                            type="button"
-                            className="discharge-preset-pill"
-                            onClick={() =>
-                              handleSelectFirstPages(
-                                Math.min(pdfInfo.pageCount, MAX_DISCHARGE_PAGES),
-                              )
-                            }
-                          >
-                            Zaznacz ponownie (str. 1–
-                            {Math.min(pdfInfo.pageCount, MAX_DISCHARGE_PAGES)})
-                          </button>
-                        </>
-                      ) : pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
-                        <button
-                          type="button"
-                          className="discharge-preset-pill"
-                          onClick={() => handleSelectFirstPages(pdfInfo.pageCount)}
-                        >
-                          Wszystkie strony (1–{pdfInfo.pageCount})
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="discharge-preset-pill"
-                            onClick={() => handleSelectFirstPages(MAX_DISCHARGE_PAGES)}
-                          >
-                            Pierwsze 10 (str. 1–10)
-                          </button>
-                          {hasRemainingUnimportedPages && (
+                        </div>
+
+                        <div className="discharge-quick-presets">
+                          {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
                             <button
                               type="button"
-                              className="discharge-preset-pill is-suggested"
-                              onClick={handleSelectUnimportedPages}
+                              className="discharge-preset-pill"
+                              onClick={() => handleSelectFirstPages(pdfInfo.pageCount)}
                             >
-                              Niezaimportowane ({remainingPagesCount})
+                              Wszystkie strony (1–{pdfInfo.pageCount})
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="discharge-preset-pill"
+                                onClick={() => handleSelectFirstPages(MAX_DISCHARGE_PAGES)}
+                              >
+                                Pierwsze 10 (str. 1–10)
+                              </button>
+                              {hasRemainingUnimportedPages && (
+                                <button
+                                  type="button"
+                                  className="discharge-preset-pill is-suggested"
+                                  onClick={handleSelectUnimportedPages}
+                                >
+                                  Niezaimportowane ({remainingPagesCount})
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {selectedPages.length > 0 && (
+                            <button
+                              type="button"
+                              className="discharge-preset-pill"
+                              onClick={handleClearSelection}
+                            >
+                              Wyczyść
                             </button>
                           )}
-                        </>
-                      )}
-                      {selectedPages.length > 0 && (
-                        <button
-                          type="button"
-                          className="discharge-preset-pill"
-                          onClick={handleClearSelection}
-                        >
-                          Wyczyść
-                        </button>
-                      )}
+                        </div>
+                      </div>
+
+                      {/* Wizualna siatka guzików stron */}
+                      <div
+                        className="discharge-page-strip"
+                        role="group"
+                        aria-label="Kafelki wyboru pojedynczych stron"
+                      >
+                        {Array.from({ length: pdfInfo.pageCount }, (_, i) => i + 1).map((pNum) => {
+                          const isImported = importedSet.has(pNum);
+                          const isSelected = selectedSet.has(pNum);
+                          return (
+                            <button
+                              key={pNum}
+                              type="button"
+                              className={`discharge-page-pill${isImported ? " is-imported" : ""}${
+                                isSelected ? " is-selected" : ""
+                              }`}
+                              onClick={() => handlePillClick(pNum)}
+                              title={`Strona ${pNum}${
+                                isSelected ? " (zaznaczona do analizy)" : ""
+                              }${isImported ? " [wcześniej zaimportowana]" : ""}`}
+                            >
+                              <span>{pNum}</span>
+                              {isSelected && <IconCheck size={11} aria-hidden="true" />}
+                              {!isSelected && isImported && (
+                                <IconHistory size={10} aria-hidden="true" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="discharge-strip-legend">
+                        <span>
+                          <span className="discharge-legend-dot is-selected" /> Wybrana do analizy (maks. {MAX_DISCHARGE_PAGES})
+                        </span>
+                        <span>
+                          <span className="discharge-legend-dot is-imported" /> Wcześniej zaimportowana
+                        </span>
+                        <span>
+                          <span className="discharge-legend-dot" /> Dostępna
+                        </span>
+                      </div>
+
+                      {/* Podsumowanie zaznaczonych stron */}
+                      <div className="discharge-selection-summary-text">
+                        {selectedPages.length > 0 ? (
+                          <span>
+                            ✓ Wybrano do analizy ({selectedPages.length}{" "}
+                            {selectedPages.length === 1
+                              ? "stronę"
+                              : selectedPages.length < 5
+                              ? "strony"
+                              : "stron"}
+                            ): <strong>{formatPagesSummary(selectedPages)}</strong>. Klikaj strony na podglądzie po lewej lub guziki powyżej, aby zmienić wybór.
+                          </span>
+                        ) : (
+                          <span className="text-amber-800">
+                            Nie wybrano żadnej strony. Kliknij stronę na podglądzie po lewej lub guzik z numerem strony, aby zaznaczyć ją do analizy.
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Wizualna siatka guzików stron */}
-                  <div
-                    className="discharge-page-strip"
-                    role="group"
-                    aria-label="Kafelki wyboru pojedynczych stron"
-                  >
-                    {Array.from({ length: pdfInfo.pageCount }, (_, i) => i + 1).map((pNum) => {
-                      const isImported = importedSet.has(pNum);
-                      const isSelected = selectedSet.has(pNum);
-                      return (
-                        <button
-                          key={pNum}
-                          type="button"
-                          className={`discharge-page-pill${isImported ? " is-imported" : ""}${
-                            isSelected ? " is-selected" : ""
-                          }`}
-                          onClick={() => handlePillClick(pNum)}
-                          title={`Strona ${pNum}${
-                            isSelected ? " (zaznaczona do analizy)" : ""
-                          }${isImported ? " [wcześniej zaimportowana]" : ""}`}
-                        >
-                          <span>{pNum}</span>
-                          {isSelected && <IconCheck size={11} aria-hidden="true" />}
-                          {!isSelected && isImported && (
-                            <IconHistory size={10} aria-hidden="true" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="discharge-strip-legend">
-                    <span>
-                      <span className="discharge-legend-dot is-selected" /> Wybrana do analizy (maks. {MAX_DISCHARGE_PAGES})
-                    </span>
-                    <span>
-                      <span className="discharge-legend-dot is-imported" /> Wcześniej zaimportowana
-                    </span>
-                    <span>
-                      <span className="discharge-legend-dot" /> Dostępna
-                    </span>
-                  </div>
-
-                  {/* Podsumowanie zaznaczonych stron */}
-                  <div className="discharge-selection-summary-text">
-                    {selectedPages.length > 0 ? (
-                      <span>
-                        ✓ Wybrano do analizy ({selectedPages.length}{" "}
-                        {selectedPages.length === 1
-                          ? "stronę"
-                          : selectedPages.length < 5
-                          ? "strony"
-                          : "stron"}
-                        ): <strong>{formatPagesSummary(selectedPages)}</strong>. Klikaj strony na podglądzie po lewej lub guziki powyżej, aby zmienić wybór.
-                      </span>
-                    ) : isAllPagesAlreadyImported ? (
-                      <span className="text-emerald-800">
-                        ✓ Wszystkie strony tego pliku znajdują się już w kartotece. Kliknij stronę na podglądzie po lewej lub guzik powyżej, jeśli chcesz przetworzyć fragment ponownie.
-                      </span>
-                    ) : (
-                      <span className="text-amber-800">
-                        Nie wybrano żadnej strony. Kliknij stronę na podglądzie po lewej lub guzik z numerem strony, aby zaznaczyć ją do analizy.
-                      </span>
-                    )}
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Stopka konfiguracji */}
-            <div className="discharge-configure-footer">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setStep("upload");
-                  setRawFile(null);
-                  setPdfInfo(null);
-                }}
-              >
-                Wybierz inny plik
-              </Button>
-              <Button
-                type="button"
-                variant={isAllPagesAlreadyImported && selectedPages.length === 0 ? "secondary" : "primary"}
-                disabled={selectedPages.length === 0 || selectedPages.length > MAX_DISCHARGE_PAGES}
-                onClick={() => void handleStartExtraction()}
-              >
-                <IconSparkles size={16} aria-hidden="true" />
-                <span>
-                  {selectedPages.length === 0
-                    ? isAllPagesAlreadyImported
-                      ? "Wybierz strony do ponownej analizy"
-                      : "Wybierz strony do analizy"
-                    : `Rozpocznij analizę (${selectedPages.length} ${
-                        selectedPages.length === 1
-                          ? "stronę"
-                          : selectedPages.length < 5
-                          ? "strony"
-                          : "stron"
-                      })`}
-                </span>
-              </Button>
-            </div>
+            {/* Stopka konfiguracji (ukryta gdy dokument jest już w całości zaimportowany) */}
+            {!isAllPagesAlreadyImported && (
+              <div className="discharge-configure-footer">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setStep("upload");
+                    setRawFile(null);
+                    setPdfInfo(null);
+                  }}
+                >
+                  Wybierz inny plik
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={selectedPages.length === 0 || selectedPages.length > MAX_DISCHARGE_PAGES}
+                  onClick={() => void handleStartExtraction()}
+                >
+                  <IconSparkles size={16} aria-hidden="true" />
+                  <span>
+                    Rozpocznij analizę ({selectedPages.length}{" "}
+                    {selectedPages.length === 1
+                      ? "stronę"
+                      : selectedPages.length < 5
+                      ? "strony"
+                      : "stron"}
+                    )
+                  </span>
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

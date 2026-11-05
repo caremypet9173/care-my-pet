@@ -14,8 +14,9 @@ interface DischargePdfPageViewerProps {
   totalPages: number;
   selectedPages: number[];
   importedPages?: number[];
-  onTogglePage: (pageNumber: number) => void;
+  onTogglePage?: (pageNumber: number) => void;
   activeScrollToPage?: number | null;
+  readOnly?: boolean;
 }
 
 interface PageItemProps {
@@ -24,7 +25,8 @@ interface PageItemProps {
   totalPages: number;
   isSelected: boolean;
   isImported: boolean;
-  onToggle: (pageNumber: number) => void;
+  readOnly?: boolean;
+  onToggle?: (pageNumber: number) => void;
 }
 
 function PageCard({
@@ -33,6 +35,7 @@ function PageCard({
   totalPages,
   isSelected,
   isImported,
+  readOnly = false,
   onToggle,
 }: PageItemProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -114,36 +117,55 @@ function PageCard({
       id={`discharge-page-card-${pageNumber}`}
       className={`discharge-pv-page-card${isSelected ? " is-selected" : ""}${
         isImported ? " is-imported" : ""
-      }`}
-      onClick={() => onToggle(pageNumber)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onToggle(pageNumber);
-        }
-      }}
-      aria-label={`Strona ${pageNumber} z ${totalPages}, ${
-        isSelected ? "zaznaczona" : "niezaznaczona"
+      }${readOnly ? " is-readonly" : ""}`}
+      onClick={readOnly ? undefined : () => onToggle?.(pageNumber)}
+      role={readOnly ? undefined : "button"}
+      tabIndex={readOnly ? undefined : 0}
+      onKeyDown={
+        readOnly
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle?.(pageNumber);
+              }
+            }
+      }
+      aria-label={`Strona ${pageNumber} z ${totalPages}${
+        readOnly
+          ? isImported
+            ? ", zaimportowana"
+            : ""
+          : isSelected
+          ? ", zaznaczona"
+          : ", niezaznaczona"
       }`}
     >
       <div className="discharge-pv-card-header">
-        <label
-          className="discharge-pv-card-toggle"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggle(pageNumber)}
-            aria-label={`Zaznacz stronę ${pageNumber}`}
-          />
-          <span className="discharge-pv-card-title">
-            Strona <strong>{pageNumber}</strong>{" "}
-            <span className="discharge-pv-card-total">/ {totalPages}</span>
-          </span>
-        </label>
+        {readOnly ? (
+          <div className="discharge-pv-card-title-wrap">
+            <span className="discharge-pv-card-title">
+              Strona <strong>{pageNumber}</strong>{" "}
+              <span className="discharge-pv-card-total">/ {totalPages}</span>
+            </span>
+          </div>
+        ) : (
+          <label
+            className="discharge-pv-card-toggle"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggle?.(pageNumber)}
+              aria-label={`Zaznacz stronę ${pageNumber}`}
+            />
+            <span className="discharge-pv-card-title">
+              Strona <strong>{pageNumber}</strong>{" "}
+              <span className="discharge-pv-card-total">/ {totalPages}</span>
+            </span>
+          </label>
+        )}
 
         <div className="discharge-pv-card-badges">
           {isSelected && (
@@ -158,7 +180,7 @@ function PageCard({
               <span>Zaimportowana</span>
             </span>
           )}
-          {!isSelected && !isImported && (
+          {!readOnly && !isSelected && !isImported && (
             <span className="discharge-pv-badge is-unselected">
               <span>Kliknij, aby zaznaczyć</span>
             </span>
@@ -194,6 +216,7 @@ export function DischargePdfPageViewer({
   importedPages = [],
   onTogglePage,
   activeScrollToPage,
+  readOnly = false,
 }: DischargePdfPageViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -297,6 +320,7 @@ export function DischargePdfPageViewer({
               totalPages={count}
               isSelected={selectedSet.has(pageNum)}
               isImported={importedSet.has(pageNum)}
+              readOnly={readOnly}
               onToggle={onTogglePage}
             />
           ))}
