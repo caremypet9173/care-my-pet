@@ -78,4 +78,14 @@ test('recordPdfImportPages saves arbitrary pages and getSuggestedNextPages sugge
   const next2 = getSuggestedNextPages(16, history2, 10);
   assert.equal(next2.hasUnimported, true);
   assert.deepEqual(next2.pages, [16]);
+
+  // Record third batch (final page 16)
+  recordPdfImportPages(petId, sha256, 'wypis-manius.pdf', [16]);
+  const history3 = getPdfImportHistory(petId, sha256);
+  assert.equal(history3.allImportedPages.length, 16);
+
+  // When all pages are imported, suggested pages should be empty (prevent duplicate import)
+  const next3 = getSuggestedNextPages(16, history3, 10);
+  assert.equal(next3.hasUnimported, false);
+  assert.deepEqual(next3.pages, []);
 });

@@ -144,13 +144,8 @@ export function getSuggestedNextPages(
     return { pages: unimported, hasUnimported: true };
   }
 
-  // Wszystkie strony były zaimportowane: sugeruj pierwsze maxPages
-  const defaultPages: number[] = [];
-  const limit = Math.min(totalPages, maxPages);
-  for (let p = 1; p <= limit; p++) {
-    defaultPages.push(p);
-  }
-  return { pages: defaultPages, hasUnimported: false };
+  // Wszystkie strony zostały już zaimportowane — nie sugerujemy automatycznie ponownego importu
+  return { pages: [], hasUnimported: false };
 }
 
 /**

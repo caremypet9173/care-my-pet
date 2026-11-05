@@ -466,6 +466,10 @@ export function DischargeImportDialog({
   const totalPagesCount = pdfInfo?.pageCount || 0;
   const remainingPagesCount = Math.max(0, totalPagesCount - importedSet.size);
   const hasRemainingUnimportedPages = totalPagesCount > 0 && remainingPagesCount > 0;
+  const isAllPagesAlreadyImported =
+    totalPagesCount > 0 &&
+    Boolean(pdfHistory && pdfHistory.allImportedPages.length > 0) &&
+    !hasRemainingUnimportedPages;
 
   return (
     <dialog
@@ -606,8 +610,35 @@ export function DischargeImportDialog({
                   </div>
                 </div>
 
-                {/* Ostrzeżenie i szczegółowa instrukcja dla opiekuna gdy > 10 stron */}
-                {pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? (
+                {/* Informacja o statusie dokumentu: w całości zaimportowany, zbyt duży (>10 stron) lub mieszczący się w limicie */}
+                {isAllPagesAlreadyImported ? (
+                  <div className="discharge-all-imported-banner" role="status">
+                    <div className="discharge-all-imported-header">
+                      <IconCheck
+                        size={26}
+                        className="text-emerald-700 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <h4>Ten dokument został już w całości zaimportowany!</h4>
+                        <p>
+                          Wszystkie <strong>{totalPagesCount} {totalPagesCount === 1 ? "strona" : totalPagesCount < 5 ? "strony" : "stron"}</strong> tego pliku zostały już wcześniej zapisane w kartotece pupila.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="discharge-all-imported-details">
+                      <p>
+                        Wszystkie badania laboratoryjne, wizyty i pomiary wagi z tego wypisu znajdują się już na profilu pupila – nie musisz importować go ponownie.
+                      </p>
+                      <div className="discharge-all-imported-tip">
+                        <IconInfoCircle size={16} aria-hidden="true" />
+                        <span>
+                          Jeśli mimo to chcesz przeanalizować określone strony ponownie (np. po modyfikacji pliku lub w celu nadpisania danych), zaznacz wybrane strony na podglądzie po lewej lub skorzystaj z przycisków poniżej.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? (
                   <div className="discharge-oversize-guide">
                     <div className="discharge-guide-header">
                       <IconAlertTriangle
@@ -669,8 +700,8 @@ export function DischargeImportDialog({
                   </div>
                 )}
 
-                {/* Sekcja historii wcześniejszych importów tego pliku */}
-                {pdfHistory && pdfHistory.allImportedPages.length > 0 && (
+                {/* Sekcja historii wcześniejszych importów tego pliku (gdy plik jest zaimportowany częściowo) */}
+                {pdfHistory && pdfHistory.allImportedPages.length > 0 && !isAllPagesAlreadyImported && (
                   <div className="discharge-history-card">
                     <div className="discharge-history-header">
                       <IconHistory
@@ -721,7 +752,25 @@ export function DischargeImportDialog({
                     </div>
 
                     <div className="discharge-quick-presets">
-                      {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
+                      {isAllPagesAlreadyImported ? (
+                        <>
+                          <span className="discharge-preset-pill is-imported-badge">
+                            ✓ Wszystkie strony zaimportowane
+                          </span>
+                          <button
+                            type="button"
+                            className="discharge-preset-pill"
+                            onClick={() =>
+                              handleSelectFirstPages(
+                                Math.min(pdfInfo.pageCount, MAX_DISCHARGE_PAGES),
+                              )
+                            }
+                          >
+                            Zaznacz ponownie (str. 1–
+                            {Math.min(pdfInfo.pageCount, MAX_DISCHARGE_PAGES)})
+                          </button>
+                        </>
+                      ) : pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
                         <button
                           type="button"
                           className="discharge-preset-pill"
@@ -744,7 +793,7 @@ export function DischargeImportDialog({
                               className="discharge-preset-pill is-suggested"
                               onClick={handleSelectUnimportedPages}
                             >
-                              Niezaimportowane
+                              Niezaimportowane ({remainingPagesCount})
                             </button>
                           )}
                         </>
@@ -816,6 +865,10 @@ export function DischargeImportDialog({
                           : "stron"}
                         ): <strong>{formatPagesSummary(selectedPages)}</strong>. Klikaj strony na podglądzie po lewej lub guziki powyżej, aby zmienić wybór.
                       </span>
+                    ) : isAllPagesAlreadyImported ? (
+                      <span className="text-emerald-800">
+                        ✓ Wszystkie strony tego pliku znajdują się już w kartotece. Kliknij stronę na podglądzie po lewej lub guzik powyżej, jeśli chcesz przetworzyć fragment ponownie.
+                      </span>
                     ) : (
                       <span className="text-amber-800">
                         Nie wybrano żadnej strony. Kliknij stronę na podglądzie po lewej lub guzik z numerem strony, aby zaznaczyć ją do analizy.
@@ -841,19 +894,23 @@ export function DischargeImportDialog({
               </Button>
               <Button
                 type="button"
-                variant="primary"
+                variant={isAllPagesAlreadyImported && selectedPages.length === 0 ? "secondary" : "primary"}
                 disabled={selectedPages.length === 0 || selectedPages.length > MAX_DISCHARGE_PAGES}
                 onClick={() => void handleStartExtraction()}
               >
                 <IconSparkles size={16} aria-hidden="true" />
                 <span>
-                  Rozpocznij analizę ({selectedPages.length}{" "}
-                  {selectedPages.length === 1
-                    ? "stronę"
-                    : selectedPages.length < 5
-                    ? "strony"
-                    : "stron"}
-                  )
+                  {selectedPages.length === 0
+                    ? isAllPagesAlreadyImported
+                      ? "Wybierz strony do ponownej analizy"
+                      : "Wybierz strony do analizy"
+                    : `Rozpocznij analizę (${selectedPages.length} ${
+                        selectedPages.length === 1
+                          ? "stronę"
+                          : selectedPages.length < 5
+                          ? "strony"
+                          : "stron"
+                      })`}
                 </span>
               </Button>
             </div>
