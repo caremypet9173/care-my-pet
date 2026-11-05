@@ -44,7 +44,18 @@ export async function extractClinicalDischarge(
 
   if (error) {
     const details = await error.context?.json?.().catch(() => null);
-    throw new Error(details?.error || error.message || "Błąd ekstrakcji danych z pliku.");
+    const errCode = details?.error || error.message || "extraction_failed";
+    let message = errCode;
+    if (errCode === "extraction_failed") {
+      message = "Nie udało się wyodrębnić danych z dokumentu. Upewnij się, że plik PDF jest czytelnym wypisem z lecznicy.";
+    } else if (errCode === "ai_unavailable") {
+      message = "Usługa analizy AI jest chwilowo niedostępna. Spróbuj ponownie za chwilę.";
+    } else if (errCode === "daily_limit" || errCode === "provider_limit") {
+      message = "Osiągnięto limit zapytań analizy dokumentów. Spróbuj ponownie później.";
+    } else if (errCode === "too_large" || errCode === "invalid_file") {
+      message = "Plik jest uszkodzony lub przekracza dopuszczalny rozmiar (maks. 12 MB).";
+    }
+    throw new Error(message);
   }
 
   const raw: RawDischargeExtraction = data?.discharge || {};
