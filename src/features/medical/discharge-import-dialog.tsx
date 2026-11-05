@@ -40,6 +40,7 @@ import {
   slicePdfPages,
   type PdfInfo,
 } from "./pdf-page-utils";
+import { DischargePdfPageViewer } from "./discharge-pdf-page-viewer";
 
 interface DischargeImportDialogProps {
   pet: Pick<Pet, "id" | "imie"> & { gospodarstwo_id?: string };
@@ -69,6 +70,7 @@ export function DischargeImportDialog({
   const [rawSha256, setRawSha256] = useState<string>("");
   const [pdfHistory, setPdfHistory] = useState<ImportedPdfHistory | null>(null);
 
+  const [previewPage, setPreviewPage] = useState<number>(1);
   const [customStart, setCustomStart] = useState<number>(1);
   const [customEnd, setCustomEnd] = useState<number>(1);
   const [activeRange, setActiveRange] = useState<{
@@ -116,6 +118,7 @@ export function DischargeImportDialog({
     setPdfInfo(null);
     setRawSha256("");
     setPdfHistory(null);
+    setPreviewPage(1);
     setFile(null);
     setSha256("");
     setDischarge(null);
@@ -158,6 +161,7 @@ export function DischargeImportDialog({
       const suggested = getSuggestedNextRange(info.pageCount, history, MAX_DISCHARGE_PAGES);
       setCustomStart(suggested.start);
       setCustomEnd(suggested.end);
+      setPreviewPage(suggested.start);
 
       setStep("configure");
     } catch (err) {
@@ -187,11 +191,14 @@ export function DischargeImportDialog({
     const clampedEnd = Math.max(clampedStart, Math.min(end, pdfInfo.pageCount));
     setCustomStart(clampedStart);
     setCustomEnd(clampedEnd);
+    setPreviewPage(clampedStart);
     setError(null);
   }
 
   function handlePageClick(pageNumber: number) {
     if (!pdfInfo) return;
+    setPreviewPage(pageNumber);
+
     // Jeśli kliknięto stronę po lewej lub obecny zakres był pełny, zresetuj początek
     if (pageNumber < customStart || customStart === customEnd) {
       const newEnd = Math.min(pageNumber + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount);
@@ -203,10 +210,32 @@ export function DischargeImportDialog({
       if (count <= MAX_DISCHARGE_PAGES) {
         setCustomEnd(pageNumber);
       } else {
-        // Jeśli przekracza 20 stron, ustaw nowe okno 20 stron od klikniętej
+        // Jeśli przekracza limit stron, ustaw nowe okno od klikniętej
         setCustomStart(pageNumber);
         setCustomEnd(Math.min(pageNumber + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount));
       }
+    }
+  }
+
+  function handleSetStartFromPreview(page: number) {
+    if (!pdfInfo) return;
+    const count = customEnd - page + 1;
+    if (page <= customEnd && count <= MAX_DISCHARGE_PAGES && count > 0) {
+      setCustomStart(page);
+    } else {
+      setCustomStart(page);
+      setCustomEnd(Math.min(page + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount));
+    }
+  }
+
+  function handleSetEndFromPreview(page: number) {
+    if (!pdfInfo) return;
+    const count = page - customStart + 1;
+    if (page >= customStart && count <= MAX_DISCHARGE_PAGES) {
+      setCustomEnd(page);
+    } else {
+      setCustomStart(Math.max(1, page - MAX_DISCHARGE_PAGES + 1));
+      setCustomEnd(page);
     }
   }
 
@@ -486,260 +515,302 @@ export function DischargeImportDialog({
         )}
 
         {/* Krok 1.5: Konfiguracja i wybór stron (Configure Step) */}
-        {step === "configure" && pdfInfo && (
+        {step === "configure" && pdfInfo && rawFile && (
           <div className="discharge-configure-step">
-            {/* Karta pliku */}
-            <div className="discharge-file-card">
-              <div className="discharge-file-icon">
-                <IconFileText size={24} aria-hidden="true" />
+            <div className="discharge-configure-grid">
+              {/* Kolumna 1: Interaktywny podgląd stron PDF */}
+              <div className="discharge-preview-col">
+                <DischargePdfPageViewer
+                  file={rawFile}
+                  activePage={previewPage}
+                  onPageChange={setPreviewPage}
+                  selectedStart={customStart}
+                  selectedEnd={customEnd}
+                  onSetStart={handleSetStartFromPreview}
+                  onSetEnd={handleSetEndFromPreview}
+                />
               </div>
-              <div className="discharge-file-details">
-                <span className="discharge-file-name" title={pdfInfo.name}>
-                  {pdfInfo.name}
-                </span>
-                <div className="discharge-file-meta">
-                  <span>{(pdfInfo.byteSize / (1024 * 1024)).toFixed(1)} MB</span>
-                  <span>•</span>
-                  <span
-                    className={`discharge-pages-badge${
-                      pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? " is-warning" : ""
-                    }`}
-                  >
-                    📄 {pdfInfo.pageCount}{" "}
-                    {pdfInfo.pageCount === 1
-                      ? "strona"
-                      : pdfInfo.pageCount < 5
-                      ? "strony"
-                      : "stron"}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            {/* Ostrzeżenie i szczegółowa instrukcja dla opiekuna gdy > 20 stron */}
-            {pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? (
-              <div className="discharge-oversize-guide">
-                <div className="discharge-guide-header">
-                  <IconAlertTriangle size={24} className="text-amber-800 shrink-0" aria-hidden="true" />
-                  <div>
-                    <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz zakres stron do analizy</h4>
-                    <p>
-                      Ze względu na techniczne limity wielkości odpowiedzi modeli AI oraz ciągłość
-                      badań laboratoryjnych, jednorazowo analizujemy do{" "}
-                      <strong>{MAX_DISCHARGE_PAGES} stron</strong>. W ten sposób chronimy wyniki
-                      badań i opisy wizyt przed przypadkowym ucięciem w połowie.
-                    </p>
+              {/* Kolumna 2: Sterowanie, historia i wybór zakresu */}
+              <div className="discharge-controls-col">
+                {/* Karta pliku */}
+                <div className="discharge-file-card">
+                  <div className="discharge-file-icon">
+                    <IconFileText size={24} aria-hidden="true" />
+                  </div>
+                  <div className="discharge-file-details">
+                    <span className="discharge-file-name" title={pdfInfo.name}>
+                      {pdfInfo.name}
+                    </span>
+                    <div className="discharge-file-meta">
+                      <span>{(pdfInfo.byteSize / (1024 * 1024)).toFixed(1)} MB</span>
+                      <span>•</span>
+                      <span
+                        className={`discharge-pages-badge${
+                          pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? " is-warning" : ""
+                        }`}
+                      >
+                        📄 {pdfInfo.pageCount}{" "}
+                        {pdfInfo.pageCount === 1
+                          ? "strona"
+                          : pdfInfo.pageCount < 5
+                          ? "strony"
+                          : "stron"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="discharge-guide-steps">
-                  <div className="discharge-step-item">
-                    <span className="discharge-step-number">1</span>
+                {/* Ostrzeżenie i szczegółowa instrukcja dla opiekuna gdy > 10 stron */}
+                {pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? (
+                  <div className="discharge-oversize-guide">
+                    <div className="discharge-guide-header">
+                      <IconAlertTriangle
+                        size={24}
+                        className="text-amber-800 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz zakres stron do analizy</h4>
+                        <p>
+                          Ze względu na techniczne limity wielkości odpowiedzi modeli AI oraz ciągłość
+                          badań laboratoryjnych, jednorazowo analizujemy do{" "}
+                          <strong>{MAX_DISCHARGE_PAGES} stron</strong>. W ten sposób chronimy wyniki
+                          badań i opisy wizyt przed przypadkowym ucięciem w połowie.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="discharge-guide-steps">
+                      <div className="discharge-step-item">
+                        <span className="discharge-step-number">1</span>
+                        <div>
+                          <strong>Sprawdź na podglądzie po lewej treść stron</strong>
+                          <p>
+                            Klikaj strony lub użyj przycisków &quot;Ustaw jako początek/koniec&quot; bezpośrednio na podglądzie.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="discharge-step-item">
+                        <span className="discharge-step-number">2</span>
+                        <div>
+                          <strong>Zaimportuj pozostałe strony w kolejnym kroku</strong>
+                          <p>
+                            Po zapisaniu możesz wybrać ten sam plik ponownie – aplikacja pamięta, które
+                            strony już dodano, i podpowie kolejny fragment.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="discharge-guide-tip">
+                      <IconInfoCircle size={16} aria-hidden="true" />
+                      <span>
+                        <strong>Wskazówka:</strong> Sprawdź na podglądzie po lewej, czy badanie nie
+                        zaczyna się na dole strony – lepiej zakończyć partię przed rozpoczęciem
+                        nowego badania, a kolejne zacząć od nowej strony.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="discharge-limit-notice">
+                    <IconCheck size={20} className="text-emerald-700 shrink-0" aria-hidden="true" />
                     <div>
-                      <strong>Zaznacz zakres stron do analizy w tej turze</strong>
+                      <strong>Dokument mieści się w limicie</strong>
                       <p>
-                        Wybierz do {MAX_DISCHARGE_PAGES} stron (np. od początku lub do końca konkretnego panelu badań).
+                        Plik ma {pdfInfo.pageCount} stron (mieści się w limicie {MAX_DISCHARGE_PAGES}{" "}
+                        stron). Możesz przeanalizować cały plik naraz lub wybrać określony fragment.
                       </p>
                     </div>
                   </div>
-                  <div className="discharge-step-item">
-                    <span className="discharge-step-number">2</span>
-                    <div>
-                      <strong>Zaimportuj pozostałe strony w kolejnym kroku</strong>
-                      <p>
-                        Po zapisaniu możesz wybrać ten sam plik ponownie – aplikacja pamięta, które
-                        strony już dodano, i podpowie kolejny fragment.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="discharge-guide-tip">
-                  <IconInfoCircle size={16} aria-hidden="true" />
-                  <span>
-                    <strong>Wskazówka:</strong> Zwróć uwagę, czy badanie nie zaczyna się na końcu
-                    strony – lepiej zakończyć partię przed rozpoczęciem nowego badania, a kolejne
-                    zacząć od nowej strony.
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="discharge-limit-notice">
-                <IconCheck size={20} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                <div>
-                  <strong>Dokument mieści się w limicie</strong>
-                  <p>
-                    Plik ma {pdfInfo.pageCount} stron (mieści się w limicie {MAX_DISCHARGE_PAGES}{" "}
-                    stron). Możesz przeanalizować cały plik naraz lub wybrać określony fragment.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Sekcja historii wcześniejszych importów tego pliku */}
-            {pdfHistory && pdfHistory.importedRanges.length > 0 && (
-              <div className="discharge-history-card">
-                <div className="discharge-history-header">
-                  <IconHistory size={18} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                  <div className="discharge-history-content">
-                    <strong>Wcześniej zaimportowano już strony z tego pliku:</strong>
-                    <div className="discharge-history-ranges">
-                      {pdfHistory.importedRanges.map((r, idx) => (
-                        <span key={`${r.start}-${r.end}-${idx}`} className="discharge-history-tag">
-                          ✓ Strony {r.start}–{r.end}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                {suggestedRange && suggestedRange.hasUnimported && (
-                  <button
-                    type="button"
-                    className="discharge-suggested-btn"
-                    onClick={() => applyPresetRange(suggestedRange.start, suggestedRange.end)}
-                  >
-                    <span>Zaznacz sugerowane kolejne strony ({suggestedRange.start}–{suggestedRange.end})</span>
-                    <IconArrowRight size={14} aria-hidden="true" />
-                  </button>
                 )}
-              </div>
-            )}
 
-            {/* Interaktywny selektor stron */}
-            <div className="discharge-range-selector-box">
-              <div className="discharge-selector-header">
-                <h4>Wybór stron do ekstrakcji:</h4>
-                <div className="discharge-quick-presets">
-                  {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
-                    <button
-                      type="button"
-                      className="discharge-preset-pill"
-                      onClick={() => applyPresetRange(1, pdfInfo.pageCount)}
-                    >
-                      Wszystkie strony (1–{pdfInfo.pageCount})
-                    </button>
-                  ) : (
-                    <>
+                {/* Sekcja historii wcześniejszych importów tego pliku */}
+                {pdfHistory && pdfHistory.importedRanges.length > 0 && (
+                  <div className="discharge-history-card">
+                    <div className="discharge-history-header">
+                      <IconHistory
+                        size={18}
+                        className="text-emerald-700 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <div className="discharge-history-content">
+                        <strong>Wcześniej zaimportowano już strony z tego pliku:</strong>
+                        <div className="discharge-history-ranges">
+                          {pdfHistory.importedRanges.map((r, idx) => (
+                            <span
+                              key={`${r.start}-${r.end}-${idx}`}
+                              className="discharge-history-tag"
+                            >
+                              ✓ Strony {r.start}–{r.end}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {suggestedRange && suggestedRange.hasUnimported && (
                       <button
                         type="button"
-                        className="discharge-preset-pill"
+                        className="discharge-suggested-btn"
                         onClick={() =>
-                          applyPresetRange(1, Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount))
+                          applyPresetRange(suggestedRange.start, suggestedRange.end)
                         }
                       >
-                        Część 1 (str. 1–{Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount)})
+                        <span>
+                          Zaznacz sugerowane kolejne strony ({suggestedRange.start}–
+                          {suggestedRange.end})
+                        </span>
+                        <IconArrowRight size={14} aria-hidden="true" />
                       </button>
-                      {pdfInfo.pageCount > MAX_DISCHARGE_PAGES && (
+                    )}
+                  </div>
+                )}
+
+                {/* Interaktywny selektor stron */}
+                <div className="discharge-range-selector-box">
+                  <div className="discharge-selector-header">
+                    <h4>Wybór stron do ekstrakcji:</h4>
+                    <div className="discharge-quick-presets">
+                      {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
                         <button
                           type="button"
                           className="discharge-preset-pill"
-                          onClick={() =>
-                            applyPresetRange(
-                              MAX_DISCHARGE_PAGES + 1,
-                              Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount),
-                            )
-                          }
+                          onClick={() => applyPresetRange(1, pdfInfo.pageCount)}
                         >
-                          Część 2 (str. {MAX_DISCHARGE_PAGES + 1}–
-                          {Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount)})
+                          Wszystkie strony (1–{pdfInfo.pageCount})
                         </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="discharge-preset-pill"
+                            onClick={() =>
+                              applyPresetRange(
+                                1,
+                                Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount),
+                              )
+                            }
+                          >
+                            Część 1 (str. 1–{Math.min(MAX_DISCHARGE_PAGES, pdfInfo.pageCount)})
+                          </button>
+                          {pdfInfo.pageCount > MAX_DISCHARGE_PAGES && (
+                            <button
+                              type="button"
+                              className="discharge-preset-pill"
+                              onClick={() =>
+                                applyPresetRange(
+                                  MAX_DISCHARGE_PAGES + 1,
+                                  Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount),
+                                )
+                              }
+                            >
+                              Część 2 (str. {MAX_DISCHARGE_PAGES + 1}–
+                              {Math.min(MAX_DISCHARGE_PAGES * 2, pdfInfo.pageCount)})
+                            </button>
+                          )}
+                          {suggestedRange && suggestedRange.hasUnimported && (
+                            <button
+                              type="button"
+                              className="discharge-preset-pill is-suggested"
+                              onClick={() =>
+                                applyPresetRange(suggestedRange.start, suggestedRange.end)
+                              }
+                            >
+                              Pozostałe ({suggestedRange.start}–{suggestedRange.end})
+                            </button>
+                          )}
+                        </>
                       )}
-                      {suggestedRange && suggestedRange.hasUnimported && (
+                    </div>
+                  </div>
+
+                  {/* Wizualna mapa kafelków stron */}
+                  <div className="discharge-page-strip" role="group" aria-label="Kafelki stron">
+                    {Array.from({ length: pdfInfo.pageCount }, (_, i) => i + 1).map((pNum) => {
+                      const isImported = importedSet.has(pNum);
+                      const isSelected = pNum >= customStart && pNum <= customEnd;
+                      const isCurrentPreview = pNum === previewPage;
+                      return (
                         <button
+                          key={pNum}
                           type="button"
-                          className="discharge-preset-pill is-suggested"
-                          onClick={() => applyPresetRange(suggestedRange.start, suggestedRange.end)}
+                          className={`discharge-page-pill${isImported ? " is-imported" : ""}${
+                            isSelected ? " is-selected" : ""
+                          }${isCurrentPreview ? " is-previewing" : ""}`}
+                          onClick={() => handlePageClick(pNum)}
+                          title={`Strona ${pNum}${
+                            isImported ? " (już zaimportowana)" : ""
+                          }${isCurrentPreview ? " [oglądasz na podglądzie]" : ""}`}
                         >
-                          Pozostałe ({suggestedRange.start}–{suggestedRange.end})
+                          <span>{pNum}</span>
+                          {isImported && <IconCheck size={10} aria-hidden="true" />}
                         </button>
+                      );
+                    })}
+                  </div>
+                  <div className="discharge-strip-legend">
+                    <span>
+                      <span className="discharge-legend-dot is-imported" /> Już zaimportowane
+                    </span>
+                    <span>
+                      <span className="discharge-legend-dot is-selected" /> Wybrane do analizy
+                    </span>
+                    <span>
+                      <span className="discharge-legend-dot is-previewing" /> Aktualny podgląd
+                    </span>
+                  </div>
+
+                  {/* Pola numeryczne Od / Do */}
+                  <div className="discharge-inputs-row">
+                    <div className="discharge-input-inline">
+                      <label htmlFor="range-start">Od strony:</label>
+                      <input
+                        id="range-start"
+                        type="number"
+                        min={1}
+                        max={pdfInfo.pageCount}
+                        value={customStart}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!Number.isNaN(val)) setCustomStart(val);
+                        }}
+                      />
+                    </div>
+                    <div className="discharge-input-inline">
+                      <label htmlFor="range-end">Do strony:</label>
+                      <input
+                        id="range-end"
+                        type="number"
+                        min={customStart}
+                        max={pdfInfo.pageCount}
+                        value={customEnd}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!Number.isNaN(val)) setCustomEnd(val);
+                        }}
+                      />
+                    </div>
+
+                    <div className="discharge-target-summary">
+                      {currentTargetCount > MAX_DISCHARGE_PAGES ? (
+                        <span className="text-red-700 font-bold">
+                          ⚠️ Wybrano {currentTargetCount} stron (maks. {MAX_DISCHARGE_PAGES} stron / turę)
+                        </span>
+                      ) : currentTargetCount > 0 ? (
+                        <span className="text-emerald-800 font-semibold">
+                          ✓ Wybrano {currentTargetCount}{" "}
+                          {currentTargetCount === 1
+                            ? "stronę"
+                            : currentTargetCount < 5
+                            ? "strony"
+                            : "stron"}{" "}
+                          (strony {customStart}–{customEnd})
+                        </span>
+                      ) : (
+                        <span className="text-red-600">Nieprawidłowy zakres stron</span>
                       )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Wizualna mapa kafelków stron */}
-              <div className="discharge-page-strip" role="group" aria-label="Kafelki stron">
-                {Array.from({ length: pdfInfo.pageCount }, (_, i) => i + 1).map((pNum) => {
-                  const isImported = importedSet.has(pNum);
-                  const isSelected = pNum >= customStart && pNum <= customEnd;
-                  return (
-                    <button
-                      key={pNum}
-                      type="button"
-                      className={`discharge-page-pill${isImported ? " is-imported" : ""}${
-                        isSelected ? " is-selected" : ""
-                      }`}
-                      onClick={() => handlePageClick(pNum)}
-                      title={`Strona ${pNum}${isImported ? " (już zaimportowana)" : ""}`}
-                    >
-                      <span>{pNum}</span>
-                      {isImported && <IconCheck size={10} aria-hidden="true" />}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="discharge-strip-legend">
-                <span>
-                  <span className="discharge-legend-dot is-imported" /> Już zaimportowane
-                </span>
-                <span>
-                  <span className="discharge-legend-dot is-selected" /> Wybrane do bieżącej analizy
-                </span>
-                <span>
-                  <span className="discharge-legend-dot" /> Dostępne
-                </span>
-              </div>
-
-              {/* Pola numeryczne Od / Do */}
-              <div className="discharge-inputs-row">
-                <div className="discharge-input-inline">
-                  <label htmlFor="range-start">Od strony:</label>
-                  <input
-                    id="range-start"
-                    type="number"
-                    min={1}
-                    max={pdfInfo.pageCount}
-                    value={customStart}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!Number.isNaN(val)) setCustomStart(val);
-                    }}
-                  />
-                </div>
-                <div className="discharge-input-inline">
-                  <label htmlFor="range-end">Do strony:</label>
-                  <input
-                    id="range-end"
-                    type="number"
-                    min={customStart}
-                    max={pdfInfo.pageCount}
-                    value={customEnd}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!Number.isNaN(val)) setCustomEnd(val);
-                    }}
-                  />
-                </div>
-
-                <div className="discharge-target-summary">
-                  {currentTargetCount > MAX_DISCHARGE_PAGES ? (
-                    <span className="text-red-700 font-bold">
-                      ⚠️ Wybrano {currentTargetCount} stron (maks. {MAX_DISCHARGE_PAGES} stron / turę)
-                    </span>
-                  ) : currentTargetCount > 0 ? (
-                    <span className="text-emerald-800 font-semibold">
-                      ✓ Wybrano {currentTargetCount}{" "}
-                      {currentTargetCount === 1
-                        ? "stronę"
-                        : currentTargetCount < 5
-                        ? "strony"
-                        : "stron"}{" "}
-                      (strony {customStart}–{customEnd})
-                    </span>
-                  ) : (
-                    <span className="text-red-600">Nieprawidłowy zakres stron</span>
-                  )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
