@@ -6,12 +6,52 @@ import {ButtonLink} from '@/components/ui/button';
 import {DischargeImportButton} from './discharge-import-button';
 import type {MedicalReport} from './types';
 
-export function ReportList({reports,petId,query,onQuery,onOpen}:{reports:MedicalReport[];petId:string;query:string;onQuery:(value:string)=>void;onOpen:(report:MedicalReport)=>void}){
- const locale=useLocale(),pl=locale==='pl',id=useId();
- const normalize=(s:string)=>s.toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l');
- const filtered=reports.filter(r=>normalize(`${r.title} ${r.laboratory} ${r.doctor} ${r.test_date}`).includes(normalize(query.trim())));
- return <section className="pet-panel medical-report-list">
-  <header><h2>{pl?'Lista badań':'Reports'}</h2><div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}><DischargeImportButton pet={{ id: petId, imie: '' }} /><ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary"><IconPlus size={18} aria-hidden="true"/>{pl?'Dodaj badanie':'Add report'}</ButtonLink></div></header>
+export function ReportList({
+  reports,
+  petId,
+  householdId,
+  petName,
+  query,
+  onQuery,
+  onOpen,
+}: {
+  reports: MedicalReport[];
+  petId: string;
+  householdId?: string;
+  petName?: string;
+  query: string;
+  onQuery: (value: string) => void;
+  onOpen: (report: MedicalReport) => void;
+}) {
+  const locale = useLocale(),
+    pl = locale === "pl",
+    id = useId();
+  const normalize = (s: string) =>
+    s
+      .toLocaleLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/ł/g, "l");
+  const filtered = reports.filter((r) =>
+    normalize(`${r.title} ${r.laboratory} ${r.doctor} ${r.test_date}`).includes(
+      normalize(query.trim()),
+    ),
+  );
+  return (
+    <section className="pet-panel medical-report-list">
+      <header>
+        <h2>{pl ? "Lista badań" : "Reports"}</h2>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <DischargeImportButton
+            pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
+            householdId={householdId}
+          />
+          <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary">
+            <IconPlus size={18} aria-hidden="true" />
+            {pl ? "Dodaj badanie" : "Add report"}
+          </ButtonLink>
+        </div>
+      </header>
   <label htmlFor={id}>{pl?'Szukaj badania po nazwie, laboratorium lub dacie':'Search by report name, laboratory or date'}</label>
   <input id={id} type="search" value={query} onChange={e=>onQuery(e.target.value)} placeholder={pl?'Np. morfologia, TK, USG lub 2026-10':'E.g. blood count, CT, ultrasound or 2026-10'}/>
   <p role="status">{pl?'Liczba badań':'Reports'}: {filtered.length}</p>
@@ -21,5 +61,6 @@ export function ReportList({reports,petId,query,onQuery,onOpen}:{reports:Medical
    <button id={`open-report-${r.id}`} type="button" className="report-open" onClick={()=>onOpen(r)} aria-label={`${pl?'Otwórz badanie':'Open report'}: ${r.title}, ${r.test_date}`}><IconSearch size={18} aria-hidden="true"/>{pl?'Otwórz badanie':'Open report'}</button>
   </li>)}</ul>}
   {reports.length>=100&&<p>{pl?'Pokazano 100 najnowszych badań oraz badanie otwarte z odnośnika.':'Showing the latest 100 reports and any report opened by direct link.'}</p>}
- </section>;
+    </section>
+  );
 }

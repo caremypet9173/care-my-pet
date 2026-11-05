@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   IconAlertCircle,
   IconAlertTriangle,
@@ -103,6 +104,42 @@ export function DischargeImportDialog({
     events_count: number;
     weights_count: number;
   } | null>(null);
+
+  const [petDetails, setPetDetails] = useState<{ imie: string; gospodarstwo_id?: string }>({
+    imie: pet.imie || "",
+    gospodarstwo_id: householdId || pet.gospodarstwo_id,
+  });
+
+  useEffect(() => {
+    if (!petDetails.imie || !petDetails.gospodarstwo_id) {
+      let cancelled = false;
+      const client = createClient();
+      void client
+        .from("zwierze")
+        .select("imie, gospodarstwo_id")
+        .eq("id", pet.id)
+        .maybeSingle()
+        .then(
+          ({ data, error: petErr }) => {
+            if (cancelled) return;
+            if (!petErr && data) {
+              setPetDetails((prev) => ({
+                imie: prev.imie || data.imie || "",
+                gospodarstwo_id: prev.gospodarstwo_id || data.gospodarstwo_id || undefined,
+              }));
+            }
+          },
+          (err: unknown) => {
+            if (!cancelled) {
+              console.error("Failed to load pet details for discharge import:", err);
+            }
+          },
+        );
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [pet.id, petDetails.imie, petDetails.gospodarstwo_id]);
 
   // Sync open state with HTML dialog element
   useEffect(() => {
@@ -353,7 +390,21 @@ export function DischargeImportDialog({
     setError(null);
 
     try {
-      const effectiveHouseholdId = householdId || pet.gospodarstwo_id;
+      let effectiveHouseholdId = householdId || pet.gospodarstwo_id || petDetails.gospodarstwo_id;
+      if (!effectiveHouseholdId) {
+        const client = createClient();
+        const { data: petRow, error: petErr } = await client
+          .from("zwierze")
+          .select("gospodarstwo_id, imie")
+          .eq("id", pet.id)
+          .maybeSingle();
+        if (petErr) throw petErr;
+        effectiveHouseholdId = petRow?.gospodarstwo_id;
+        if (petRow?.imie && !petDetails.imie) {
+          setPetDetails((prev) => ({ ...prev, imie: petRow.imie }));
+        }
+      }
+
       if (!effectiveHouseholdId) {
         throw new Error("Brak identyfikatora gospodarstwa domowego.");
       }
@@ -401,11 +452,13 @@ export function DischargeImportDialog({
 
   const totalSelected = selectedLabsCount + selectedEventsCount + selectedWeightsCount;
 
+  const effectivePetName = petDetails.imie || pet.imie;
+
   const isNameMismatch = Boolean(
     discharge?.patient_name &&
-      pet.imie &&
-      !discharge.patient_name.toLowerCase().includes(pet.imie.toLowerCase()) &&
-      !pet.imie.toLowerCase().includes(discharge.patient_name.toLowerCase()),
+      effectivePetName &&
+      !discharge.patient_name.toLowerCase().includes(effectivePetName.toLowerCase()) &&
+      !effectivePetName.toLowerCase().includes(discharge.patient_name.toLowerCase()),
   );
 
   const importedSet = new Set(pdfHistory?.allImportedPages || []);
@@ -862,7 +915,7 @@ export function DischargeImportDialog({
                   <strong>Uwaga dotycząca pacjenta:</strong>
                   <p>
                     Dokument wskazuje pacjenta <strong>&quot;{discharge.patient_name}&quot;</strong>,
-                    podczas gdy aktualna kartoteka należy do pupila <strong>&quot;{pet.imie}&quot;</strong>.
+                    podczas gdy aktualna kartoteka należy do pupila <strong>&quot;{effectivePetName || pet.imie || "pupila"}&quot;</strong>.
                     Upewnij się, że wgrywasz właściwy dokument.
                   </p>
                 </div>

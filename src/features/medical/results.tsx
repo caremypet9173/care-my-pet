@@ -15,7 +15,19 @@ import { PdfPreview } from "./pdf-preview";
 import {EditParameterDialog} from "./edit-parameter-dialog";
 import { FormattedMedicalText } from "./formatted-text";
 import "@/styles/medical-edit-dialog.css";
-export function MedicalResults({petId,reports:initialReports,initialReportId}:{petId:string;reports:MedicalReport[];initialReportId?:string}){
+export function MedicalResults({
+  petId,
+  householdId,
+  petName,
+  reports: initialReports,
+  initialReportId,
+}: {
+  petId: string;
+  householdId?: string;
+  petName?: string;
+  reports: MedicalReport[];
+  initialReportId?: string;
+}) {
   const router=useRouter();
   const [detail,setDetail]=useState(!!initialReportId);
   const [listMode,setListMode]=useState<"list"|"matrix">("list");
@@ -98,7 +110,7 @@ export function MedicalResults({petId,reports:initialReports,initialReportId}:{p
   };
   if(!detail)return <div className="medical-results">
     {reports.length>0&&<div className="medical-mode-switcher" role="group" aria-label={locale==="pl"?"Widok wyników badań":"Results view"}><button type="button" className={`medical-mode-card${listMode==="list"?" is-active":""}`} onClick={()=>setListMode("list")}><span className="medical-mode-icon"><IconList size={20} aria-hidden="true"/></span><div><strong>{locale==="pl"?"Lista badań i opisów":"Reports & imaging list"}</strong><small>{locale==="pl"?`Wszystkie dokumenty i badania (${reports.length})`:`All reports and studies (${reports.length})`}</small></div></button><button type="button" className={`medical-mode-card is-highlight${listMode==="matrix"?" is-active":""}`} onClick={()=>setListMode("matrix")}><span className="medical-mode-icon"><IconTable size={20} aria-hidden="true"/></span><div><strong>{locale==="pl"?"Porównanie parametrów w czasie":"Compare parameters over time"}</strong><small>{locale==="pl"?"Zbiorcza tabela wszystkich wyników + wykres wielu parametrów":"Comparison matrix across dates + multi-parameter chart"}</small></div></button></div>}
-    {listMode==="matrix"?<LabComparisonMatrix reports={reports} onOpenReport={openReportDetail}/>:<ReportList reports={reports} petId={petId} query={reportQuery} onQuery={setReportQuery} onOpen={openReportDetail}/>}
+    {listMode==="matrix"?<LabComparisonMatrix reports={reports} onOpenReport={openReportDetail}/>:<ReportList reports={reports} petId={petId} householdId={householdId} petName={petName} query={reportQuery} onQuery={setReportQuery} onOpen={openReportDetail}/>}
   </div>;
   return <div className="medical-results">
     <button ref={backToList} className="medical-back-list" type="button" onClick={()=>{setDetail(false);requestAnimationFrame(()=>document.getElementById(`open-report-${origin.current??selected}`)?.focus());}}>{locale==="pl"?"← Wróć do listy badań":"← Back to reports"}</button>

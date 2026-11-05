@@ -47,7 +47,7 @@ export function DischargeImportButton({
       {open && (
         <DischargeImportDialog
           pet={pet}
-          householdId={householdId}
+          householdId={householdId || pet.gospodarstwo_id}
           open={open}
           onClose={() => setOpen(false)}
         />

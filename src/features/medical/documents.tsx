@@ -154,11 +154,15 @@ function formatMimeLabel(mime: string) {
 
 export function MedicalDocuments({
   petId,
+  householdId,
+  petName,
   reports,
   healthEvents = [],
   initialDocumentId,
 }: {
   petId: string;
+  householdId?: string;
+  petName?: string;
   reports: MedicalReport[];
   healthEvents?: HealthEvent[];
   initialDocumentId?: string;
@@ -364,7 +368,10 @@ export function MedicalDocuments({
             <p>{t.intro}</p>
           </div>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-            <DischargeImportButton pet={{ id: petId, imie: "" }} />
+            <DischargeImportButton
+              pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
+              householdId={householdId}
+            />
             <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary">
               <IconPlus size={18} aria-hidden="true" />
               {t.add}
