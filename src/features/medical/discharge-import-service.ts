@@ -184,7 +184,8 @@ export async function commitDischargeBatchImport(params: {
   }
 
   const dischargeFileId = crypto.randomUUID();
-  const ext = file.name.split(".").pop() || "pdf";
+  const rawExt = file.name.split(".").pop()?.toLowerCase() || "pdf";
+  const ext = file.type === "application/pdf" ? "pdf" : rawExt === "jpeg" ? "jpg" : rawExt;
   const sourcePath = `${effectiveHouseholdId}/${user.id}/${dischargeFileId}.${ext}`;
 
   // 1. Zapis pliku PDF w Supabase Storage
