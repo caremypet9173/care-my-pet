@@ -37,7 +37,8 @@ function PageCard({
 }: PageItemProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hasEnteredView, setHasEnteredView] = useState(false);
+  // Pierwsze 2 strony renderujemy natychmiast, reszta leniwie podczas przewijania
+  const [hasEnteredView, setHasEnteredView] = useState(pageNumber <= 2);
   const [rendered, setRendered] = useState(false);
   const [renderError, setRenderError] = useState(false);
 
@@ -53,7 +54,7 @@ function PageCard({
           observer.disconnect();
         }
       },
-      { rootMargin: "400px 0px" },
+      { rootMargin: "600px 0px" },
     );
 
     observer.observe(el);
@@ -72,14 +73,20 @@ function PageCard({
       .then(async (page) => {
         if (!active || !canvasRef.current) return;
         const unscaledViewport = page.getViewport({ scale: 1 });
-        // Optymalna szerokość karty podglądu PDF (ok. 440-480px)
-        const targetWidth = 460;
-        const scale = Math.min(1.5, targetWidth / unscaledViewport.width);
-        const viewport = page.getViewport({ scale });
+        const containerWidth = containerRef.current?.clientWidth || 480;
+        const targetWidth = Math.max(480, containerWidth);
+        const dpr = Math.min(
+          typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+          2,
+        );
+        const baseScale = targetWidth / unscaledViewport.width;
+        const viewport = page.getViewport({ scale: baseScale * dpr });
 
         const canvas = canvasRef.current;
         canvas.width = viewport.width;
         canvas.height = viewport.height;
+        canvas.style.width = "100%";
+        canvas.style.height = "auto";
 
         renderTask = page.render({
           canvas,
