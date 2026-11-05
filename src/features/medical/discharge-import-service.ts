@@ -137,6 +137,7 @@ export async function extractClinicalDischarge(
       patient_name: raw.patient_name || "",
       species: raw.species || "",
       summary: raw.summary || "",
+      boundary_alert: raw.boundary_alert,
       lab_reports,
       clinical_events,
       measurements,

@@ -51,11 +51,19 @@ export interface DischargeMedication {
   selected: boolean;
 }
 
+export interface BoundaryAlert {
+  has_cut_off_at_end: boolean;
+  cut_off_description: string;
+  has_cut_off_at_start: boolean;
+  cut_off_start_description: string;
+}
+
 export interface RawDischargeExtraction {
   clinic_name: string;
   patient_name: string;
   species: string;
   summary: string;
+  boundary_alert?: BoundaryAlert;
   lab_reports: Array<{
     date: string;
     category: string;
@@ -101,6 +109,7 @@ export interface DischargeParsedState {
   patient_name: string;
   species: string;
   summary: string;
+  boundary_alert?: BoundaryAlert;
   lab_reports: DischargeLabReport[];
   clinical_events: DischargeClinicalEvent[];
   measurements: DischargeMeasurement[];

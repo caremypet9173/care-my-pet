@@ -10,6 +10,8 @@ import {
   IconChevronUp,
   IconFileText,
   IconFlask,
+  IconHistory,
+  IconInfoCircle,
   IconPill,
   IconScale,
   IconSparkles,
@@ -21,16 +23,21 @@ import { Button } from "@/components/ui/button";
 import type { Pet } from "@/features/pets/types";
 import {
   commitDischargeBatchImport,
+  computeFileSha256,
   extractClinicalDischarge,
 } from "./discharge-import-service";
 import type { DischargeParsedState } from "./discharge-types";
 import { FormattedMedicalText } from "./formatted-text";
 import {
+  getPdfImportHistory,
+  getSuggestedNextRange,
+  recordPdfImport,
+  type ImportedPdfHistory,
+} from "./pdf-history";
+import {
   MAX_DISCHARGE_PAGES,
-  computePageChunks,
   inspectPdf,
   slicePdfPages,
-  type PageChunk,
   type PdfInfo,
 } from "./pdf-page-utils";
 
@@ -59,12 +66,16 @@ export function DischargeImportDialog({
   const [step, setStep] = useState<ImportStep>("upload");
   const [rawFile, setRawFile] = useState<File | null>(null);
   const [pdfInfo, setPdfInfo] = useState<PdfInfo | null>(null);
-  const [pageChunks, setPageChunks] = useState<PageChunk[]>([]);
-  const [selectedMode, setSelectedMode] = useState<"all" | "chunk" | "custom">("all");
-  const [selectedChunkId, setSelectedChunkId] = useState<string>("");
+  const [rawSha256, setRawSha256] = useState<string>("");
+  const [pdfHistory, setPdfHistory] = useState<ImportedPdfHistory | null>(null);
+
   const [customStart, setCustomStart] = useState<number>(1);
   const [customEnd, setCustomEnd] = useState<number>(1);
-  const [activeRange, setActiveRange] = useState<{ start: number; end: number; total: number } | null>(null);
+  const [activeRange, setActiveRange] = useState<{
+    start: number;
+    end: number;
+    total: number;
+  } | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [sha256, setSha256] = useState<string>("");
@@ -103,7 +114,8 @@ export function DischargeImportDialog({
     setStep("upload");
     setRawFile(null);
     setPdfInfo(null);
-    setPageChunks([]);
+    setRawSha256("");
+    setPdfHistory(null);
     setFile(null);
     setSha256("");
     setDischarge(null);
@@ -131,28 +143,29 @@ export function DischargeImportDialog({
     setIsInspecting(true);
 
     try {
-      const info = await inspectPdf(selectedFile);
+      const [info, computedHash] = await Promise.all([
+        inspectPdf(selectedFile),
+        computeFileSha256(selectedFile),
+      ]);
+
       setRawFile(selectedFile);
       setPdfInfo(info);
+      setRawSha256(computedHash);
 
-      const chunks = computePageChunks(info.pageCount, MAX_DISCHARGE_PAGES);
-      setPageChunks(chunks);
+      const history = getPdfImportHistory(pet.id, computedHash);
+      setPdfHistory(history);
 
-      if (info.pageCount <= MAX_DISCHARGE_PAGES) {
-        setSelectedMode("all");
-        setCustomStart(1);
-        setCustomEnd(info.pageCount);
-      } else {
-        setSelectedMode("chunk");
-        setSelectedChunkId(chunks[0]?.id ?? "");
-        setCustomStart(chunks[0]?.start ?? 1);
-        setCustomEnd(chunks[0]?.end ?? Math.min(MAX_DISCHARGE_PAGES, info.pageCount));
-      }
+      const suggested = getSuggestedNextRange(info.pageCount, history, MAX_DISCHARGE_PAGES);
+      setCustomStart(suggested.start);
+      setCustomEnd(suggested.end);
 
       setStep("configure");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(msg || "Nie udało się odczytać struktury pliku PDF. Upewnij się, że plik nie jest uszkodzony.");
+      setError(
+        msg ||
+          "Nie udało się odczytać struktury pliku PDF. Upewnij się, że plik nie jest uszkodzony.",
+      );
       setStep("upload");
     } finally {
       setIsInspecting(false);
@@ -168,34 +181,49 @@ export function DischargeImportDialog({
     }
   }
 
+  function applyPresetRange(start: number, end: number) {
+    if (!pdfInfo) return;
+    const clampedStart = Math.max(1, Math.min(start, pdfInfo.pageCount));
+    const clampedEnd = Math.max(clampedStart, Math.min(end, pdfInfo.pageCount));
+    setCustomStart(clampedStart);
+    setCustomEnd(clampedEnd);
+    setError(null);
+  }
+
+  function handlePageClick(pageNumber: number) {
+    if (!pdfInfo) return;
+    // Jeśli kliknięto stronę po lewej lub obecny zakres był pełny, zresetuj początek
+    if (pageNumber < customStart || customStart === customEnd) {
+      const newEnd = Math.min(pageNumber + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount);
+      setCustomStart(pageNumber);
+      setCustomEnd(newEnd);
+    } else {
+      // Kliknięto stronę po prawej stronie od początku
+      const count = pageNumber - customStart + 1;
+      if (count <= MAX_DISCHARGE_PAGES) {
+        setCustomEnd(pageNumber);
+      } else {
+        // Jeśli przekracza 20 stron, ustaw nowe okno 20 stron od klikniętej
+        setCustomStart(pageNumber);
+        setCustomEnd(Math.min(pageNumber + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount));
+      }
+    }
+  }
+
   async function handleStartExtraction() {
     if (!rawFile || !pdfInfo) return;
 
-    let start = 1;
-    let end = pdfInfo.pageCount;
-
-    if (selectedMode === "all") {
-      start = 1;
-      end = pdfInfo.pageCount;
-    } else if (selectedMode === "chunk") {
-      const chunk = pageChunks.find((c) => c.id === selectedChunkId) || pageChunks[0];
-      if (chunk) {
-        start = chunk.start;
-        end = chunk.end;
-      }
-    } else if (selectedMode === "custom") {
-      start = customStart;
-      end = customEnd;
-    }
-
+    const start = customStart;
+    const end = customEnd;
     const count = end - start + 1;
+
     if (start < 1 || end > pdfInfo.pageCount || end < start) {
       setError(`Nieprawidłowy zakres stron (podaj od 1 do ${pdfInfo.pageCount}).`);
       return;
     }
     if (count > MAX_DISCHARGE_PAGES) {
       setError(
-        `Wybrany zakres obejmuje ${count} stron. Maksymalny limit jednorazowej analizy to ${MAX_DISCHARGE_PAGES} stron.`,
+        `Wybrany zakres obejmuje ${count} stron. Maksymalny dopuszczalny limit to ${MAX_DISCHARGE_PAGES} stron w jednej turze.`,
       );
       return;
     }
@@ -224,18 +252,14 @@ export function DischargeImportDialog({
     const nextStart = activeRange.end + 1;
     if (nextStart > pdfInfo.pageCount) return;
 
-    const nextChunk = pageChunks.find((c) => c.start === nextStart) || {
-      id: `chunk_${nextStart}`,
-      label: `Strony ${nextStart}–${Math.min(nextStart + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount)}`,
-      start: nextStart,
-      end: Math.min(nextStart + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount),
-      pageCount: Math.min(nextStart + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount) - nextStart + 1,
-    };
+    const nextEnd = Math.min(nextStart + MAX_DISCHARGE_PAGES - 1, pdfInfo.pageCount);
+    setCustomStart(nextStart);
+    setCustomEnd(nextEnd);
 
-    setSelectedMode("chunk");
-    setSelectedChunkId(nextChunk.id);
-    setCustomStart(nextChunk.start);
-    setCustomEnd(nextChunk.end);
+    // Refresh history
+    const history = getPdfImportHistory(pet.id, rawSha256);
+    setPdfHistory(history);
+
     setDischarge(null);
     setSaveResult(null);
     setFile(null);
@@ -311,6 +335,18 @@ export function DischargeImportDialog({
         state: discharge,
       });
 
+      // Zapisz zaimportowany zakres w historii przeglądarki
+      if (activeRange && rawSha256) {
+        const updatedHistory = recordPdfImport(
+          pet.id,
+          rawSha256,
+          rawFile?.name || file.name,
+          activeRange.start,
+          activeRange.end,
+        );
+        if (updatedHistory) setPdfHistory(updatedHistory);
+      }
+
       setSaveResult(res);
       setStep("success");
       onSuccess?.();
@@ -328,8 +364,10 @@ export function DischargeImportDialog({
   const selectedEventsCount = discharge?.clinical_events.filter((e) => e.selected).length ?? 0;
   const totalEventsCount = discharge?.clinical_events.length ?? 0;
 
-  const selectedWeightsCount = discharge?.measurements.filter((m) => m.selected && m.type === "weight").length ?? 0;
-  const totalWeightsCount = discharge?.measurements.filter((m) => m.type === "weight").length ?? 0;
+  const selectedWeightsCount =
+    discharge?.measurements.filter((m) => m.selected && m.type === "weight").length ?? 0;
+  const totalWeightsCount =
+    discharge?.measurements.filter((m) => m.type === "weight").length ?? 0;
 
   const totalSelected = selectedLabsCount + selectedEventsCount + selectedWeightsCount;
 
@@ -340,33 +378,19 @@ export function DischargeImportDialog({
       !pet.imie.toLowerCase().includes(discharge.patient_name.toLowerCase()),
   );
 
-  // Obliczenie aktualnie wybranej liczby stron w kroku konfiguracji
-  const currentTargetCount =
-    selectedMode === "all"
-      ? (pdfInfo?.pageCount ?? 0)
-      : selectedMode === "chunk"
-      ? (pageChunks.find((c) => c.id === selectedChunkId)?.pageCount ?? 0)
-      : Math.max(0, customEnd - customStart + 1);
-
+  // Wyliczenie stron w selektorze
+  const currentTargetCount = Math.max(0, customEnd - customStart + 1);
   const isCustomRangeValid =
-    selectedMode !== "custom" ||
-    (customStart >= 1 &&
-      customEnd <= (pdfInfo?.pageCount ?? 1) &&
-      customEnd >= customStart &&
-      customEnd - customStart + 1 <= MAX_DISCHARGE_PAGES);
+    customStart >= 1 &&
+    pdfInfo !== null &&
+    customEnd <= pdfInfo.pageCount &&
+    customEnd >= customStart &&
+    customEnd - customStart + 1 <= MAX_DISCHARGE_PAGES;
 
-  const customValidationError =
-    selectedMode === "custom"
-      ? customStart < 1
-        ? "Strona początkowa musi wynosić co najmniej 1."
-        : customEnd < customStart
-        ? "Strona końcowa nie może być mniejsza od początkowej."
-        : customEnd > (pdfInfo?.pageCount ?? 1)
-        ? `Strona końcowa nie może przekraczać ${pdfInfo?.pageCount ?? 1}.`
-        : customEnd - customStart + 1 > MAX_DISCHARGE_PAGES
-        ? `Wybrano ${customEnd - customStart + 1} stron. Limit to ${MAX_DISCHARGE_PAGES} stron na jedną analizę.`
-        : null
-      : null;
+  const importedSet = new Set(pdfHistory?.allImportedPages || []);
+  const suggestedRange = pdfInfo
+    ? getSuggestedNextRange(pdfInfo.pageCount, pdfHistory, MAX_DISCHARGE_PAGES)
+    : null;
 
   return (
     <dialog
@@ -445,10 +469,12 @@ export function DischargeImportDialog({
                   <IconUpload size={36} aria-hidden="true" />
                 )}
               </div>
-              <h3>{isInspecting ? "Sprawdzanie pliku PDF…" : "Przeciągnij lub kliknij, aby wgrać wypis"}</h3>
+              <h3>
+                {isInspecting ? "Sprawdzanie pliku PDF…" : "Przeciągnij lub kliknij, aby wgrać wypis"}
+              </h3>
               <p>
                 Obsługujemy wielostronicowe pliki PDF (np. z Klinika XP, Provet, Vet-Gabinet) do 12 MB.
-                Zalecany limit jednorazowej analizy to 20 stron.
+                Jednorazowy limit analizy to 20 stron.
               </p>
               <div className="discharge-dropzone-features">
                 <span>🩺 Badania krwi, moczu i USG</span>
@@ -459,7 +485,7 @@ export function DischargeImportDialog({
           </div>
         )}
 
-        {/* Krok 1.5: Konfiguracja stron i limitów (Configure Step) */}
+        {/* Krok 1.5: Konfiguracja i wybór stron (Configure Step) */}
         {step === "configure" && pdfInfo && (
           <div className="discharge-configure-step">
             {/* Karta pliku */}
@@ -490,135 +516,225 @@ export function DischargeImportDialog({
               </div>
             </div>
 
-            {/* Komunikat o limicie stron */}
-            {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
+            {/* Ostrzeżenie i szczegółowa instrukcja dla opiekuna gdy > 20 stron */}
+            {pdfInfo.pageCount > MAX_DISCHARGE_PAGES ? (
+              <div className="discharge-oversize-guide">
+                <div className="discharge-guide-header">
+                  <IconAlertTriangle size={24} className="text-amber-800 shrink-0" aria-hidden="true" />
+                  <div>
+                    <h4>Dokument ma {pdfInfo.pageCount} stron — wybierz zakres stron do analizy</h4>
+                    <p>
+                      Ze względu na techniczne limity wielkości odpowiedzi modeli AI oraz ciągłość
+                      badań laboratoryjnych, jednorazowo analizujemy do <strong>20 stron</strong>.
+                      W ten sposób chronimy wyniki badań i opisy wizyt przed przypadkowym ucięciem
+                      w połowie.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="discharge-guide-steps">
+                  <div className="discharge-step-item">
+                    <span className="discharge-step-number">1</span>
+                    <div>
+                      <strong>Zaznacz zakres stron do analizy w tej turze</strong>
+                      <p>
+                        Wybierz do 20 stron (np. od początku lub do końca konkretnego panelu badań).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="discharge-step-item">
+                    <span className="discharge-step-number">2</span>
+                    <div>
+                      <strong>Zaimportuj pozostałe strony w kolejnym kroku</strong>
+                      <p>
+                        Po zapisaniu możesz wybrać ten sam plik ponownie – aplikacja pamięta, które
+                        strony już dodano, i podpowie kolejny fragment.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="discharge-guide-tip">
+                  <IconInfoCircle size={16} aria-hidden="true" />
+                  <span>
+                    <strong>Wskazówka:</strong> Zwróć uwagę, czy badanie nie zaczyna się na końcu
+                    strony – lepiej zakończyć partię przed rozpoczęciem nowego badania, a kolejne
+                    zacząć od nowej strony.
+                  </span>
+                </div>
+              </div>
+            ) : (
               <div className="discharge-limit-notice">
                 <IconCheck size={20} className="text-emerald-700 shrink-0" aria-hidden="true" />
                 <div>
                   <strong>Dokument mieści się w limicie</strong>
                   <p>
-                    Plik ma {pdfInfo.pageCount} stron (maksymalny rekomendowany limit to{" "}
-                    {MAX_DISCHARGE_PAGES} stron). Możesz przeanalizować cały dokument naraz lub
-                    wybrać konkretny fragment.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="discharge-limit-notice is-warning">
-                <IconAlertTriangle size={20} className="text-amber-800 shrink-0" aria-hidden="true" />
-                <div>
-                  <strong>Dokument wymaga podziału na części</strong>
-                  <p>
-                    Ten plik zawiera <strong>{pdfInfo.pageCount} stron</strong>. Aby zapewnić 100%
-                    precyzji odczytu tabel i uniknąć limitu odpowiedzi AI, jednorazowo analizujemy do{" "}
-                    <strong>{MAX_DISCHARGE_PAGES} stron</strong>. Wybierz część do przetworzenia
-                    w tej turze:
+                    Plik ma {pdfInfo.pageCount} stron (mieści się w limicie {MAX_DISCHARGE_PAGES}{" "}
+                    stron). Możesz przeanalizować cały plik naraz lub wybrać określony fragment.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Opcje wyboru zakresu */}
-            <div className="discharge-range-options">
-              <h4>Wybierz zakres stron do analizy:</h4>
-
-              {/* Jeśli plik mieści się w 20 stronach, opcja "Cały plik" */}
-              {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES && (
-                <div className="discharge-chunks-grid">
+            {/* Sekcja historii wcześniejszych importów tego pliku */}
+            {pdfHistory && pdfHistory.importedRanges.length > 0 && (
+              <div className="discharge-history-card">
+                <div className="discharge-history-header">
+                  <IconHistory size={18} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                  <div className="discharge-history-content">
+                    <strong>Wcześniej zaimportowano już strony z tego pliku:</strong>
+                    <div className="discharge-history-ranges">
+                      {pdfHistory.importedRanges.map((r, idx) => (
+                        <span key={`${r.start}-${r.end}-${idx}`} className="discharge-history-tag">
+                          ✓ Strony {r.start}–{r.end}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {suggestedRange && suggestedRange.hasUnimported && (
                   <button
                     type="button"
-                    className={`discharge-chunk-card${selectedMode === "all" ? " is-selected" : ""}`}
-                    onClick={() => setSelectedMode("all")}
+                    className="discharge-suggested-btn"
+                    onClick={() => applyPresetRange(suggestedRange.start, suggestedRange.end)}
                   >
-                    <span className="discharge-chunk-title">
-                      ✓ Cały dokument (strony 1–{pdfInfo.pageCount})
-                    </span>
-                    <span className="discharge-chunk-subtitle">
-                      Kompletna ekstrakcja wszystkich {pdfInfo.pageCount} stron
-                    </span>
+                    <span>Zaznacz sugerowane kolejne strony ({suggestedRange.start}–{suggestedRange.end})</span>
+                    <IconArrowRight size={14} aria-hidden="true" />
                   </button>
-                </div>
-              )}
-
-              {/* Jeśli plik ma więcej niż 20 stron, kafelki części */}
-              {pdfInfo.pageCount > MAX_DISCHARGE_PAGES && (
-                <div className="discharge-chunks-grid">
-                  {pageChunks.map((chunk) => (
-                    <button
-                      key={chunk.id}
-                      type="button"
-                      className={`discharge-chunk-card${
-                        selectedMode === "chunk" && selectedChunkId === chunk.id
-                          ? " is-selected"
-                          : ""
-                      }`}
-                      onClick={() => {
-                        setSelectedMode("chunk");
-                        setSelectedChunkId(chunk.id);
-                        setCustomStart(chunk.start);
-                        setCustomEnd(chunk.end);
-                      }}
-                    >
-                      <span className="discharge-chunk-title">{chunk.label}</span>
-                      <span className="discharge-chunk-subtitle">
-                        {chunk.pageCount} stron do ekstrakcji
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Własny zakres stron */}
-              <div
-                className={`discharge-custom-range-card${
-                  selectedMode === "custom" ? " is-selected" : ""
-                }`}
-              >
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="page_mode"
-                    checked={selectedMode === "custom"}
-                    onChange={() => setSelectedMode("custom")}
-                  />
-                  <span className="text-sm font-semibold">Własny zakres stron:</span>
-                </label>
-                <div className="discharge-custom-inputs">
-                  <div className="discharge-input-group">
-                    <span>Od:</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={pdfInfo.pageCount}
-                      value={customStart}
-                      disabled={selectedMode !== "custom"}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        if (!Number.isNaN(val)) setCustomStart(val);
-                      }}
-                    />
-                  </div>
-                  <div className="discharge-input-group">
-                    <span>Do:</span>
-                    <input
-                      type="number"
-                      min={customStart}
-                      max={pdfInfo.pageCount}
-                      value={customEnd}
-                      disabled={selectedMode !== "custom"}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        if (!Number.isNaN(val)) setCustomEnd(val);
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500">
-                    (maks. {MAX_DISCHARGE_PAGES} stron w jednej turze)
-                  </span>
-                </div>
-                {customValidationError && (
-                  <span className="discharge-range-validation-error">{customValidationError}</span>
                 )}
+              </div>
+            )}
+
+            {/* Interaktywny selektor stron */}
+            <div className="discharge-range-selector-box">
+              <div className="discharge-selector-header">
+                <h4>Wybór stron do ekstrakcji:</h4>
+                <div className="discharge-quick-presets">
+                  {pdfInfo.pageCount <= MAX_DISCHARGE_PAGES ? (
+                    <button
+                      type="button"
+                      className="discharge-preset-pill"
+                      onClick={() => applyPresetRange(1, pdfInfo.pageCount)}
+                    >
+                      Wszystkie strony (1–{pdfInfo.pageCount})
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="discharge-preset-pill"
+                        onClick={() => applyPresetRange(1, Math.min(20, pdfInfo.pageCount))}
+                      >
+                        Część 1 (str. 1–{Math.min(20, pdfInfo.pageCount)})
+                      </button>
+                      {pdfInfo.pageCount > 20 && (
+                        <button
+                          type="button"
+                          className="discharge-preset-pill"
+                          onClick={() =>
+                            applyPresetRange(21, Math.min(40, pdfInfo.pageCount))
+                          }
+                        >
+                          Część 2 (str. 21–{Math.min(40, pdfInfo.pageCount)})
+                        </button>
+                      )}
+                      {suggestedRange && suggestedRange.hasUnimported && (
+                        <button
+                          type="button"
+                          className="discharge-preset-pill is-suggested"
+                          onClick={() => applyPresetRange(suggestedRange.start, suggestedRange.end)}
+                        >
+                          Pozostałe ({suggestedRange.start}–{suggestedRange.end})
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Wizualna mapa kafelków stron */}
+              <div className="discharge-page-strip" role="group" aria-label="Kafelki stron">
+                {Array.from({ length: pdfInfo.pageCount }, (_, i) => i + 1).map((pNum) => {
+                  const isImported = importedSet.has(pNum);
+                  const isSelected = pNum >= customStart && pNum <= customEnd;
+                  return (
+                    <button
+                      key={pNum}
+                      type="button"
+                      className={`discharge-page-pill${isImported ? " is-imported" : ""}${
+                        isSelected ? " is-selected" : ""
+                      }`}
+                      onClick={() => handlePageClick(pNum)}
+                      title={`Strona ${pNum}${isImported ? " (już zaimportowana)" : ""}`}
+                    >
+                      <span>{pNum}</span>
+                      {isImported && <IconCheck size={10} aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="discharge-strip-legend">
+                <span>
+                  <span className="discharge-legend-dot is-imported" /> Już zaimportowane
+                </span>
+                <span>
+                  <span className="discharge-legend-dot is-selected" /> Wybrane do bieżącej analizy
+                </span>
+                <span>
+                  <span className="discharge-legend-dot" /> Dostępne
+                </span>
+              </div>
+
+              {/* Pola numeryczne Od / Do */}
+              <div className="discharge-inputs-row">
+                <div className="discharge-input-inline">
+                  <label htmlFor="range-start">Od strony:</label>
+                  <input
+                    id="range-start"
+                    type="number"
+                    min={1}
+                    max={pdfInfo.pageCount}
+                    value={customStart}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(val)) setCustomStart(val);
+                    }}
+                  />
+                </div>
+                <div className="discharge-input-inline">
+                  <label htmlFor="range-end">Do strony:</label>
+                  <input
+                    id="range-end"
+                    type="number"
+                    min={customStart}
+                    max={pdfInfo.pageCount}
+                    value={customEnd}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(val)) setCustomEnd(val);
+                    }}
+                  />
+                </div>
+
+                <div className="discharge-target-summary">
+                  {currentTargetCount > MAX_DISCHARGE_PAGES ? (
+                    <span className="text-red-700 font-bold">
+                      ⚠️ Wybrano {currentTargetCount} stron (maks. {MAX_DISCHARGE_PAGES} stron / turę)
+                    </span>
+                  ) : currentTargetCount > 0 ? (
+                    <span className="text-emerald-800 font-semibold">
+                      ✓ Wybrano {currentTargetCount}{" "}
+                      {currentTargetCount === 1
+                        ? "stronę"
+                        : currentTargetCount < 5
+                        ? "strony"
+                        : "stron"}{" "}
+                      (strony {customStart}–{customEnd})
+                    </span>
+                  ) : (
+                    <span className="text-red-600">Nieprawidłowy zakres stron</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -644,7 +760,12 @@ export function DischargeImportDialog({
                 <IconSparkles size={16} aria-hidden="true" />
                 <span>
                   Rozpocznij analizę ({currentTargetCount}{" "}
-                  {currentTargetCount === 1 ? "strona" : currentTargetCount < 5 ? "strony" : "stron"})
+                  {currentTargetCount === 1
+                    ? "strona"
+                    : currentTargetCount < 5
+                    ? "strony"
+                    : "stron"}
+                  )
                 </span>
               </Button>
             </div>
@@ -672,7 +793,7 @@ export function DischargeImportDialog({
                 )
               </li>
               <li className="is-active">Wyodrębnianie dat, parametrów laboratoryjnych i opisów USG</li>
-              <li className="is-active">Identyfikacja wizyt leczniczych i pomiarów wagi</li>
+              <li className="is-active">Weryfikacja ciągłości badań i pomiarów wagi</li>
             </ul>
           </div>
         )}
@@ -680,6 +801,22 @@ export function DischargeImportDialog({
         {/* Krok 3: Weryfikacja i podgląd (Review Wizard) */}
         {step === "review" && discharge && (
           <div className="discharge-review-step">
+            {/* Ostrzeżenie o ucięciu badania na granicy stron (Boundary Alert) */}
+            {discharge.boundary_alert?.has_cut_off_at_end && (
+              <div className="discharge-boundary-alert-banner" role="alert">
+                <IconAlertTriangle size={22} className="text-amber-800 shrink-0" aria-hidden="true" />
+                <div>
+                  <strong>Uwaga: badanie ucięte na końcu wybranego zakresu!</strong>
+                  <p>{discharge.boundary_alert.cut_off_description}</p>
+                  <p className="discharge-boundary-tip">
+                    💡 Wskazówka: Przy kolejnym imporcie zalecamy uwzględnić stronę{" "}
+                    <strong>{activeRange?.end}</strong> jako stronę początkową nowej partii, aby
+                    model scalił to badanie w całości bez brakujących parametrów.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Ostrzeżenie o niezgodności imienia pupila */}
             {isNameMismatch && (
               <div className="discharge-warning-banner">
@@ -769,9 +906,7 @@ export function DischargeImportDialog({
               >
                 <IconPill size={16} aria-hidden="true" />
                 <span>Zalecane leki</span>
-                <span className="discharge-tab-count">
-                  {discharge.medications.length}
-                </span>
+                <span className="discharge-tab-count">{discharge.medications.length}</span>
               </button>
             </div>
 
@@ -782,7 +917,8 @@ export function DischargeImportDialog({
                 <div className="discharge-tab-pane">
                   <div className="discharge-tab-header">
                     <p className="discharge-tab-description">
-                      Wykryto <strong>{totalLabsCount}</strong> badań. Zaznacz pozycje, które chcesz zapisać jako oficjalne wyniki w sekcji Badań.
+                      Wykryto <strong>{totalLabsCount}</strong> badań. Zaznacz pozycje, które chcesz
+                      zapisać jako oficjalne wyniki w sekcji Badań.
                     </p>
                     <div className="discharge-tab-actions">
                       <Button
@@ -803,7 +939,9 @@ export function DischargeImportDialog({
                   </div>
 
                   {discharge.lab_reports.length === 0 ? (
-                    <p className="discharge-empty-hint">Brak wyodrębnionych badań w tym fragmencie dokumentu.</p>
+                    <p className="discharge-empty-hint">
+                      Brak wyodrębnionych badań w tym fragmencie dokumentu.
+                    </p>
                   ) : (
                     <div className="discharge-items-list">
                       {discharge.lab_reports.map((report) => {
@@ -837,10 +975,16 @@ export function DischargeImportDialog({
                               <button
                                 type="button"
                                 className="discharge-expand-btn"
-                                onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
+                                onClick={() =>
+                                  setExpandedReportId(isExpanded ? null : report.id)
+                                }
                                 aria-label={isExpanded ? "Zwiń szczegóły" : "Rozwiń szczegóły"}
                               >
-                                {isExpanded ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
+                                {isExpanded ? (
+                                  <IconChevronUp size={18} />
+                                ) : (
+                                  <IconChevronDown size={18} />
+                                )}
                               </button>
                             </div>
 
@@ -867,7 +1011,9 @@ export function DischargeImportDialog({
                                       <tbody>
                                         {report.parameters.map((param, pIdx) => (
                                           <tr key={`${param.name}-${pIdx}`}>
-                                            <td><strong>{param.name}</strong></td>
+                                            <td>
+                                              <strong>{param.name}</strong>
+                                            </td>
                                             <td>{param.value}</td>
                                             <td>{param.reference || "—"}</td>
                                             <td>{param.unit || "—"}</td>
@@ -898,7 +1044,8 @@ export function DischargeImportDialog({
                 <div className="discharge-tab-pane">
                   <div className="discharge-tab-header">
                     <p className="discharge-tab-description">
-                      Wykryto <strong>{totalEventsCount}</strong> wizyt leczniczych. Zostaną dodane jako chronologiczne wpisy do Osi Czasu Zdrowia.
+                      Wykryto <strong>{totalEventsCount}</strong> wizyt leczniczych. Zostaną dodane
+                      jako chronologiczne wpisy do Osi Czasu Zdrowia.
                     </p>
                     <div className="discharge-tab-actions">
                       <Button
@@ -919,7 +1066,9 @@ export function DischargeImportDialog({
                   </div>
 
                   {discharge.clinical_events.length === 0 ? (
-                    <p className="discharge-empty-hint">Brak zarejestrowanych wizyt w tym dokumencie.</p>
+                    <p className="discharge-empty-hint">
+                      Brak zarejestrowanych wizyt w tym dokumencie.
+                    </p>
                   ) : (
                     <div className="discharge-items-list">
                       {discharge.clinical_events.map((event) => {
@@ -956,10 +1105,16 @@ export function DischargeImportDialog({
                                 <button
                                   type="button"
                                   className="discharge-expand-btn"
-                                  onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
+                                  onClick={() =>
+                                    setExpandedEventId(isExpanded ? null : event.id)
+                                  }
                                   aria-label={isExpanded ? "Zwiń opis" : "Rozwiń opis"}
                                 >
-                                  {isExpanded ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
+                                  {isExpanded ? (
+                                    <IconChevronUp size={18} />
+                                  ) : (
+                                    <IconChevronDown size={18} />
+                                  )}
                                 </button>
                               )}
                             </div>
@@ -985,7 +1140,8 @@ export function DischargeImportDialog({
                 <div className="discharge-tab-pane">
                   <div className="discharge-tab-header">
                     <p className="discharge-tab-description">
-                      Wykryto <strong>{totalWeightsCount}</strong> pomiarów wagi w dokumentacji. Zostaną zsynchronizowane z wykresem masy ciała pupila.
+                      Wykryto <strong>{totalWeightsCount}</strong> pomiarów wagi w dokumentacji.
+                      Zostaną zsynchronizowane z wykresem masy ciała pupila.
                     </p>
                     <div className="discharge-tab-actions">
                       <Button
@@ -1006,7 +1162,9 @@ export function DischargeImportDialog({
                   </div>
 
                   {discharge.measurements.filter((m) => m.type === "weight").length === 0 ? (
-                    <p className="discharge-empty-hint">Brak zarejestrowanych pomiarów wagi w tym dokumencie.</p>
+                    <p className="discharge-empty-hint">
+                      Brak zarejestrowanych pomiarów wagi w tym dokumencie.
+                    </p>
                   ) : (
                     <div className="discharge-weights-grid">
                       {discharge.measurements
@@ -1054,9 +1212,21 @@ export function DischargeImportDialog({
                             <strong>{med.name}</strong>
                           </div>
                           <div className="discharge-med-body">
-                            {med.dosage && <div><strong>Dawka:</strong> {med.dosage}</div>}
-                            {med.frequency && <div><strong>Częstotliwość:</strong> {med.frequency}</div>}
-                            {med.instructions && <div><strong>Zalecenia:</strong> {med.instructions}</div>}
+                            {med.dosage && (
+                              <div>
+                                <strong>Dawka:</strong> {med.dosage}
+                              </div>
+                            )}
+                            {med.frequency && (
+                              <div>
+                                <strong>Częstotliwość:</strong> {med.frequency}
+                              </div>
+                            )}
+                            {med.instructions && (
+                              <div>
+                                <strong>Zalecenia:</strong> {med.instructions}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1102,9 +1272,7 @@ export function DischargeImportDialog({
               <IconCheck size={40} />
             </div>
             <h3>Wypis został pomyślnie zaimportowany!</h3>
-            <p className="discharge-success-stats">
-              Zaktualizowano profil pupila o:
-            </p>
+            <p className="discharge-success-stats">Zaktualizowano profil pupila o:</p>
             <div className="discharge-success-badges">
               <div className="discharge-stat-badge">
                 <strong>{saveResult?.reports_count ?? 0}</strong>
@@ -1127,14 +1295,10 @@ export function DischargeImportDialog({
                   <strong>Dostępna kolejna część dokumentu!</strong>
                   <p>
                     W pliku pozostały jeszcze strony {activeRange.end + 1}–{activeRange.total}.
-                    Możesz od razu przejść do ich ekstrakcji.
+                    Aplikacja zapamiętała już zaimportowane strony {activeRange.start}–{activeRange.end}.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleNextChunkImport}
-                >
+                <Button type="button" variant="secondary" onClick={handleNextChunkImport}>
                   <span>Zaimportuj kolejną część</span>
                   <IconArrowRight size={16} aria-hidden="true" />
                 </Button>
