@@ -27,6 +27,7 @@ import "@/styles/medical-profile.css";
 import { listReports } from "@/features/medical/data";
 import { MedicalResults } from "@/features/medical/results";
 import { MedicalDocuments } from "@/features/medical/documents";
+import { DischargeImportButton } from "@/features/medical/discharge-import-button";
 import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
 import { getHouseholdDetails } from "@/features/household/data";
 import type { Metadata } from "next";
@@ -108,7 +109,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     [t.plec, t[pet.plec]], [t.kastracja, pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no],
     [t.identyfikacja, t[pet.identyfikacja]], ...(pet.numer_id ? [[t.numer_id, pet.numer_id]] : []),
   ];
-  return <Container className="pets-page household-record"><div className="household-record-toolbar"><Link href="/app">← {t.back}</Link><div className="household-record-toolbar-actions"><ShareRecordButton petId={pet.id} petName={pet.imie} /><ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink></div></div>
+  return <Container className="pets-page household-record"><div className="household-record-toolbar"><Link href="/app">← {t.back}</Link><div className="household-record-toolbar-actions"><DischargeImportButton pet={pet} householdId={pet.gospodarstwo_id} /><ShareRecordButton petId={pet.id} petName={pet.imie} /><ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink></div></div>
     <section className="household-cover">
       <Image src={assets.lunaCover} alt="" fill sizes="(min-width: 1280px) 1184px, 100vw" className="household-cover-image" preload />
       <div className="household-cover-top"><span>{t.profile}</span><small>{locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}{new Intl.DateTimeFormat(locale, {dateStyle:"medium"}).format(new Date(pet.updated_at))}</small></div>

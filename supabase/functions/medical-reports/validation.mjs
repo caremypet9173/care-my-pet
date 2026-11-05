@@ -1,5 +1,5 @@
 import {measurementValueType,validMeasurementValue} from './value-type.mjs';
-export const MAX_FILE = 6 * 1024 * 1024;
+export const MAX_FILE = 12 * 1024 * 1024;
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const mimeExtensions = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png' };
 export function validDate(value) {

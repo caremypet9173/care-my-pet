@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { HealthEvent } from "@/features/history/types";
 import { FormattedMedicalText } from "./formatted-text";
 import { PdfPreview } from "./pdf-preview";
+import { DischargeImportButton } from "./discharge-import-button";
 import type { MedicalReport } from "./types";
 
 type UnifiedDocument = {
@@ -362,10 +363,13 @@ export function MedicalDocuments({
             <h2>{t.heading}</h2>
             <p>{t.intro}</p>
           </div>
-          <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary">
-            <IconPlus size={18} aria-hidden="true" />
-            {t.add}
-          </ButtonLink>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+            <DischargeImportButton pet={{ id: petId, imie: "" }} />
+            <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary">
+              <IconPlus size={18} aria-hidden="true" />
+              {t.add}
+            </ButtonLink>
+          </div>
         </header>
         <div className="medical-documents-search">
           <label htmlFor={searchId}>{t.searchLabel}</label>

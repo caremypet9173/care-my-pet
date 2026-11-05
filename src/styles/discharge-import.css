@@ -1,0 +1,680 @@
+/* Style dla Inteligentnego Importera Wypisów z Lecznicy */
+
+.discharge-dialog {
+  margin: auto;
+  width: calc(100% - 2rem);
+  max-width: 860px;
+  max-height: calc(100dvh - 3rem);
+  padding: 0;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 1.15rem;
+  background: #ffffff;
+  color: var(--color-text, #1f2937);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.discharge-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+}
+
+.discharge-dialog-container {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 3rem);
+  overflow: hidden;
+}
+
+.discharge-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.65rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fafaf9;
+  gap: 1rem;
+}
+
+.discharge-header-content {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.discharge-badge-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #164d34;
+  background: #e1efe7;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.discharge-dialog-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text, #1f2937);
+}
+
+.discharge-dialog-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.discharge-close-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.discharge-close-btn:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.discharge-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1.5rem;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Krok 1: Upload */
+.discharge-upload-step {
+  padding: 2.25rem 1.75rem;
+}
+
+.discharge-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  border: 2px dashed #b8d4c5;
+  border-radius: 1rem;
+  background: #f8faf8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.discharge-dropzone:hover,
+.discharge-dropzone.is-dragging {
+  border-color: var(--color-primary, #1d7a4f);
+  background: #eef7f2;
+  transform: translateY(-1px);
+}
+
+.discharge-dropzone-icon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #e1efe7;
+  color: var(--color-primary, #1d7a4f);
+  margin-bottom: 1rem;
+}
+
+.discharge-dropzone h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.discharge-dropzone p {
+  margin: 0 0 1.25rem;
+  font-size: 0.82rem;
+  color: #6b7280;
+  max-width: 28rem;
+}
+
+.discharge-dropzone-features {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.discharge-dropzone-features span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  background: #ffffff;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Krok 2: Analiza AI */
+.discharge-analyzing-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+}
+
+.discharge-spinner-pulse {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #e1efe7;
+  color: #164d34;
+  margin-bottom: 1.25rem;
+  animation: discharge-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes discharge-pulse {
+  0% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(22, 77, 52, 0.4); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(22, 77, 52, 0); }
+  100% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(22, 77, 52, 0); }
+}
+
+.discharge-analyzing-step h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.discharge-analyzing-hint {
+  margin: 0 0 1.75rem;
+  font-size: 0.82rem;
+  color: #6b7280;
+  max-width: 26rem;
+}
+
+.discharge-analyzing-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+  text-align: left;
+}
+
+.discharge-analyzing-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.discharge-analyzing-steps li::before {
+  content: "✓";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e1efe7;
+  color: #164d34;
+  font-weight: 800;
+  font-size: 0.7rem;
+}
+
+/* Krok 3: Review Wizard */
+.discharge-review-step {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.discharge-warning-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  background: #fffbeb;
+  border-bottom: 1px solid #fef3c7;
+  color: #92400e;
+  font-size: 0.78rem;
+}
+
+.discharge-warning-banner p {
+  margin: 0.15rem 0 0;
+}
+
+.discharge-summary-card {
+  padding: 1rem 1.65rem;
+  background: #f8faf8;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.discharge-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.discharge-meta-item {
+  font-size: 0.82rem;
+  color: #374151;
+}
+
+.discharge-summary-text {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.discharge-tabs-nav {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1.65rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 0.5rem;
+  background: #fafaf9;
+  overflow-x: auto;
+}
+
+.discharge-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.95rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.discharge-tab-btn:hover {
+  color: #111827;
+}
+
+.discharge-tab-btn.is-active {
+  color: var(--color-primary, #1d7a4f);
+  border-bottom-color: var(--color-primary, #1d7a4f);
+}
+
+.discharge-tab-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.discharge-tab-btn.is-active .discharge-tab-badge {
+  background: #e1efe7;
+  color: #164d34;
+}
+
+.discharge-tab-content {
+  padding: 1.25rem 1.65rem;
+  overflow-y: auto;
+  max-height: 48vh;
+  flex: 1;
+}
+
+.discharge-list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+
+.discharge-list-hint {
+  font-size: 0.76rem;
+  color: #6b7280;
+}
+
+.discharge-toggle-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.discharge-mini-action {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.discharge-mini-action:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.discharge-items-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.discharge-item-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  padding: 0.75rem 1rem;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.discharge-item-card.is-selected {
+  border-color: #b8d4c5;
+  background: #fafdfb;
+}
+
+.discharge-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.discharge-item-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.discharge-item-checkbox input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--color-primary, #1d7a4f);
+  cursor: pointer;
+}
+
+.discharge-item-date {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #164d34;
+  background: #e1efe7;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.35rem;
+}
+
+.discharge-item-title-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.discharge-item-title-col strong {
+  font-size: 0.86rem;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discharge-item-sub {
+  font-size: 0.74rem;
+  color: #6b7280;
+}
+
+.discharge-expand-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 0.4rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.discharge-expand-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.discharge-item-expanded {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e5e7eb;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.discharge-parameters-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.discharge-parameters-table th {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  background: #f8faf8;
+  color: #4b5563;
+  font-weight: 700;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.discharge-parameters-table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1f2937;
+}
+
+.discharge-notes-preview {
+  font-size: 0.78rem;
+  background: #fafaf9;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid #f0ede6;
+}
+
+.discharge-desc-preview {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #374151;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+/* Siatka wag */
+.discharge-weights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.discharge-weight-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.discharge-weight-card.is-selected {
+  border-color: #b8d4c5;
+  background: #fafdfb;
+}
+
+.discharge-weight-info {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.discharge-weight-date {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.discharge-weight-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.discharge-weight-type {
+  font-size: 0.68rem;
+  color: #164d34;
+  font-weight: 600;
+}
+
+/* Siatka leków */
+.discharge-meds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.discharge-med-card {
+  padding: 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.65rem;
+  background: #fafaf9;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.discharge-med-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  color: #111827;
+}
+
+.discharge-med-meta {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.74rem;
+  color: #4b5563;
+  gap: 0.15rem;
+}
+
+.discharge-med-inst {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Stopka */
+.discharge-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.65rem;
+  border-top: 1px solid #e5e7eb;
+  background: #fafaf9;
+  gap: 1rem;
+}
+
+.discharge-footer-summary {
+  font-size: 0.82rem;
+  color: #374151;
+}
+
+.discharge-footer-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Krok 4: Sukces */
+.discharge-success-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+}
+
+.discharge-success-icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #e1efe7;
+  color: #164d34;
+  margin-bottom: 1.25rem;
+}
+
+.discharge-success-step h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.discharge-success-stats {
+  margin: 0 0 1.5rem;
+  font-size: 0.84rem;
+  color: #6b7280;
+}
+
+.discharge-success-badges {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.discharge-stat-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.85rem 1.35rem;
+  border-radius: 0.85rem;
+  background: #f8faf8;
+  border: 1px solid #b8d4c5;
+}
+
+.discharge-stat-badge strong {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #164d34;
+}
+
+.discharge-stat-badge span {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #4b5563;
+}
