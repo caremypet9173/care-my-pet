@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
+import { countPdfPages } from './pdf-counter.ts';
 import { MAX_FILE, uuid, mimeExtensions, validateReport, fileMatches } from './validation.mjs';
 import {fileHash,findDuplicate} from './file-hash.ts';
 import {validMeasurementValue} from './value-type.mjs';
@@ -171,6 +172,12 @@ Deno.serve(async req => {
       if(!Object.hasOwn(mimeExtensions,body.mime) || typeof body.file!=='string' || body.file.length>Math.ceil(MAX_FILE/3)*4)return reply({error:'invalid_file'},400);
       let file:Uint8Array;try{file=Uint8Array.from(atob(body.file),c=>c.charCodeAt(0));}catch{return reply({error:'invalid_file'},400);}
       if(!fileMatches(file,body.mime))return reply({error:'invalid_file'},400);
+      if(body.mime==='application/pdf'){
+        const pageCount = countPdfPages(file);
+        if(pageCount > 20){
+          return reply({error:'page_limit_exceeded',page_count:pageCount,max_allowed:20,message:`Dokument ma ${pageCount} stron. Maksymalny dopuszczalny limit pojedynczej analizy to 20 stron. Wybierz zakres stron w oknie importu.`},400);
+        }
+      }
       const {data:allowed,error:quotaError}=await client.rpc('take_medical_read_quota');
       if(quotaError)return reply({error:'ai_unavailable'},503);
       if(!allowed)return reply({error:'daily_limit'},429);

@@ -48,6 +48,8 @@ export async function extractClinicalDischarge(
     let message = errCode;
     if (errCode === "extraction_failed") {
       message = "Nie udało się wyodrębnić danych z dokumentu. Upewnij się, że plik PDF jest czytelnym wypisem z lecznicy.";
+    } else if (errCode === "page_limit_exceeded") {
+      message = details?.message || "Plik ma zbyt wiele stron. Maksymalny dopuszczalny limit pojedynczej analizy to 20 stron. Wybierz zakres stron w oknie importu.";
     } else if (errCode === "ai_unavailable") {
       message = "Usługa analizy AI jest chwilowo niedostępna. Spróbuj ponownie za chwilę.";
     } else if (errCode === "daily_limit" || errCode === "provider_limit") {
