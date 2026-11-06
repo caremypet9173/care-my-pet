@@ -290,7 +290,9 @@ export function DischargePdfPageViewer({
           </span>
         </div>
         <span className="discharge-pv-subhint">
-          Przewijaj w dół i zaznaczaj strony
+          {readOnly
+            ? "Przeglądaj zawartość dokumentu"
+            : "Przewijaj w dół i zaznaczaj strony"}
         </span>
       </div>
 

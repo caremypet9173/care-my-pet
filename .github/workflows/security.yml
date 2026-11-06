@@ -1,0 +1,93 @@
+name: Security & Quality Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Cotygodniowy automatyczny skan bezpieczeństwa w poniedziałki o 06:00 UTC
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # 1. Skanowanie podatności w zależnościach produkcyjnych npm (SCA)
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies (fail on High and Critical)
+        run: npm audit --audit-level=high --omit=dev
+
+  # 2. Wykrywanie wycieków kluczy i sekretów w historii Gita
+  secret-scanning:
+    name: Secret & Credential Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks to detect exposed credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 3. Weryfikacja jakości kodu, typów TypeScript i testów
+  quality-and-tests:
+    name: Typecheck, Lint & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify TypeScript types
+        run: npm run typecheck
+
+      - name: Verify ESLint rules
+        run: npm run lint
+
+      - name: Run Unit Tests
+        run: node --test tests/*.test.mjs
+
+  # 4. Statyczna analiza kodu pod kątem luk bezpieczeństwa (SAST - CodeQL)
+  codeql-analysis:
+    name: CodeQL Static Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL for JavaScript / TypeScript
+        uses: github/codeql-action/init@v3
+        with:
+          languages: "javascript-typescript"
+          queries: "security-extended,security-and-quality"
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

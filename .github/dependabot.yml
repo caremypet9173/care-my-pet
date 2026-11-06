@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Automatyczne monitorowanie i aktualizacje podatności w pakietach npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "security"
+    # Grupowanie aktualizacji narzędzi deweloperskich w jeden PR
+    groups:
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "@typescript-eslint/*"
+          - "eslint*"
+          - "typescript"
+          - "@fontsource-variable/*"
+
+  # Monitorowanie wersji akcji w GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "ci"
+      - "security"
