@@ -1,5 +1,6 @@
 import {listWeights} from "@/features/weight/data";
-import {WeightPanel} from "@/features/weight/weight-panel";
+import {listVitalMeasurements} from "@/features/measurements/data";
+import {HealthMeasurementsPanel} from "@/features/measurements/health-measurements-panel";
 import {listHealthEvents} from "@/features/history/data";
 import {HistoryPanel} from "@/features/history/history-panel";
 import {getHouseholdNotificationSettings, listPetScheduleItems} from "@/features/schedule/data";
@@ -65,12 +66,13 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   const resolvedSearch = await searchParams;
   const requestedReport = resolvedSearch.report ?? resolvedSearch.document;
   const tab = resolvedSearch.tab;
-  const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : tab === "weight" ? 4 : tab === "assistant" ? 5 : 0;
+  const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : (tab === "weight" || tab === "measurements") ? 4 : tab === "assistant" ? 5 : 0;
   const isAssistantTab = initialTab === 5;
   const isMedicalTab = initialTab === 2 || initialTab === 3 || !!requestedReport;
-  const [reports,weights,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails] = await Promise.all([
+  const [reports,weights,vitalMeasurements,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails] = await Promise.all([
     listReports(pet.id, requestedReport, { full: isMedicalTab }),
     listWeights(pet.id),
+    listVitalMeasurements(pet.id),
     listHealthEvents(pet.id),
     listPetScheduleItems(pet.id),
     getHouseholdNotificationSettings(),
@@ -115,7 +117,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       <div className="household-cover-top"><span>{t.profile}</span><small>{locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}{new Intl.DateTimeFormat(locale, {dateStyle:"medium"}).format(new Date(pet.updated_at))}</small></div>
       <div className="household-profile-glass"><div className="household-profile-identity"><div className="household-portrait"><PetIcon species={pet.gatunek} src={pet.avatar_url} name={pet.imie} />{!pet.avatar_url && <small>{d.noPhoto}</small>}</div><div className="household-profile-details"><div className="household-profile-name"><h1>{pet.imie}</h1><span className="household-tag">{t[pet.gatunek]}</span></div><p>{pet.rasa || t.missing} · {t[pet.plec]}</p><div className="household-profile-tags"><span className="household-tag">{t.kastracja}: {pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no}</span><span className="household-tag">{pet.identyfikacja === "none" || pet.identyfikacja === "unknown" ? `${t.identyfikacja}: ${t[pet.identyfikacja].toLocaleLowerCase(locale)}` : t[pet.identyfikacja]}{pet.numer_id ? `: ${pet.numer_id}` : ""}</span></div></div></div><div className="household-guardian-note"><IconHeart size={20} aria-hidden="true" /><div><strong>{t.notatki}</strong><p className="pet-notes">{pet.notatki || t.noNotes}</p></div></div></div>
     </section>
-    <RecordSections key={`${initialTab}-${requestedReport ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports}/>} weight={<WeightPanel petId={pet.id} petName={pet.imie} measurements={weights}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed}/>}><div className="household-record-stats">{[
+    <RecordSections key={`${initialTab}-${requestedReport ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports}/>} weight={<HealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed}/>}><div className="household-record-stats">{[
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
       { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },
@@ -167,7 +169,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       </section>
     </div><aside><section className="pet-panel household-summary-basics"><h2>{t.basics}</h2><dl className="pet-facts">
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-      <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Waga i rozwój →':'Weight and growth →'}</Link></dd></div>
+      <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Pomiary zdrowia →':'Health measurements →'}</Link></dd></div>
     </dl></section>
     <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} />
   </aside></div>

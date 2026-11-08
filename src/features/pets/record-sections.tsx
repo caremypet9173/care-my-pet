@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
-import { IconList, IconHistory, IconFlask, IconFiles, IconScale, IconSparkles } from "@tabler/icons-react";
+import { IconList, IconHistory, IconFlask, IconFiles, IconActivity, IconSparkles } from "@tabler/icons-react";
 import { dashboardMessages } from "./dashboard-messages";
 
 const TAB_QUERY_MAP: Record<number, string | null> = {
@@ -43,7 +43,7 @@ export function RecordSections({
     { id: 3, label: d.documents, icon: IconFiles, text: d.noDocuments },
     { id: 5, label: locale === "pl" ? "Asystent AI" : "AI Assistant", icon: IconSparkles, text: "" },
   ];
-  tabs.splice(1, 0, { id: 4, label: locale === "pl" ? "Waga i rozwój" : "Weight and growth", icon: IconScale, text: "" });
+  tabs.splice(1, 0, { id: 4, label: locale === "pl" ? "Pomiary zdrowia" : "Health measurements", icon: IconActivity, text: "" });
 
   function selectTab(tabId: number) {
     setSelected(tabId);

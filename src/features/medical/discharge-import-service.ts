@@ -158,6 +158,7 @@ export async function commitDischargeBatchImport(params: {
   reports_count: number;
   events_count: number;
   weights_count: number;
+  vitals_count: number;
 }> {
   const { petId, householdId, file, sha256, state } = params;
   const client = createClient();
@@ -235,6 +236,16 @@ export async function commitDischargeBatchImport(params: {
         value: m.value,
         note: m.note || "Wypis z lecznicy",
       })),
+    vitals: state.measurements
+      .filter((m) => m.selected && m.type !== "weight" && m.value > 0)
+      .map((m) => ({
+        id: m.id,
+        date: m.date,
+        metric_type: m.type,
+        value_primary: m.value,
+        context: "Wypis z lecznicy",
+        note: m.note || (m.raw_value ? `Odczyt: ${m.raw_value}` : "Wypis z lecznicy"),
+      })),
   };
 
   // 3. Atomowe wywołanie RPC
@@ -261,5 +272,6 @@ export async function commitDischargeBatchImport(params: {
     reports_count: result?.reports_count ?? 0,
     events_count: result?.events_count ?? 0,
     weights_count: result?.weights_count ?? 0,
+    vitals_count: result?.vitals_count ?? 0,
   };
 }

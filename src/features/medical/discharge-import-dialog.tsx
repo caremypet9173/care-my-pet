@@ -103,6 +103,7 @@ export function DischargeImportDialog({
     reports_count: number;
     events_count: number;
     weights_count: number;
+    vitals_count?: number;
   } | null>(null);
 
   const [petDetails, setPetDetails] = useState<{ imie: string; gospodarstwo_id?: string }>({
@@ -446,9 +447,9 @@ export function DischargeImportDialog({
   const totalEventsCount = discharge?.clinical_events.length ?? 0;
 
   const selectedWeightsCount =
-    discharge?.measurements.filter((m) => m.selected && m.type === "weight").length ?? 0;
+    discharge?.measurements.filter((m) => m.selected).length ?? 0;
   const totalWeightsCount =
-    discharge?.measurements.filter((m) => m.type === "weight").length ?? 0;
+    discharge?.measurements.length ?? 0;
 
   const totalSelected = selectedLabsCount + selectedEventsCount + selectedWeightsCount;
 
@@ -1279,13 +1280,13 @@ export function DischargeImportDialog({
                 </div>
               )}
 
-              {/* TAB 3: Waga */}
+              {/* TAB 3: Waga & Pomiary */}
               {activeTab === "weights" && (
                 <div className="discharge-tab-pane">
                   <div className="discharge-tab-header">
                     <p className="discharge-tab-description">
-                      Wykryto <strong>{totalWeightsCount}</strong> pomiarów wagi w dokumentacji.
-                      Zostaną zsynchronizowane z wykresem masy ciała pupila.
+                      Wykryto <strong>{totalWeightsCount}</strong> pomiarów (waga, ciśnienie, temperatura) w dokumentacji.
+                      Zostaną zsynchronizowane z profilem zdrowia pupila.
                     </p>
                     <div className="discharge-tab-actions">
                       <Button
@@ -1305,15 +1306,23 @@ export function DischargeImportDialog({
                     </div>
                   </div>
 
-                  {discharge.measurements.filter((m) => m.type === "weight").length === 0 ? (
+                  {discharge.measurements.length === 0 ? (
                     <p className="discharge-empty-hint">
-                      Brak zarejestrowanych pomiarów wagi w tym dokumencie.
+                      Brak zarejestrowanych pomiarów w tym dokumencie.
                     </p>
                   ) : (
                     <div className="discharge-weights-grid">
-                      {discharge.measurements
-                        .filter((m) => m.type === "weight")
-                        .map((meas) => (
+                      {discharge.measurements.map((meas) => {
+                        const icon =
+                          meas.type === "blood_pressure" ? "🩺 " : meas.type === "temperature" ? "🌡️ " : "⚖️ ";
+                        const label =
+                          meas.type === "blood_pressure"
+                            ? (meas.raw_value ? `Ciśnienie: ${meas.raw_value}` : `${meas.value} mmHg`)
+                            : meas.type === "temperature"
+                              ? (meas.raw_value ? `Temp: ${meas.raw_value}` : `${meas.value} °C`)
+                              : (meas.value ? `${meas.value} kg` : meas.raw_value);
+
+                        return (
                           <label
                             key={meas.id}
                             className={`discharge-weight-chip${meas.selected ? " is-selected" : ""}`}
@@ -1325,12 +1334,13 @@ export function DischargeImportDialog({
                             />
                             <div>
                               <span className="discharge-weight-value">
-                                {meas.value ? `${meas.value} kg` : meas.raw_value}
+                                {icon}{label}
                               </span>
                               <span className="discharge-weight-date">📅 {meas.date}</span>
                             </div>
                           </label>
-                        ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1427,8 +1437,8 @@ export function DischargeImportDialog({
                 <span>wpisów w Osi Czasu</span>
               </div>
               <div className="discharge-stat-badge">
-                <strong>{saveResult?.weights_count ?? 0}</strong>
-                <span>pomiarów masy ciała</span>
+                <strong>{(saveResult?.weights_count ?? 0) + (saveResult?.vitals_count ?? 0)}</strong>
+                <span>pomiarów masy i parametrów</span>
               </div>
             </div>
 

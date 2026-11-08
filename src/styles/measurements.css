@@ -1,0 +1,254 @@
+/* Sub-nawigacja między metrykami zdrowia */
+.measurements-subtabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  background-color: #f1f5f9;
+  border-radius: 9999px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.measurements-subtabs::-webkit-scrollbar {
+  display: none;
+}
+
+.measurements-subtab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease-in-out;
+}
+
+.measurements-subtab-btn:hover {
+  color: #0f172a;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.measurements-subtab-btn.active {
+  color: #0f766e;
+  background-color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.measurements-subtab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+.measurements-subtab-btn.active .measurements-subtab-badge {
+  background-color: #ccfbf1;
+  color: #0f766e;
+}
+
+/* Badge statusów klinicznych */
+.vital-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.stage-normal {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.stage-borderline {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.stage-hypertension {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.stage-severe {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.stage-cold {
+  background-color: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+
+/* Podgląd etapu w dialogach */
+.bp-stage-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  margin: 0.6rem 0 0.9rem;
+  font-size: 0.8125rem;
+}
+
+.bp-stage-preview strong {
+  font-size: 0.875rem;
+}
+
+/* Siatka pól w dialogach */
+.bp-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.measure-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Przełącznik jednostek glukozy */
+.glucose-input-unit-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.unit-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.unit-switch-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.glucose-conv-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+/* Legendy wykresów */
+.bp-chart-legend,
+.glucose-chart-legend,
+.temp-chart-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.bp-legend-item,
+.glucose-legend-item,
+.temp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bp-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.bp-dot-sap {
+  background-color: #0f766e;
+}
+
+.bp-dot-dap {
+  background-color: #0284c7;
+}
+
+.glucose-legend-band,
+.temp-legend-band {
+  width: 14px;
+  height: 8px;
+  background-color: rgba(16, 185, 129, 0.25);
+  border: 1px dashed #059669;
+  border-radius: 2px;
+}
+
+/* Wyróżnienia wartości w nagłówkach kart */
+.vital-metric-card-values {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.vital-metric-card-values strong {
+  font-size: 2rem;
+  line-height: 1.1;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.vital-metric-card-values strong span {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 0.25rem;
+}
+
+.vital-metric-hr-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.vital-context-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #475569;
+}
