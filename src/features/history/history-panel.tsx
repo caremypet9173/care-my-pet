@@ -8,6 +8,7 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconClock,
+  IconDroplet,
   IconFileText,
   IconFlask,
   IconHistory,
@@ -30,8 +31,12 @@ import type {MedicalReport} from '@/features/medical/types';
 import type {HealthEvent, HealthEventCategory} from './types';
 import {HistoryDialog} from './history-dialog';
 import {HistoryDeleteDialog} from './history-delete-dialog';
+import type {PetFluidTherapy} from '@/features/fluid-therapy/types';
+import {FluidDialog} from '@/features/fluid-therapy/fluid-dialog';
+import {FluidDeleteDialog} from '@/features/fluid-therapy/fluid-delete-dialog';
+import {deleteFluidTherapy} from '@/features/fluid-therapy/actions';
 
-type FilterCategory = 'all' | 'visit' | 'vaccination' | 'lab' | 'prevention';
+type FilterCategory = 'all' | 'visit' | 'fluid' | 'vaccination' | 'lab' | 'prevention';
 
 type TimelineItem =
   | {
@@ -49,6 +54,14 @@ type TimelineItem =
       date: string;
       createdAt: string;
       report: MedicalReport;
+    }
+  | {
+      kind: 'fluid';
+      id: string;
+      category: 'fluid';
+      date: string;
+      createdAt: string;
+      fluid: PetFluidTherapy;
     };
 
 export function HistoryPanel({
@@ -57,18 +70,21 @@ export function HistoryPanel({
   petName,
   initialEvents,
   reports,
+  initialFluids = [],
 }: {
   petId: string;
   householdId: string;
   petName: string;
   initialEvents: HealthEvent[];
   reports: MedicalReport[];
+  initialFluids?: PetFluidTherapy[];
 }) {
   const locale = useLocale();
   const pl = locale === 'pl';
   const router = useRouter();
 
   const [events, setEvents] = useState(initialEvents);
+  const [fluids, setFluids] = useState(initialFluids);
   const [filter, setFilter] = useState<FilterCategory>('all');
   const [query, setQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -76,6 +92,12 @@ export function HistoryPanel({
   const [deleting, setDeleting] = useState<HealthEvent | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const [fluidDialogOpen, setFluidDialogOpen] = useState(false);
+  const [editingFluid, setEditingFluid] = useState<PetFluidTherapy | null>(null);
+  const [deletingFluid, setDeletingFluid] = useState<PetFluidTherapy | null>(null);
+  const [fluidDeletePending, setFluidDeletePending] = useState(false);
+  const [fluidDeleteError, setFluidDeleteError] = useState('');
 
   const allItems = useMemo<TimelineItem[]>(() => {
     const manualItems: TimelineItem[] = events.map(ev => ({
@@ -94,15 +116,24 @@ export function HistoryPanel({
       createdAt: rep.confirmed_at,
       report: rep,
     }));
-    return [...manualItems, ...labItems].sort(
+    const fluidItems: TimelineItem[] = fluids.map(fl => ({
+      kind: 'fluid',
+      id: `fluid-${fl.id}`,
+      category: 'fluid',
+      date: fl.administered_on,
+      createdAt: fl.created_at,
+      fluid: fl,
+    }));
+    return [...manualItems, ...labItems, ...fluidItems].sort(
       (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
     );
-  }, [events, reports]);
+  }, [events, reports, fluids]);
 
   const counts = useMemo(() => {
     const map: Record<FilterCategory, number> = {
       all: allItems.length,
       visit: 0,
+      fluid: 0,
       vaccination: 0,
       lab: 0,
       prevention: 0,
@@ -137,6 +168,28 @@ export function HistoryPanel({
           description,
           event_date,
           source_name,
+        ].some(val => val?.toLocaleLowerCase(locale).includes(normalizedQuery));
+      }
+      if (item.kind === 'fluid') {
+        const {
+          fluid_name,
+          volume_ml,
+          medications_added,
+          clinic_name,
+          doctor_name,
+          catheter_status,
+          notes,
+          administered_on,
+        } = item.fluid;
+        return [
+          fluid_name,
+          String(volume_ml),
+          medications_added,
+          clinic_name,
+          doctor_name,
+          catheter_status,
+          notes,
+          administered_on,
         ].some(val => val?.toLocaleLowerCase(locale).includes(normalizedQuery));
       }
       const {title, laboratory, doctor, notes, test_date, rows} = item.report;
@@ -217,11 +270,46 @@ export function HistoryPanel({
     }
   }
 
+  async function confirmDeleteFluid() {
+    if (!deletingFluid || fluidDeletePending) return;
+    setFluidDeletePending(true);
+    setFluidDeleteError('');
+    try {
+      const res = await deleteFluidTherapy({
+        id: deletingFluid.id,
+        petId,
+        revision: deletingFluid.revision,
+      });
+      if (res.error) {
+        setFluidDeleteError(
+          res.isConflict
+            ? pl
+              ? 'Wpis został zmieniony w innej karcie. Odśwież stronę.'
+              : 'This entry changed elsewhere. Refresh the page.'
+            : pl
+              ? 'Nie udało się usunąć kroplówki. Spróbuj ponownie.'
+              : 'Could not delete infusion. Please retry.',
+        );
+        return;
+      }
+      setFluids(prev => prev.filter(f => f.id !== deletingFluid.id));
+      setDeletingFluid(null);
+      router.refresh();
+    } catch {
+      setFluidDeleteError(
+        pl ? 'Nie udało się usunąć wpisu. Spróbuj ponownie.' : 'Could not delete entry.',
+      );
+    } finally {
+      setFluidDeletePending(false);
+    }
+  }
+
   const filterButtons: {id: FilterCategory; label: string}[] = [
     {id: 'all', label: pl ? 'Wszystkie' : 'All'},
     {id: 'visit', label: pl ? 'Wizyty kontrolne' : 'Check-up visits'},
-    {id: 'vaccination', label: pl ? 'Szczepienia' : 'Vaccinations'},
+    {id: 'fluid', label: pl ? 'Płynoterapia i kroplówki' : 'Fluid therapy'},
     {id: 'lab', label: pl ? 'Badania lab' : 'Lab reports'},
+    {id: 'vaccination', label: pl ? 'Szczepienia' : 'Vaccinations'},
     {id: 'prevention', label: pl ? 'Leki i profilaktyka' : 'Meds & prevention'},
   ];
 
@@ -264,6 +352,17 @@ export function HistoryPanel({
                 </button>
               )}
             </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setEditingFluid(null);
+                setFluidDialogOpen(true);
+              }}
+            >
+              <IconDroplet size={16} aria-hidden="true" />
+              {pl ? 'Dodaj kroplówkę' : 'Add infusion'}
+            </Button>
             <Button
               size="sm"
               onClick={() => {
@@ -480,6 +579,124 @@ export function HistoryPanel({
                     );
                   }
 
+                  if (item.kind === 'fluid') {
+                    const fl = item.fluid;
+                    const routeLabel =
+                      fl.route === 'iv'
+                        ? pl
+                          ? 'Dożylna (IV — wenflon)'
+                          : 'Intravenous (IV)'
+                        : fl.route === 'sc'
+                          ? pl
+                            ? 'Podskórna (SC)'
+                            : 'Subcutaneous (SC)'
+                          : 'Doszpikowa (IO)';
+                    const locationLabel =
+                      fl.location === 'clinic'
+                        ? fl.clinic_name || (pl ? 'Lecznica weterynaryjna' : 'Vet clinic')
+                        : pl
+                          ? 'Podano w domu (opiekun)'
+                          : 'Administered at home';
+
+                    return (
+                      <li key={item.id} className="history-timeline-item is-fluid">
+                        <span className="history-node-icon is-fluid" aria-hidden="true">
+                          <IconDroplet size={20} />
+                        </span>
+
+                        <article className="pet-panel history-card is-fluid-card">
+                          <div className="history-card-top">
+                            <div className="history-card-heading">
+                              <div className="history-card-badges">
+                                <span className="history-category-tag is-fluid">
+                                  {pl ? 'Płynoterapia / Wlew' : 'Fluid therapy'}
+                                </span>
+                                <span className="history-date-tag">
+                                  <IconCalendarEvent size={14} aria-hidden="true" />
+                                  <time dateTime={fl.administered_on}>{formatDate(fl.administered_on)}</time>
+                                </span>
+                              </div>
+                              <h3>
+                                Kroplówka {fl.route === 'iv' ? 'dożylna (IV)' : fl.route === 'sc' ? 'podskórna (SC)' : 'IO'} — {fl.volume_ml} ml
+                              </h3>
+                            </div>
+
+                            <div className="history-card-status">
+                              <span className="history-status-pill is-done">
+                                <IconCheck size={14} aria-hidden="true" />
+                                {routeLabel}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="history-card-meta">
+                            <span>
+                              <strong>{pl ? 'Płyn bazowy:' : 'Base fluid:'}</strong> {fl.fluid_name}
+                            </span>
+                            <span>
+                              <IconBuildingHospital size={15} aria-hidden="true" />
+                              {locationLabel}
+                              {fl.doctor_name ? ` · ${fl.doctor_name}` : ''}
+                            </span>
+                          </div>
+
+                          {fl.medications_added && (
+                            <div className="history-card-desc">
+                              <strong>{pl ? 'Leki i dodatki we wlewie:' : 'Medications in infusion:'}</strong>
+                              <p className="mt-1 text-slate-700">{fl.medications_added}</p>
+                            </div>
+                          )}
+
+                          {fl.catheter_status && (
+                            <div className="history-fluid-catheter text-xs text-slate-600 bg-slate-50 p-2 rounded-md border border-slate-200">
+                              🩺 <strong>{pl ? 'Stan wenflonu / wkłucia:' : 'Catheter status:'}</strong> {fl.catheter_status}
+                            </div>
+                          )}
+
+                          {fl.notes && (
+                            <FormattedMedicalText
+                              text={fl.notes}
+                              className="history-card-desc"
+                            />
+                          )}
+
+                          <div className="history-card-footer">
+                            <div className="history-card-tags">
+                              <span className="history-product-pill">
+                                💧 {fl.volume_ml} ml
+                              </span>
+                            </div>
+
+                            <div className="history-card-actions">
+                              <button
+                                type="button"
+                                className="history-action-btn"
+                                onClick={() => {
+                                  setEditingFluid(fl);
+                                  setFluidDialogOpen(true);
+                                }}
+                              >
+                                <IconPencil size={15} aria-hidden="true" />
+                                {pl ? 'Edytuj' : 'Edit'}
+                              </button>
+                              <button
+                                type="button"
+                                className="history-action-btn is-danger"
+                                onClick={() => {
+                                  setFluidDeleteError('');
+                                  setDeletingFluid(fl);
+                                }}
+                              >
+                                <IconTrash size={15} aria-hidden="true" />
+                                {pl ? 'Usuń' : 'Delete'}
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      </li>
+                    );
+                  }
+
                   const rep = item.report;
                   const isDescriptive = rep.rows.length === 0;
                   const abnormalRows = rep.rows.filter(r => {
@@ -679,6 +896,47 @@ export function HistoryPanel({
             }
           }}
           onConfirm={confirmDelete}
+        />
+      )}
+
+      {fluidDialogOpen && (
+        <FluidDialog
+          petId={petId}
+          petName={petName}
+          therapy={editingFluid}
+          onClose={() => {
+            setFluidDialogOpen(false);
+            setEditingFluid(null);
+          }}
+          onSave={(saved) => {
+            setFluids((prev) => {
+              const next = prev.filter((item) => item.id !== saved.id);
+              return [saved, ...next].sort(
+                (a, b) => b.administered_on.localeCompare(a.administered_on) || b.created_at.localeCompare(a.created_at)
+              );
+            });
+            setFluidDialogOpen(false);
+            setEditingFluid(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {deletingFluid && (
+        <FluidDeleteDialog
+          title={`${petName} — Kroplówka`}
+          volumeMl={deletingFluid.volume_ml}
+          fluidName={deletingFluid.fluid_name}
+          date={formatDate(deletingFluid.administered_on)}
+          pending={fluidDeletePending}
+          error={fluidDeleteError}
+          onClose={() => {
+            if (!fluidDeletePending) {
+              setDeletingFluid(null);
+              setFluidDeleteError('');
+            }
+          }}
+          onConfirm={confirmDeleteFluid}
         />
       )}
     </div>

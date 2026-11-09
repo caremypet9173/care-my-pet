@@ -96,3 +96,58 @@ test("Body temperature physiological ranges for dogs and cats", () => {
   assert.equal(getTemperatureStatus(39.5), "fever");
   assert.equal(getTemperatureStatus(40.2), "fever");
 });
+
+test("Fluid therapy parameters validation", () => {
+  function validateFluid(params) {
+    const validRoutes = ["iv", "sc", "io"];
+    const validLocations = ["clinic", "home"];
+    const vol = Number(params.volume_ml);
+    if (!params.fluid_name || params.fluid_name.trim().length < 2) return false;
+    if (isNaN(vol) || vol <= 0 || vol > 5000) return false;
+    if (!validRoutes.includes(params.route)) return false;
+    if (!validLocations.includes(params.location)) return false;
+    return true;
+  }
+
+  // Poprawny wlew dożylny z lekami
+  assert.equal(
+    validateFluid({
+      fluid_name: "PWE (Płyn wieloelektrolitowy)",
+      volume_ml: 120,
+      route: "iv",
+      location: "clinic",
+    }),
+    true
+  );
+
+  // Poprawny wlew podskórny w domu
+  assert.equal(
+    validateFluid({
+      fluid_name: "NaCl 0.9%",
+      volume_ml: 100,
+      route: "sc",
+      location: "home",
+    }),
+    true
+  );
+
+  // Błędna objętość lub droga
+  assert.equal(
+    validateFluid({
+      fluid_name: "PWE",
+      volume_ml: 0,
+      route: "iv",
+      location: "clinic",
+    }),
+    false
+  );
+  assert.equal(
+    validateFluid({
+      fluid_name: "PWE",
+      volume_ml: 100,
+      route: "oral",
+      location: "clinic",
+    }),
+    false
+  );
+});
