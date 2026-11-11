@@ -23,7 +23,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import {Link} from '@/i18n/navigation';
-import {Button} from '@/components/ui/button';
+import {Button, ButtonLink} from '@/components/ui/button';
 import {createClient} from '@/lib/supabase/client';
 import {rangeStatus} from '@/features/medical/comparison';
 import {FormattedMedicalText} from '@/features/medical/formatted-text';
@@ -32,7 +32,6 @@ import type {HealthEvent, HealthEventCategory} from './types';
 import {HistoryDialog} from './history-dialog';
 import {HistoryDeleteDialog} from './history-delete-dialog';
 import type {PetFluidTherapy} from '@/features/fluid-therapy/types';
-import {FluidDialog} from '@/features/fluid-therapy/fluid-dialog';
 import {FluidDeleteDialog} from '@/features/fluid-therapy/fluid-delete-dialog';
 import {deleteFluidTherapy} from '@/features/fluid-therapy/actions';
 
@@ -93,8 +92,6 @@ export function HistoryPanel({
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  const [fluidDialogOpen, setFluidDialogOpen] = useState(false);
-  const [editingFluid, setEditingFluid] = useState<PetFluidTherapy | null>(null);
   const [deletingFluid, setDeletingFluid] = useState<PetFluidTherapy | null>(null);
   const [fluidDeletePending, setFluidDeletePending] = useState(false);
   const [fluidDeleteError, setFluidDeleteError] = useState('');
@@ -352,17 +349,14 @@ export function HistoryPanel({
                 </button>
               )}
             </div>
-            <Button
+            <ButtonLink
               size="sm"
               variant="secondary"
-              onClick={() => {
-                setEditingFluid(null);
-                setFluidDialogOpen(true);
-              }}
+              href={`/app/zwierzeta/${petId}/plynoterapia/nowa`}
             >
               <IconDroplet size={16} aria-hidden="true" />
               {pl ? 'Dodaj kroplówkę' : 'Add infusion'}
-            </Button>
+            </ButtonLink>
             <Button
               size="sm"
               onClick={() => {
@@ -668,17 +662,14 @@ export function HistoryPanel({
                             </div>
 
                             <div className="history-card-actions">
-                              <button
-                                type="button"
+                              <Link
+                                href={`/app/zwierzeta/${petId}/plynoterapia/${fl.id}/edytuj`}
                                 className="history-action-btn"
-                                onClick={() => {
-                                  setEditingFluid(fl);
-                                  setFluidDialogOpen(true);
-                                }}
+                                aria-label={pl ? 'Edytuj wpis płynoterapii' : 'Edit fluid therapy'}
                               >
                                 <IconPencil size={15} aria-hidden="true" />
-                                {pl ? 'Edytuj' : 'Edit'}
-                              </button>
+                                <span>{pl ? 'Edytuj' : 'Edit'}</span>
+                              </Link>
                               <button
                                 type="button"
                                 className="history-action-btn is-danger"
@@ -899,28 +890,6 @@ export function HistoryPanel({
         />
       )}
 
-      {fluidDialogOpen && (
-        <FluidDialog
-          petId={petId}
-          petName={petName}
-          therapy={editingFluid}
-          onClose={() => {
-            setFluidDialogOpen(false);
-            setEditingFluid(null);
-          }}
-          onSave={(saved) => {
-            setFluids((prev) => {
-              const next = prev.filter((item) => item.id !== saved.id);
-              return [saved, ...next].sort(
-                (a, b) => b.administered_on.localeCompare(a.administered_on) || b.created_at.localeCompare(a.created_at)
-              );
-            });
-            setFluidDialogOpen(false);
-            setEditingFluid(null);
-            router.refresh();
-          }}
-        />
-      )}
 
       {deletingFluid && (
         <FluidDeleteDialog

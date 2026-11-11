@@ -21,3 +21,24 @@ export async function listFluidTherapies(petId: string): Promise<PetFluidTherapy
 
   return (data || []) as PetFluidTherapy[];
 }
+
+export async function getFluidTherapy(
+  petId: string,
+  therapyId: string
+): Promise<PetFluidTherapy | null> {
+  const client = await createClient();
+  if (!client) throw new Error("Supabase unavailable");
+
+  const { data, error } = await client
+    .from("pet_fluid_therapy")
+    .select("*")
+    .eq("id", therapyId)
+    .eq("pet_id", petId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load fluid therapy: ${error.message}`);
+  }
+
+  return (data || null) as PetFluidTherapy | null;
+}
