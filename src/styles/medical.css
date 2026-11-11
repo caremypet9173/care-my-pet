@@ -973,10 +973,11 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   align-items: center;
 }
 
+.medical-review .fluid-volume-input-wrap input:not([type=checkbox]),
 .fluid-volume-input-wrap input {
   width: 100%;
   min-height: 40px;
-  padding: 0.5rem 3.5rem 0.5rem 0.75rem;
+  padding: 0.5rem 3.25rem 0.5rem 0.75rem;
   border: 1px solid #cbd5e1;
   border-radius: 0.5rem;
   background-color: #ffffff;
