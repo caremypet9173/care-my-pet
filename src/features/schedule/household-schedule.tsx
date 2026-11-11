@@ -105,6 +105,40 @@ function formatMonthHeading(ym: string, locale: string) {
   }).format(new Date(Date.UTC(y, m - 1, 1)));
 }
 
+/** Ustala początkowy miesiąc i dzień w kalendarzu z uwzględnieniem aktywnych leków na dziś. */
+function resolveInitialFocus(
+  todayIso: string,
+  scheduleItems: ScheduleItem[],
+  healthEvents: HealthEvent[],
+  medicationSchedules: MedicationSchedule[],
+): { monthIso: string; dayIso: string } {
+  const plannedDates = [
+    ...scheduleItems
+      .filter((it) => it.status === "planned")
+      .map((it) => it.scheduled_date),
+    ...healthEvents
+      .filter((ev) => ev.next_due_date !== null)
+      .map((ev) => ev.next_due_date!),
+  ].sort();
+  const hasActiveMedToday = medicationSchedules.some(
+    (s) =>
+      s.is_active &&
+      s.start_date <= todayIso &&
+      (!s.end_date || s.end_date >= todayIso),
+  );
+  const currentYm = todayIso.slice(0, 7);
+  const hasCurrentMonth =
+    hasActiveMedToday || plannedDates.some((d) => d.startsWith(currentYm));
+  const monthIso = hasCurrentMonth
+    ? todayIso
+    : (plannedDates.find((d) => d >= todayIso) ?? plannedDates[0] ?? todayIso);
+  const dayIso =
+    hasActiveMedToday || plannedDates.includes(todayIso)
+      ? todayIso
+      : (plannedDates.find((d) => d >= todayIso) ?? plannedDates[0] ?? todayIso);
+  return { monthIso, dayIso };
+}
+
 export function HouseholdSchedule({
   pets,
   initialScheduleItems,
@@ -202,37 +236,24 @@ export function HouseholdSchedule({
     year: number;
     month: number;
   }>(() => {
-    const plannedDates = [
-      ...initialScheduleItems
-        .filter((it) => it.status === "planned")
-        .map((it) => it.scheduled_date),
-      ...initialHealthEvents
-        .filter((ev) => ev.next_due_date !== null)
-        .map((ev) => ev.next_due_date!),
-    ].sort();
-    const currentYm = todayIso.slice(0, 7);
-    const hasCurrentMonth = plannedDates.some((d) => d.startsWith(currentYm));
-    const targetIso = hasCurrentMonth
-      ? todayIso
-      : (plannedDates.find((d) => d >= todayIso) ??
-        plannedDates[0] ??
-        todayIso);
-    const [y, m] = targetIso.split("-").map(Number);
+    const { monthIso } = resolveInitialFocus(
+      todayIso,
+      initialScheduleItems,
+      initialHealthEvents,
+      initialMedicationSchedules,
+    );
+    const [y, m] = monthIso.split("-").map(Number);
     return { year: y, month: m - 1 };
   });
-  const [selectedDayIso, setSelectedDayIso] = useState<string>(() => {
-    const plannedDates = [
-      ...initialScheduleItems
-        .filter((it) => it.status === "planned")
-        .map((it) => it.scheduled_date),
-      ...initialHealthEvents
-        .filter((ev) => ev.next_due_date !== null)
-        .map((ev) => ev.next_due_date!),
-    ].sort();
-    return (
-      plannedDates.find((d) => d >= todayIso) ?? plannedDates[0] ?? todayIso
-    );
-  });
+  const [selectedDayIso, setSelectedDayIso] = useState<string>(
+    () =>
+      resolveInitialFocus(
+        todayIso,
+        initialScheduleItems,
+        initialHealthEvents,
+        initialMedicationSchedules,
+      ).dayIso,
+  );
   const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
 
   useEffect(() => {

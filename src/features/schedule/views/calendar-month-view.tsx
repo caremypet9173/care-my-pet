@@ -4,6 +4,46 @@ import type React from "react";
 import { IconCalendarEvent, IconPill, IconPlus } from "@tabler/icons-react";
 import type { DisplayLayout, UnifiedScheduleEntry } from "../calendar-utils";
 
+type MobileDotType =
+  | "overdue"
+  | "visit"
+  | "vaccination"
+  | "lab"
+  | "prevention"
+  | "skipped"
+  | "completed";
+
+const DOT_PRIORITY: readonly MobileDotType[] = [
+  "overdue",
+  "visit",
+  "vaccination",
+  "lab",
+  "prevention",
+  "skipped",
+  "completed",
+];
+
+/** Wybiera maksymalnie 4 unikalne znaczniki statusu/kategorii dla widoku kropkowego na mobile. */
+function getMobileDotMarkers(
+  dayItems: UnifiedScheduleEntry[],
+  todayIso: string,
+): MobileDotType[] {
+  if (dayItems.length === 0) return [];
+  const present = new Set<MobileDotType>();
+  for (const ev of dayItems) {
+    if (ev.status === "planned" && ev.date < todayIso) {
+      present.add("overdue");
+    } else if (ev.status === "completed") {
+      present.add("completed");
+    } else if (ev.status === "skipped") {
+      present.add("skipped");
+    } else {
+      present.add(ev.category);
+    }
+  }
+  return DOT_PRIORITY.filter((type) => present.has(type)).slice(0, 4);
+}
+
 interface CalendarMonthViewProps {
   weekdayLabels: string[];
   monthCells: Array<{
@@ -45,6 +85,17 @@ export function CalendarMonthView({
   formatDate,
   renderCompactRow,
 }: CalendarMonthViewProps) {
+  function handleCellSelect(iso: string) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 48rem)").matches
+    ) {
+      setSelectedDayIso(iso);
+    } else {
+      goToDayView(iso);
+    }
+  }
+
   return (
     <div className="schedule-month-wrapper">
       <div className="schedule-month-grid" role="grid">
@@ -60,6 +111,7 @@ export function CalendarMonthView({
 
         {monthCells.map((cell) => {
           const dayItems = entriesByDate.get(cell.iso) ?? [];
+          const dayDots = getMobileDotMarkers(dayItems, todayIso);
           const isToday = cell.iso === todayIso;
           const isSelected = cell.iso === selectedDayIso;
 
@@ -69,12 +121,12 @@ export function CalendarMonthView({
               role="gridcell"
               tabIndex={0}
               aria-selected={isSelected}
-              onClick={() => goToDayView(cell.iso)}
+              onClick={() => handleCellSelect(cell.iso)}
               onDoubleClick={() => openNewDialogForDate(cell.iso)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  goToDayView(cell.iso);
+                  handleCellSelect(cell.iso);
                 }
               }}
               className={`schedule-day-cell${!cell.inCurrentMonth ? " is-outside" : ""}${isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""} cursor-pointer`}
@@ -103,6 +155,17 @@ export function CalendarMonthView({
                   +
                 </button>
               </div>
+
+              {dayDots.length > 0 && (
+                <div className="schedule-day-dots" aria-hidden="true">
+                  {dayDots.map((dotType) => (
+                    <span
+                      key={dotType}
+                      className={`schedule-day-dot is-${dotType}`}
+                    />
+                  ))}
+                </div>
+              )}
 
               <div className="schedule-day-events">
                 {dayItems.slice(0, 3).map((ev) => {
@@ -153,6 +216,11 @@ export function CalendarMonthView({
             {pl
               ? `Terminy w dniu ${formatDate(selectedDayIso)}`
               : `Items on ${formatDate(selectedDayIso)}`}
+            {selectedDayIso === todayIso && (
+              <span className="schedule-gcal-today-badge">
+                {pl ? "Dzisiaj" : "Today"}
+              </span>
+            )}
           </h3>
           <div className="schedule-selected-day-actions">
             <button
