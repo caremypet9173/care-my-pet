@@ -1709,10 +1709,45 @@
   .household-digest > div + div { border: 0; padding: 0; }
 }
 @media (max-width: 48rem) {
+  .pets-page { padding-block: 1.15rem 5rem; }
+  .pets-heading { margin-block: 0 1rem; gap: .75rem; }
   .household-header > .container { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
   .household-header-actions { margin: 0; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
   .household-brand > span { padding-left: 3rem; }
-  .pets-grid, .household-digest, .household-record-columns { grid-template-columns: minmax(0, 1fr); }
+  .pets-grid, .household-record-columns { grid-template-columns: minmax(0, 1fr); }
+  .household-digest { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: .85rem; gap: .65rem .75rem; margin-bottom: 1.25rem; }
+  .household-digest > div { gap: .5rem; align-items: flex-start; }
+  .household-digest > div + div { border-top: 0; padding-top: 0; }
+  .household-digest > div:nth-child(n+3) { padding-top: .6rem; border-top: 1px solid var(--color-border); }
+  .household-digest .digest-icon { width: 2rem; height: 2rem; border-radius: .55rem; }
+  .household-digest .digest-icon svg { width: 17px; height: 17px; }
+  .household-digest strong { font-size: .75rem; line-height: 1.25; display: block; }
+  .household-digest p { font-size: .65rem; margin-top: .12rem; line-height: 1.3; }
+  .pets-grid { gap: .75rem; }
+  .pet-card { padding: .85rem; gap: .55rem; border-radius: 1rem; }
+  .household-card-identity { gap: .65rem; align-items: flex-start; }
+  .household-card-identity .household-pet-avatar { width: 2.75rem; height: 2.75rem; }
+  .household-card-identity .household-pet-avatar svg { width: 1.75rem; height: 1.75rem; }
+  .household-card-identity > div:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .4rem; }
+  .household-card-identity h3 { flex: 1 0 100%; font-size: .9375rem; line-height: 1.2; gap: .35rem; margin: 0; }
+  .household-card-identity p { margin: 0; font-size: .6875rem; line-height: 1.3; }
+  .household-card-identity .household-tag { font-size: .625rem; padding: .08rem .42rem; }
+  .household-card-notice { padding: .42rem .65rem; border-radius: .55rem; align-items: center; gap: .45rem; }
+  .household-card-notice svg { width: 15px; height: 15px; }
+  .household-card-notice strong { font-size: .7rem; display: block; line-height: 1.3; }
+  .household-card-notice p { display: none; }
+  .household-card-facts { display: grid; gap: .22rem; font-size: .7rem; padding-top: .4rem; border-top: 1px dashed var(--color-border); margin: 0; }
+  .household-card-facts:not(:has(> div:not(.is-empty))) { display: none; }
+  .household-card-facts > div { margin-bottom: 0; gap: .5rem; align-items: baseline; line-height: 1.35; }
+  .household-card-facts > div.is-empty { display: none; }
+  .household-card-facts dd { text-align: right; overflow-wrap: anywhere; }
+  .pet-card .household-card-link { min-height: 36px; padding: .35rem .75rem; font-size: .75rem; border-radius: .6rem; margin-top: .1rem; }
+  .pet-card--add { min-height: auto; flex-direction: row; justify-content: flex-start; align-items: center; text-align: left; padding: .75rem .85rem; gap: .75rem; }
+  .pet-card--add .add-pet-icon { width: 2.5rem; height: 2.5rem; border-radius: .75rem; flex-shrink: 0; }
+  .pet-card--add .add-pet-icon svg { width: 20px; height: 20px; }
+  .pet-card--add h3 { font-size: .82rem; margin: 0; line-height: 1.25; flex: 1; min-width: 0; }
+  .pet-card--add p { display: none; }
+  .pet-card--add .household-add-label { margin-left: auto; padding: .35rem .65rem; font-size: .72rem; white-space: nowrap; flex-shrink: 0; }
   .household-record-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
   .household-record-stats section { padding: .75rem .85rem; border-radius: .75rem; }
   .household-record-stats svg { width: 18px; height: 18px; }
@@ -1731,7 +1766,6 @@
   #record-panel-0 > .household-record-columns > div > .pet-panel { margin-bottom: 0; padding: 1rem; }
   #record-panel-0 > * { order: 4; }
   .shared-vet-page .household-record-columns > aside { order: -1; }
-  .household-digest > div + div { padding-top: .75rem; border-top: 1px solid var(--color-border); }
   .household-section-heading > span { display: none; }
   .household-calendar { padding: 1.25rem; }
   .household-calendar-link { flex-wrap: wrap; }

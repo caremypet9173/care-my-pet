@@ -220,13 +220,17 @@ export function HouseholdDashboard({
               </div>
 
               <dl className="household-card-facts">
-                <div>
+                <div className={!lastVisitEv ? "is-empty" : undefined}>
                   <dt>{d.lastVisit}</dt>
                   <dd>
                     {lastVisitEv ? formatDate(lastVisitEv.event_date) : "—"}
                   </dd>
                 </div>
-                <div>
+                <div
+                  className={
+                    !petUpcoming && !latestPreventionEv ? "is-empty" : undefined
+                  }
+                >
                   <dt>{d.prevention}</dt>
                   <dd>
                     {petUpcoming
@@ -236,7 +240,7 @@ export function HouseholdDashboard({
                         : "—"}
                   </dd>
                 </div>
-                <div>
+                <div className={!latestWithClinic ? "is-empty" : undefined}>
                   <dt>{d.clinic}</dt>
                   <dd>{latestWithClinic ? latestWithClinic.clinic : "—"}</dd>
                 </div>
