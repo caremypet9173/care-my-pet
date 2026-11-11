@@ -63,13 +63,15 @@ type TimelineItem =
       fluid: PetFluidTherapy;
     };
 
+const EMPTY_FLUIDS: PetFluidTherapy[] = [];
+
 export function HistoryPanel({
   petId,
   householdId,
   petName,
   initialEvents,
   reports,
-  initialFluids = [],
+  initialFluids = EMPTY_FLUIDS,
 }: {
   petId: string;
   householdId: string;
@@ -82,8 +84,19 @@ export function HistoryPanel({
   const pl = locale === 'pl';
   const router = useRouter();
 
+  const [prevInitialEvents, setPrevInitialEvents] = useState(initialEvents);
   const [events, setEvents] = useState(initialEvents);
+  if (initialEvents !== prevInitialEvents) {
+    setPrevInitialEvents(initialEvents);
+    setEvents(initialEvents);
+  }
+
+  const [prevInitialFluids, setPrevInitialFluids] = useState(initialFluids);
   const [fluids, setFluids] = useState(initialFluids);
+  if (initialFluids !== prevInitialFluids) {
+    setPrevInitialFluids(initialFluids);
+    setFluids(initialFluids);
+  }
   const [filter, setFilter] = useState<FilterCategory>('all');
   const [query, setQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);

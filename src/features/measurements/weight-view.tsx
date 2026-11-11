@@ -27,7 +27,12 @@ export function WeightView({
   const pl = locale === "pl";
   const router = useRouter();
 
+  const [prevMeasurements, setPrevMeasurements] = useState(measurements);
   const [rows, setRows] = useState(measurements);
+  if (measurements !== prevMeasurements) {
+    setPrevMeasurements(measurements);
+    setRows(measurements);
+  }
   const [editing, setEditing] = useState<WeightMeasurement | null | undefined>();
 
   const format = (n: number) =>

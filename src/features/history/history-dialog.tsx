@@ -31,6 +31,7 @@ type Props = {
   petName: string;
   event: HealthEvent | null;
   defaultCategory?: HealthEventCategory;
+  focusAiUpload?: boolean;
   onClose: () => void;
   onSave: (row: HealthEvent) => void;
 };
@@ -41,12 +42,14 @@ export function HistoryDialog({
   petName,
   event,
   defaultCategory = 'visit',
+  focusAiUpload = false,
   onClose,
   onSave,
 }: Props) {
   const pl = useLocale() === 'pl';
   const dialog = useRef<HTMLDialogElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const uploadRef = useRef<{id: string; path: string; uploaded: boolean} | null>(null);
   const savedRef = useRef(false);
 
@@ -101,6 +104,12 @@ export function HistoryDialog({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (focusAiUpload && !event) {
+      uploadButtonRef.current?.focus();
+    }
+  }, [focusAiUpload, event]);
 
   async function selectFile(next?: File) {
     if (!next || busy) return;
@@ -466,7 +475,7 @@ export function HistoryDialog({
 
         <fieldset disabled={busy}>
           <div
-            className={`history-ai-box${dragging ? ' is-dragging' : ''}`}
+            className={`history-ai-box${dragging ? ' is-dragging' : ''}${focusAiUpload && !file ? ' is-highlighted' : ''}`}
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -500,6 +509,7 @@ export function HistoryDialog({
                   </small>
                 </div>
                 <button
+                  ref={uploadButtonRef}
                   type="button"
                   className="history-ai-upload-btn"
                   onClick={() => fileInput.current?.click()}

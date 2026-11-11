@@ -40,7 +40,12 @@ export function BloodPressureView({
   const pl = locale === "pl";
   const router = useRouter();
 
+  const [prevInitialRows, setPrevInitialRows] = useState(initialRows);
   const [rows, setRows] = useState(initialRows);
+  if (initialRows !== prevInitialRows) {
+    setPrevInitialRows(initialRows);
+    setRows(initialRows);
+  }
   const [editing, setEditing] = useState<VitalMeasurement | null | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<VitalMeasurement | null>(null);
   const [deleting, setDeleting] = useState(false);

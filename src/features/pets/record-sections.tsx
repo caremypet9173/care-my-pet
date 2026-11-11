@@ -1,8 +1,9 @@
 "use client";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
 import { IconList, IconHistory, IconFlask, IconFiles, IconActivity, IconSparkles } from "@tabler/icons-react";
 import { dashboardMessages } from "./dashboard-messages";
+import { usePetQuickAddOptional } from "./pet-quick-actions";
 
 const TAB_QUERY_MAP: Record<number, string | null> = {
   0: null,
@@ -32,9 +33,37 @@ export function RecordSections({
 }) {
   const locale = useLocale();
   const d = dashboardMessages[locale];
+  const quickAdd = usePetQuickAddOptional();
+  const navTarget = quickAdd?.navTarget ?? null;
   const [selected, setSelected] = useState(initialTab);
   const [visited, setVisited] = useState<Set<number>>(() => new Set([initialTab]));
+  const [prevNavSeq, setPrevNavSeq] = useState<number>(navTarget?.seq ?? 0);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  if (navTarget && navTarget.seq !== prevNavSeq) {
+    setPrevNavSeq(navTarget.seq);
+    setSelected(navTarget.tab);
+    setVisited((prev) => {
+      if (prev.has(navTarget.tab)) return prev;
+      const next = new Set(prev);
+      next.add(navTarget.tab);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (!navTarget) return;
+    try {
+      const url = new URL(window.location.href);
+      const queryVal = TAB_QUERY_MAP[navTarget.tab];
+      if (queryVal) {
+        url.searchParams.set("tab", queryVal);
+      } else {
+        url.searchParams.delete("tab");
+      }
+      window.history.replaceState(null, "", url.pathname + url.search);
+    } catch {}
+  }, [navTarget]);
 
   const tabs = [
     { id: 0, label: d.summary, icon: IconList, text: "" },

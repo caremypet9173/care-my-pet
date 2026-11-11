@@ -139,13 +139,17 @@ function resolveInitialFocus(
   return { monthIso, dayIso };
 }
 
+const EMPTY_REPORTS: CalendarReportSummary[] = [];
+const EMPTY_MED_SCHEDULES: MedicationSchedule[] = [];
+const EMPTY_MED_LOGS: MedicationLog[] = [];
+
 export function HouseholdSchedule({
   pets,
   initialScheduleItems,
   initialHealthEvents,
-  initialReports = [],
-  initialMedicationSchedules = [],
-  initialMedicationLogs = [],
+  initialReports = EMPTY_REPORTS,
+  initialMedicationSchedules = EMPTY_MED_SCHEDULES,
+  initialMedicationLogs = EMPTY_MED_LOGS,
   initialNotificationSettings,
   fixedPetId,
   memberNames = {},
@@ -192,7 +196,14 @@ export function HouseholdSchedule({
     setHealthEvents(initialHealthEvents);
   }
 
-  const [reports] = useState<CalendarReportSummary[]>(initialReports);
+  const [prevInitialReports, setPrevInitialReports] =
+    useState<CalendarReportSummary[]>(initialReports);
+  const [reports, setReports] =
+    useState<CalendarReportSummary[]>(initialReports);
+  if (initialReports !== prevInitialReports) {
+    setPrevInitialReports(initialReports);
+    setReports(initialReports);
+  }
 
   const [prevMedicationSchedules, setPrevMedicationSchedules] =
     useState<MedicationSchedule[]>(initialMedicationSchedules);

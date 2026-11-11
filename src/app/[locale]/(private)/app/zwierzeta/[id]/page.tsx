@@ -29,7 +29,11 @@ import "@/styles/medical-profile.css";
 import { listReports } from "@/features/medical/data";
 import { MedicalResults } from "@/features/medical/results";
 import { MedicalDocuments } from "@/features/medical/documents";
-import { DischargeImportButton } from "@/features/medical/discharge-import-button";
+import {
+  PetQuickAccessStrip,
+  PetQuickAddProvider,
+  PetQuickAddToolbarButton,
+} from "@/features/pets/pet-quick-actions";
 import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
 import { getHouseholdDetails } from "@/features/household/data";
 import type { Metadata } from "next";
@@ -113,13 +117,13 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     [t.plec, t[pet.plec]], [t.kastracja, pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no],
     [t.identyfikacja, t[pet.identyfikacja]], ...(pet.numer_id ? [[t.numer_id, pet.numer_id]] : []),
   ];
-  return <Container className="pets-page household-record"><div className="household-record-toolbar"><Link href="/app">← {t.back}</Link><div className="household-record-toolbar-actions"><DischargeImportButton pet={pet} householdId={pet.gospodarstwo_id} /><ShareRecordButton petId={pet.id} petName={pet.imie} /><ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink></div></div>
+  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><Link href="/app">← {t.back}</Link><div className="household-record-toolbar-actions"><PetQuickAddToolbarButton /><ShareRecordButton petId={pet.id} petName={pet.imie} /><ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink></div></div>
     <section className="household-cover">
       <Image src={assets.lunaCover} alt="" fill sizes="(min-width: 1280px) 1184px, 100vw" className="household-cover-image" preload />
       <div className="household-cover-top"><span>{t.profile}</span><small>{locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}{new Intl.DateTimeFormat(locale, {dateStyle:"medium"}).format(new Date(pet.updated_at))}</small></div>
       <div className="household-profile-glass"><div className="household-profile-identity"><div className="household-portrait"><PetIcon species={pet.gatunek} src={pet.avatar_url} name={pet.imie} />{!pet.avatar_url && <small>{d.noPhoto}</small>}</div><div className="household-profile-details"><div className="household-profile-name"><h1>{pet.imie}</h1><span className="household-tag">{t[pet.gatunek]}</span></div><p>{pet.rasa || t.missing} · {t[pet.plec]}</p><div className="household-profile-tags"><span className="household-tag">{t.kastracja}: {pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no}</span><span className="household-tag">{pet.identyfikacja === "none" || pet.identyfikacja === "unknown" ? `${t.identyfikacja}: ${t[pet.identyfikacja].toLocaleLowerCase(locale)}` : t[pet.identyfikacja]}{pet.numer_id ? `: ${pet.numer_id}` : ""}</span></div></div></div><div className="household-guardian-note"><IconHeart size={20} aria-hidden="true" /><div><strong>{t.notatki}</strong><p className="pet-notes">{pet.notatki || t.noNotes}</p></div></div></div>
     </section>
-    <RecordSections key={`${initialTab}-${requestedReport ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids}/>} weight={<HealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed}/>}><div className="household-record-stats">{[
+    <RecordSections key={`${initialTab}-${requestedReport ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids}/>} weight={<HealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed}/>}><PetQuickAccessStrip /><div className="household-record-stats">{[
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
       { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },
@@ -177,5 +181,6 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   </aside></div>
     <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} />
     </RecordSections>
+    </PetQuickAddProvider>
   </Container>;
 }

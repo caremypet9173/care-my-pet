@@ -443,6 +443,7 @@
 
 .history-ai-box{display:grid;gap:.5rem;padding:.65rem .85rem;border-radius:.75rem;border:1px dashed #94b3a3;background:#f4faf6;margin-bottom:.1rem;transition:border-color .15s,background-color .15s,box-shadow .15s}
 .history-ai-box.is-dragging{border-color:#164d34;background:#e4f3ea;box-shadow:0 0 0 3px #164d3424}
+.history-ai-box.is-highlighted{border-style:solid;border-width:1.5px;border-color:#164d34;background:#eaf6ef;box-shadow:0 0 0 3px #164d341a}
 .history-ai-empty{display:flex;align-items:center;justify-content:space-between;gap:.85rem;flex-wrap:wrap}
 .history-ai-empty-text{display:grid;gap:.2rem;min-width:12rem;flex:1}
 .history-ai-empty-text strong{display:inline-flex;align-items:center;gap:.4rem;font-size:.8125rem;color:#164d34}

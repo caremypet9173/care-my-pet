@@ -45,7 +45,9 @@ export function MedicalResults({
       trend.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
     });
   }
+  const [prevInitialReports,setPrevInitialReports]=useState(initialReports);
   const [reports,setReports]=useState(initialReports);
+  if(initialReports!==prevInitialReports){setPrevInitialReports(initialReports);setReports(initialReports);}
   const [editing,setEditing]=useState<Measurement|null>(null);
   const locale=useLocale();const t=medicalMessages[locale];
   const [selected,setSelected]=useState(initialReportId??reports[0]?.id??"");const [filter,setFilter]=useState("all");

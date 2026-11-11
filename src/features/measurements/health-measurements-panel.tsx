@@ -13,6 +13,7 @@ import { BloodPressureView } from "./blood-pressure-view";
 import { GlucoseView } from "./glucose-view";
 import { TemperatureView } from "./temperature-view";
 import { MeasurementTips } from "./measurement-tips";
+import { usePetQuickAddOptional } from "@/features/pets/pet-quick-actions";
 import type { WeightMeasurement } from "@/features/weight/types";
 import type { MetricType, VitalMeasurement } from "./types";
 import "@/styles/weight.css";
@@ -32,7 +33,19 @@ export function HealthMeasurementsPanel({
   initialMetric?: MetricType;
 }) {
   const pl = useLocale() === "pl";
-  const [activeType, setActiveType] = useState<MetricType>(initialMetric);
+  const quickAdd = usePetQuickAddOptional();
+  const navTarget = quickAdd?.navTarget ?? null;
+  const [activeType, setActiveType] = useState<MetricType>(
+    navTarget?.metric ?? initialMetric,
+  );
+  const [prevNavSeq, setPrevNavSeq] = useState<number>(navTarget?.seq ?? 0);
+
+  if (navTarget && navTarget.seq !== prevNavSeq) {
+    setPrevNavSeq(navTarget.seq);
+    if (navTarget.metric) {
+      setActiveType(navTarget.metric);
+    }
+  }
 
   const bpRows = vitalMeasurements.filter((m) => m.metric_type === "blood_pressure");
   const glucoseRows = vitalMeasurements.filter((m) => m.metric_type === "glucose");
