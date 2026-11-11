@@ -10,6 +10,7 @@ import {
   IconHome,
   IconNeedle,
   IconArrowLeft,
+  IconNotes,
 } from "@tabler/icons-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { Pet } from "@/features/pets/types";
@@ -160,72 +161,51 @@ export function FluidFormPage({
   const backUrl = `/app/zwierzeta/${pet.id}?tab=history`;
 
   return (
-    <div className="fluid-page-container">
-      {/* Pasek nagłówkowy strony */}
-      <header className="fluid-page-header">
-        <Link href={backUrl} className="fluid-page-back">
+    <div className="medical-review">
+      {/* Pasek procesu — identyczny z widokiem odczytu badań laboratoryjnych */}
+      <header className="medical-process-header">
+        <Link href={backUrl}>
           <IconArrowLeft size={18} aria-hidden="true" />
-          <span>{pl ? "Wróć do osi czasu pupila" : "Back to pet timeline"}</span>
+          <span>{pl ? "Wróć do kartoteki" : "Back to record"}</span>
         </Link>
-        <div className="fluid-page-title-wrap">
-          <span className="fluid-page-icon-badge">
-            <IconDroplet size={24} />
+        <div>
+          <strong>{pet.imie}</strong>
+          <span>
+            {therapy
+              ? pl
+                ? "Edycja wpisu płynoterapii"
+                : "Edit fluid therapy"
+              : pl
+                ? "Rejestracja płynoterapii / wlewu"
+                : "Register fluid therapy"}
           </span>
-          <div className="fluid-page-title-text">
-            <h1>
-              {therapy
-                ? pl
-                  ? "Edytuj wpis płynoterapii"
-                  : "Edit fluid therapy"
-                : pl
-                  ? "Nowa płynoterapia / kroplówka"
-                  : "New fluid therapy / infusion"}
-            </h1>
-            <p>
-              {pet.imie} • {pl ? "Wlewy i nawadnianie" : "Fluid therapy & infusions"}
-            </p>
-          </div>
         </div>
-        <span className="fluid-page-tag">
-          {pl ? "Kroplówki i wlewy" : "Infusions"}
+        <span className="household-tag">
+          {pl ? "Płynoterapia" : "Fluid therapy"}
         </span>
       </header>
 
-      {/* Komunikat informacyjny */}
-      <div className="fluid-page-info">
-        <IconInfoCircle size={19} />
-        <p>
-          {pl
-            ? "Wpis automatycznie pojawi się w Osi Czasu zdrowia pupila i zostanie uwzględniony w pełnej historii leczenia."
-            : "This entry will automatically appear on the pet's Health Timeline."}
-        </p>
-      </div>
+      {/* 2-kolumnowy układ zagospodarowujący całą szerokość ekranu bez zbędnego suwaka */}
+      <form onSubmit={handleSave} noValidate className="fluid-split-grid">
+        {/* LEWA KOLUMNA: Parametry medyczne płynu */}
+        <div className="fluid-column">
+          {/* Sekcja 1: Płyn bazowy i dawka */}
+          <section className="medical-metadata">
+            <header className="review-section-heading">
+              <h2>
+                <IconDroplet size={18} className="text-cyan-600" aria-hidden="true" />
+                {pl ? "1. Płyn bazowy i objętość wlewu" : "1. Base fluid & volume"}
+              </h2>
+              <span className="review-source-badge">
+                {pl ? "Parametry wlewu" : "Infusion specs"}
+              </span>
+            </header>
 
-      <form onSubmit={handleSave} noValidate className="fluid-page-form">
-        <fieldset disabled={saving} className="fluid-page-fieldset">
-          {submitted && !isValid && (
-            <p className="weight-error" role="alert" style={{ marginBottom: "1rem" }}>
-              {pl
-                ? "Popraw zaznaczone pola przed zapisaniem wlewu."
-                : "Correct highlighted fields before saving."}
-            </p>
-          )}
-
-          {/* SEKCJA 1: Płyn bazowy i objętość */}
-          <div className="fluid-form-section">
-            <div className="fluid-section-header">
-              <IconDroplet size={18} className="text-cyan-600" />
-              <h3>{pl ? "1. Płyn bazowy i objętość wlewu" : "1. Base fluid & volume"}</h3>
-            </div>
-
-            <div className="history-dialog-grid">
-              <div>
-                <label htmlFor="fluid-select">
-                  {pl ? "Płyn bazowy *" : "Base fluid *"}
-                </label>
+            <div className="medical-fields">
+              <label>
+                {pl ? "Płyn bazowy *" : "Base fluid *"}
                 <select
                   id="fluid-select"
-                  className="fluid-select"
                   value={isCustom ? "custom" : fluidName}
                   onChange={(e) => {
                     if (e.target.value === "custom") {
@@ -245,12 +225,10 @@ export function FluidFormPage({
                     {pl ? "Inny płyn (wpisz własny)…" : "Other fluid (enter custom)…"}
                   </option>
                 </select>
-              </div>
+              </label>
 
-              <div>
-                <label htmlFor="fluid-volume">
-                  {pl ? "Objętość wlewu *" : "Volume *"}
-                </label>
+              <label>
+                {pl ? "Objętość wlewu *" : "Volume *"}
                 <div className="fluid-volume-input-wrap">
                   <input
                     id="fluid-volume"
@@ -267,14 +245,12 @@ export function FluidFormPage({
                   />
                   <span className="fluid-volume-unit">ml</span>
                 </div>
-              </div>
+              </label>
             </div>
 
             {isCustom && (
-              <div>
-                <label htmlFor="custom-fluid">
-                  {pl ? "Nazwa własna płynu *" : "Custom fluid name *"}
-                </label>
+              <label style={{ marginBottom: "0.75rem", display: "block" }}>
+                {pl ? "Nazwa własna płynu *" : "Custom fluid name *"}
                 <input
                   id="custom-fluid"
                   value={customFluid}
@@ -286,12 +262,12 @@ export function FluidFormPage({
                   onChange={(e) => setCustomFluid(e.target.value)}
                   aria-invalid={submitted && effectiveFluid.length < 2}
                 />
-              </div>
+              </label>
             )}
 
             <div className="fluid-presets-row">
               <span className="fluid-presets-label">
-                {pl ? "Szybki wybór objętości:" : "Quick volume:"}
+                {pl ? "Szybki wybór objętości:" : "Presets:"}
               </span>
               <div className="fluid-chips">
                 {volumePresets.map((preset) => (
@@ -306,17 +282,21 @@ export function FluidFormPage({
                 ))}
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* SEKCJA 2: Droga podania i leki włączone */}
-          <div className="fluid-form-section">
-            <div className="fluid-section-header">
-              <IconNeedle size={18} className="text-cyan-600" />
-              <h3>{pl ? "2. Droga podania i skład wlewu" : "2. Route & medication additives"}</h3>
-            </div>
+          {/* Sekcja 2: Droga podania i skład */}
+          <section className="medical-metadata">
+            <header className="review-section-heading">
+              <h2>
+                <IconNeedle size={18} className="text-cyan-600" aria-hidden="true" />
+                {pl ? "2. Droga podania i skład wlewu" : "2. Route & medications"}
+              </h2>
+            </header>
 
-            <div>
-              <label>{pl ? "Droga podania *" : "Route *"}</label>
+            <div style={{ marginBottom: "0.85rem" }}>
+              <label style={{ marginBottom: "0.35rem", display: "block", fontSize: "0.8125rem", fontWeight: 600 }}>
+                {pl ? "Droga podania *" : "Route *"}
+              </label>
               <div className="fluid-segmented-grid">
                 <button
                   type="button"
@@ -345,8 +325,8 @@ export function FluidFormPage({
               </div>
             </div>
 
-            <div>
-              <label htmlFor="fluid-meds">
+            <div style={{ marginBottom: "0.85rem" }}>
+              <label style={{ marginBottom: "0.35rem", display: "block", fontSize: "0.8125rem", fontWeight: 600 }}>
                 {pl
                   ? "Leki i dodatki włączone do wlewu (opcjonalnie)"
                   : "Medication additives (optional)"}
@@ -382,7 +362,7 @@ export function FluidFormPage({
 
             {route !== "sc" && (
               <div className="fluid-catheter-block">
-                <label htmlFor="fluid-catheter">
+                <label style={{ marginBottom: "0.25rem", display: "block", fontSize: "0.8125rem", fontWeight: 600 }}>
                   {pl ? "Stan wenflonu / wkłucia (opcjonalnie)" : "Catheter status (optional)"}
                 </label>
                 <input
@@ -391,13 +371,13 @@ export function FluidFormPage({
                   placeholder={
                     pl
                       ? "np. Wenflon drożny w lewej przedniej łapce, przepłukany heparyną"
-                      : "e.g. Patent in left foreleg, flushed"
+                      : "e.g. Catheter patent, flushed"
                   }
                   onChange={(e) => setCatheterStatus(e.target.value)}
                 />
                 <div className="fluid-presets-row">
                   <span className="fluid-presets-label">
-                    {pl ? "Szybki stan:" : "Quick status:"}
+                    {pl ? "Szybki stan:" : "Status:"}
                   </span>
                   <div className="fluid-chips">
                     {catheterPresets.map((status) => (
@@ -414,17 +394,24 @@ export function FluidFormPage({
                 </div>
               </div>
             )}
-          </div>
+          </section>
+        </div>
 
-          {/* SEKCJA 3: Miejsce wykonania i termin */}
-          <div className="fluid-form-section">
-            <div className="fluid-section-header">
-              <IconBuildingHospital size={18} className="text-cyan-600" />
-              <h3>{pl ? "3. Miejsce wykonania i data wlewu" : "3. Location & administration time"}</h3>
-            </div>
+        {/* PRAWA KOLUMNA: Miejsce, czas, notatki i zatwierdzenie */}
+        <div className="fluid-column">
+          {/* Sekcja 3: Miejsce wykonania i termin */}
+          <section className="medical-metadata">
+            <header className="review-section-heading">
+              <h2>
+                <IconBuildingHospital size={18} className="text-cyan-600" aria-hidden="true" />
+                {pl ? "3. Miejsce i termin podania" : "3. Location & timing"}
+              </h2>
+            </header>
 
-            <div>
-              <label>{pl ? "Miejsce wykonania" : "Location"}</label>
+            <div style={{ marginBottom: "0.85rem" }}>
+              <label style={{ marginBottom: "0.35rem", display: "block", fontSize: "0.8125rem", fontWeight: 600 }}>
+                {pl ? "Miejsce wykonania" : "Location"}
+              </label>
               <div className="fluid-segmented-grid fluid-segmented-location">
                 <button
                   type="button"
@@ -446,32 +433,28 @@ export function FluidFormPage({
             </div>
 
             {location === "clinic" ? (
-              <div className="history-dialog-grid">
-                <div>
-                  <label htmlFor="fluid-clinic">
-                    {pl ? "Lecznica / Gabinet" : "Clinic"}
-                  </label>
+              <div className="medical-fields">
+                <label>
+                  {pl ? "Lecznica / Gabinet" : "Clinic"}
                   <input
                     id="fluid-clinic"
                     value={clinicName}
                     placeholder={pl ? "np. Przychodnia Weterynaryjna VETIS" : "Clinic name"}
                     onChange={(e) => setClinicName(e.target.value)}
                   />
-                </div>
-                <div>
-                  <label htmlFor="fluid-doctor">
-                    {pl ? "Lekarz prowadzący" : "Veterinarian"}
-                  </label>
+                </label>
+                <label>
+                  {pl ? "Lekarz prowadzący" : "Veterinarian"}
                   <input
                     id="fluid-doctor"
                     value={doctorName}
                     placeholder={pl ? "np. lek. wet. Łukasz Bęben" : "Doctor name"}
                     onChange={(e) => setDoctorName(e.target.value)}
                   />
-                </div>
+                </label>
               </div>
             ) : (
-              <div className="fluid-home-hint">
+              <div className="fluid-home-hint" style={{ marginBottom: "0.85rem" }}>
                 <IconHome size={16} />
                 <span>
                   {pl
@@ -481,11 +464,9 @@ export function FluidFormPage({
               </div>
             )}
 
-            <div className="history-dialog-grid">
-              <div>
-                <label htmlFor="fluid-date">
-                  {pl ? "Data podania *" : "Date *"}
-                </label>
+            <div className="medical-fields">
+              <label>
+                {pl ? "Data podania *" : "Date *"}
                 <input
                   id="fluid-date"
                   type="date"
@@ -495,68 +476,89 @@ export function FluidFormPage({
                   aria-invalid={submitted && !isDateValid}
                   onChange={(e) => setDate(e.target.value)}
                 />
-              </div>
-              <div>
-                <label htmlFor="fluid-time">
-                  {pl ? "Godzina" : "Time"}
-                </label>
+              </label>
+              <label>
+                {pl ? "Godzina" : "Time"}
                 <input
                   id="fluid-time"
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                 />
-              </div>
+              </label>
+            </div>
+          </section>
+
+          {/* Sekcja 4: Notatki i reakcja pupila */}
+          <section className="medical-metadata">
+            <header className="review-section-heading">
+              <h2>
+                <IconNotes size={18} className="text-cyan-600" aria-hidden="true" />
+                {pl ? "4. Notatki i reakcja pupila (opcjonalnie)" : "4. Notes & pet response"}
+              </h2>
+              <small style={{ color: "#64748b" }}>{notes.length}/1000</small>
+            </header>
+
+            <textarea
+              id="fluid-notes"
+              rows={3}
+              maxLength={1000}
+              value={notes}
+              placeholder={
+                pl
+                  ? "np. Wlew podany powoli przez 90 minut, pupil zniósł spokojnie, po powrocie miał lepszy apetyt."
+                  : "e.g. Infused slowly over 90 mins, well tolerated."
+              }
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </section>
+
+          {/* Sekcja 5: Podsumowanie i pasek zapisu */}
+          <section className="fluid-confirm-card">
+            <div className="fluid-confirm-hint">
+              <IconInfoCircle size={18} />
+              <span>
+                {pl
+                  ? "Wpis automatycznie pojawi się w Osi Czasu zdrowia pupila i zostanie uwzględniony w pełnej historii leczenia."
+                  : "This entry will automatically appear in pet's health timeline."}
+              </span>
             </div>
 
-            <div>
-              <div className="weight-note-label">
-                <label htmlFor="fluid-notes">
-                  {pl ? "Notatki / samopoczucie pupila (opcjonalnie)" : "Notes (optional)"}
-                </label>
-                <small>{notes.length}/1000</small>
-              </div>
-              <textarea
-                id="fluid-notes"
-                rows={3}
-                maxLength={1000}
-                value={notes}
-                placeholder={
-                  pl
-                    ? "np. Wlew podany powoli przez 90 minut, pupil zniósł spokojnie, po powrocie miał lepszy apetyt."
-                    : "e.g. Infused slowly over 90 mins, well tolerated."
-                }
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-          </div>
+            {submitted && !isValid && (
+              <p className="weight-error" role="alert" style={{ margin: "0.25rem 0" }}>
+                {pl
+                  ? "Uzupełnij wymagane pola (płyn bazowy, objętość i poprawną datę) przed zapisaniem."
+                  : "Fill in required fields before saving."}
+              </p>
+            )}
 
-          {error && (
-            <p className="weight-error" role="alert" style={{ marginTop: "1rem" }}>
-              {error}
-            </p>
-          )}
+            {error && (
+              <p className="weight-error" role="alert" style={{ margin: "0.25rem 0" }}>
+                {error}
+              </p>
+            )}
 
-          <div className="fluid-page-actions-bar">
-            <Link href={backUrl} className="fluid-page-cancel-btn">
-              {pl ? "Anuluj" : "Cancel"}
-            </Link>
-            <button type="submit" disabled={saving} className="fluid-page-submit-btn">
-              <IconDeviceFloppy size={18} />
-              {saving
-                ? pl
-                  ? "Zapisywanie…"
-                  : "Saving…"
-                : therapy
+            <div className="fluid-confirm-actions">
+              <Link href={backUrl} className="fluid-btn-cancel">
+                {pl ? "Anuluj" : "Cancel"}
+              </Link>
+              <button type="submit" disabled={saving} className="fluid-btn-save">
+                <IconDeviceFloppy size={18} />
+                {saving
                   ? pl
-                    ? "Zapisz zmiany"
-                    : "Save changes"
-                  : pl
-                    ? "Zapisz kroplówkę"
-                    : "Save infusion"}
-            </button>
-          </div>
-        </fieldset>
+                    ? "Zapisywanie…"
+                    : "Saving…"
+                  : therapy
+                    ? pl
+                      ? "Zapisz zmiany"
+                      : "Save changes"
+                    : pl
+                      ? "Zapisz kroplówkę"
+                      : "Save infusion"}
+              </button>
+            </div>
+          </section>
+        </div>
       </form>
     </div>
   );
