@@ -471,6 +471,7 @@
 .household-quick-popover-close { width: 32px; height: 32px; display: grid; place-items: center; border-radius: .5rem; border: 1px solid transparent; background: transparent; color: var(--color-text-muted); cursor: pointer; }
 .household-quick-popover-close:hover { background: var(--color-surface-sand); color: var(--color-text); }
 .household-quick-popover-body { display: grid; gap: .85rem; padding: .85rem 1rem 1rem; }
+.household-quick-popover-col { display: grid; gap: .85rem; align-content: start; }
 .household-quick-group { display: grid; gap: .4rem; }
 .household-quick-group h3 { margin: 0; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); font-weight: 700; }
 .household-quick-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; }
@@ -491,6 +492,15 @@
 .household-quick-vital-tile span { display: grid; gap: .05rem; min-width: 0; }
 .household-quick-vital-tile strong { font-size: .78rem; font-weight: 600; line-height: 1.2; }
 .household-quick-vital-tile small { font-size: .68rem; color: #526462; }
+@media (min-width: 48.0625rem) {
+  .household-record-toolbar-actions { position: relative; }
+  .household-quick-anchor { position: static; }
+  .household-quick-popover { right: 0; top: calc(100% + .45rem); width: min(45rem, calc(100vw - 2rem)); max-height: calc(100vh - 5rem); }
+  .household-quick-popover-head { padding: .7rem 1.15rem .6rem; }
+  .household-quick-popover-body { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.15rem; align-items: start; padding: .9rem 1.15rem 1.05rem; }
+  .household-quick-popover-col { gap: .95rem; }
+  .household-quick-item { padding: .42rem .55rem; }
+}
 
 .pet-panel.household-quick-strip { padding: .75rem 1rem; border-radius: .875rem; margin-bottom: 1.15rem; display: grid; gap: .65rem; box-shadow: none; }
 .household-quick-strip-row { display: flex; align-items: center; justify-content: space-between; gap: .65rem 1rem; flex-wrap: wrap; }

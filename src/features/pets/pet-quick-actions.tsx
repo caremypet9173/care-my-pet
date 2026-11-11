@@ -514,6 +514,59 @@ export function PetQuickAddToolbarButton() {
 
   const { listGroups, vitals } = buildQuickMenuGroups(petId, pl);
 
+  const renderGroup = (group: MenuGroup) => (
+    <section key={group.title} className="household-quick-group">
+      <h3>{group.title}</h3>
+      <ul>
+        {group.items.map((item) => {
+          const Icon = item.icon;
+          const isAi = item.tone === "ai";
+          const content = (
+            <>
+              <span className={`household-quick-item-icon${isAi ? " is-ai" : ""}`} aria-hidden="true">
+                <Icon size={17} />
+              </span>
+              <span className="household-quick-item-text">
+                <strong>
+                  {item.label}
+                  {item.kind === "action" && item.badge && (
+                    <span className="household-quick-ai-badge">{item.badge}</span>
+                  )}
+                </strong>
+                <small>{item.hint}</small>
+              </span>
+            </>
+          );
+
+          return (
+            <li key={item.key}>
+              {item.kind === "link" ? (
+                <Link
+                  href={item.href}
+                  className="household-quick-item"
+                  onClick={() => setOpen(false)}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className={`household-quick-item${isAi ? " is-ai" : ""}`}
+                  onClick={() => {
+                    setOpen(false);
+                    openAction(item.action);
+                  }}
+                >
+                  {content}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+
   return (
     <div ref={rootRef} className="household-quick-anchor">
       <Button
@@ -568,85 +621,38 @@ export function PetQuickAddToolbarButton() {
             </header>
 
             <div className="household-quick-popover-body">
-              {listGroups.map((group) => (
-                <section key={group.title} className="household-quick-group">
-                  <h3>{group.title}</h3>
-                  <ul>
-                    {group.items.map((item) => {
+              {listGroups[0] && renderGroup(listGroups[0])}
+
+              <div className="household-quick-popover-col">
+                {listGroups[1] && renderGroup(listGroups[1])}
+
+                <section className="household-quick-group">
+                  <h3>{pl ? "Pomiary domowe" : "Home measurements"}</h3>
+                  <div className="household-quick-vitals-grid">
+                    {vitals.map((item) => {
                       const Icon = item.icon;
-                      const isAi = item.tone === "ai";
-                      const content = (
-                        <>
-                          <span className={`household-quick-item-icon${isAi ? " is-ai" : ""}`} aria-hidden="true">
-                            <Icon size={17} />
-                          </span>
-                          <span className="household-quick-item-text">
-                            <strong>
-                              {item.label}
-                              {item.kind === "action" && item.badge && (
-                                <span className="household-quick-ai-badge">{item.badge}</span>
-                              )}
-                            </strong>
+                      if (item.kind !== "action") return null;
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          className="household-quick-vital-tile"
+                          onClick={() => {
+                            setOpen(false);
+                            openAction(item.action);
+                          }}
+                        >
+                          <Icon size={16} aria-hidden="true" />
+                          <span>
+                            <strong>{item.label}</strong>
                             <small>{item.hint}</small>
                           </span>
-                        </>
-                      );
-
-                      return (
-                        <li key={item.key}>
-                          {item.kind === "link" ? (
-                            <Link
-                              href={item.href}
-                              className="household-quick-item"
-                              onClick={() => setOpen(false)}
-                            >
-                              {content}
-                            </Link>
-                          ) : (
-                            <button
-                              type="button"
-                              className={`household-quick-item${isAi ? " is-ai" : ""}`}
-                              onClick={() => {
-                                setOpen(false);
-                                openAction(item.action);
-                              }}
-                            >
-                              {content}
-                            </button>
-                          )}
-                        </li>
+                        </button>
                       );
                     })}
-                  </ul>
+                  </div>
                 </section>
-              ))}
-
-              <section className="household-quick-group">
-                <h3>{pl ? "Pomiary domowe" : "Home measurements"}</h3>
-                <div className="household-quick-vitals-grid">
-                  {vitals.map((item) => {
-                    const Icon = item.icon;
-                    if (item.kind !== "action") return null;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className="household-quick-vital-tile"
-                        onClick={() => {
-                          setOpen(false);
-                          openAction(item.action);
-                        }}
-                      >
-                        <Icon size={16} aria-hidden="true" />
-                        <span>
-                          <strong>{item.label}</strong>
-                          <small>{item.hint}</small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
+              </div>
             </div>
           </div>
         </>
