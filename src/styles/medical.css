@@ -111,7 +111,7 @@
 .medical-disclaimer { margin-top: 1.25rem; }
 .medical-saved-source iframe { width: 100%; height: 650px; border: 0; }
 .medical-saved-source img { max-height: 900px; width: 100%; object-fit: contain; }
-.medical-review { max-width: 1440px; margin: auto; padding: 1.5rem; }
+.medical-review { max-width: 1440px; margin: auto; padding: 1.5rem; overflow-x: clip; }
 .medical-process-header { display: flex; align-items: center; gap: 1rem; justify-content: space-between; padding-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); }
 .medical-process-header a { display: flex; gap: .4rem; align-items: center; font-size: .75rem; min-height: 44px; }
 .medical-process-header > div { display: flex; align-items: center; gap: 1rem; font-size: .9rem; }
@@ -133,10 +133,10 @@
 .medical-reading > div { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
 .medical-reading .button { font-size: .75rem; }
 .medical-review-form > fieldset { border: 0; min-width: 0; padding: 0; }
-.medical-review label { font-size: .75rem; display: grid; gap: .5rem; align-content:start; }
+.medical-review label { font-size: .75rem; display: grid; gap: .5rem; align-content:start; min-width: 0; }
 .medical-review input[type=checkbox] { width: 1.1rem; height: 1.1rem; accent-color: var(--color-primary); flex-shrink: 0; }
 .medical-review h2 { font-size: .85rem; margin-bottom: 1rem; }
-.medical-metadata { border: 1px solid var(--color-border); padding: 1rem; border-radius: .75rem; background: var(--color-surface-raised); margin-bottom: 1.5rem; }
+.medical-metadata { border: 1px solid var(--color-border); padding: 1rem; border-radius: .75rem; background: var(--color-surface-raised); margin-bottom: 1.5rem; min-width: 0; max-width: 100%; }
 .medical-fields { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: .75rem; margin-bottom: .75rem; }
 .medical-row-values { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .5rem; }
 .medical-parameter { padding: 1rem; border: 1px solid var(--color-border); border-left: 3px solid var(--color-control-border); border-radius: .65rem; background: var(--color-surface-raised); margin-bottom: 1rem; min-width: 0; }
@@ -973,7 +973,7 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   align-items: center;
 }
 
-.medical-review .fluid-volume-input-wrap input:not([type=checkbox]),
+.medical-review .fluid-volume-input-wrap input:not([type=checkbox]):not([type=file]):not([type=range]),
 .fluid-volume-input-wrap input {
   width: 100%;
   min-height: 40px;
@@ -1012,6 +1012,8 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   gap: 0.5rem;
   flex-wrap: wrap;
   margin-top: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .fluid-presets-label {
@@ -1138,15 +1140,48 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   border-radius: 0.5rem;
   background: #ffffff;
   border: 1px dashed #cbd5e1;
+  min-width: 0;
+  max-width: 100%;
 }
 
-@media (max-width: 640px) {
-  .fluid-segmented-grid,
-  .fluid-segmented-grid.fluid-segmented-location {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* Fluid Therapy Rows & Scrollable Chips */
+.fluid-row-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(92px, 0.95fr);
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+  min-width: 0;
 }
 
+.fluid-row-2-equal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+  min-width: 0;
+}
+
+.fluid-chips-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 180px;
+}
+
+.fluid-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.fluid-chips-scroll .fluid-chip {
+  flex-shrink: 0;
+}
 
 /* Fluid Therapy Split Layout within .medical-review */
 .fluid-split-grid {
@@ -1172,6 +1207,8 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .fluid-confirm-hint {
@@ -1246,9 +1283,129 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   cursor: wait;
 }
 
+/* Responsywność dla ekranów tabletowych i mobilnych */
 @media (max-width: 900px) {
   .fluid-split-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .fluid-review-page {
+    padding: 0.75rem 0.65rem 5.5rem;
+  }
+  .fluid-process-header {
+    display: flex;
+    flex-wrap: wrap !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem 0.5rem;
+    padding-bottom: 0.65rem;
+    margin-bottom: 0.65rem;
+  }
+  .fluid-process-header > a {
+    order: 1;
+    min-height: 36px;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.45rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .fluid-process-header > .household-tag {
+    order: 2;
+    font-size: 0.68rem;
+    padding: 0.15rem 0.5rem;
+    flex-shrink: 0;
+  }
+  .fluid-process-header > div {
+    order: 3;
+    flex: 1 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding-top: 0.1rem;
+    min-width: 0;
+  }
+  .fluid-process-header > div strong {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .fluid-process-header > div span {
+    font-size: 0.8rem;
+  }
+  .fluid-review-page .medical-metadata {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.65rem;
+  }
+  .fluid-review-page .review-section-heading {
+    margin-bottom: 0.65rem;
+  }
+  .fluid-review-page .review-section-heading h2 {
+    font-size: 0.8125rem;
+  }
+  .fluid-segmented-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.3rem;
+  }
+  .fluid-segmented-grid.fluid-segmented-location {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.3rem;
+  }
+  .fluid-seg-btn {
+    min-height: 38px;
+    padding: 0.3rem 0.2rem;
+    font-size: 0.7rem;
+    gap: 0.2rem;
+  }
+  .fluid-seg-icon {
+    font-size: 0.8rem;
+  }
+  .fluid-row-2 {
+    grid-template-columns: minmax(0, 1.35fr) minmax(85px, 0.95fr);
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+  }
+  .fluid-row-2-equal {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+  }
+  .fluid-chips-scroll {
+    flex-basis: 100%;
+    width: 100%;
+  }
+  .fluid-volume-input-wrap input {
+    padding: 0.45rem 2.65rem 0.45rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+  .fluid-volume-unit {
+    right: 0.35rem;
+    font-size: 0.68rem;
+    padding: 0.12rem 0.3rem;
+  }
+  .fluid-catheter-block {
+    padding: 0.6rem;
+  }
+  .fluid-confirm-card {
+    padding: 0.85rem;
+    gap: 0.65rem;
+  }
+  .fluid-confirm-hint {
+    font-size: 0.75rem;
+  }
+  .fluid-confirm-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 0.5rem;
+  }
+  .fluid-btn-cancel,
+  .fluid-btn-save {
+    width: 100%;
+    min-height: 42px;
+    font-size: 0.8125rem;
+    padding: 0.45rem 0.75rem;
   }
 }

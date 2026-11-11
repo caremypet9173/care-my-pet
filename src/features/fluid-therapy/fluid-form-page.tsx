@@ -161,31 +161,31 @@ export function FluidFormPage({
   const backUrl = `/app/zwierzeta/${pet.id}?tab=history`;
 
   return (
-    <div className="medical-review">
-      {/* Pasek procesu — identyczny z widokiem odczytu badań laboratoryjnych */}
-      <header className="medical-process-header">
+    <div className="medical-review fluid-review-page">
+      {/* Pasek procesu — dopasowany do ekranów desktopowych i mobilnych */}
+      <header className="medical-process-header fluid-process-header">
         <Link href={backUrl}>
           <IconArrowLeft size={18} aria-hidden="true" />
-          <span>{pl ? "Wróć do kartoteki" : "Back to record"}</span>
+          <span>{pl ? "Wróć do kartoteki" : "Back"}</span>
         </Link>
         <div>
           <strong>{pet.imie}</strong>
           <span>
             {therapy
               ? pl
-                ? "Edycja wpisu płynoterapii"
-                : "Edit fluid therapy"
+                ? "Edycja wlewu"
+                : "Edit infusion"
               : pl
-                ? "Rejestracja płynoterapii / wlewu"
+                ? "Rejestracja płynoterapii"
                 : "Register fluid therapy"}
           </span>
         </div>
         <span className="household-tag">
-          {pl ? "Płynoterapia" : "Fluid therapy"}
+          {pl ? "Płynoterapia" : "Infusions"}
         </span>
       </header>
 
-      {/* 2-kolumnowy układ zagospodarowujący całą szerokość ekranu bez zbędnego suwaka */}
+      {/* 2-kolumnowy układ zoptymalizowany pod desktop i mobile */}
       <form onSubmit={handleSave} noValidate className="fluid-split-grid">
         {/* LEWA KOLUMNA: Parametry medyczne płynu */}
         <div className="fluid-column">
@@ -193,7 +193,7 @@ export function FluidFormPage({
           <section className="medical-metadata">
             <header className="review-section-heading">
               <h2>
-                <IconDroplet size={18} className="text-cyan-600" aria-hidden="true" />
+                <IconDroplet size={17} className="text-cyan-600" aria-hidden="true" />
                 {pl ? "1. Płyn bazowy i objętość wlewu" : "1. Base fluid & volume"}
               </h2>
               <span className="review-source-badge">
@@ -201,7 +201,7 @@ export function FluidFormPage({
               </span>
             </header>
 
-            <div className="medical-fields">
+            <div className="fluid-row-2">
               <label>
                 {pl ? "Płyn bazowy *" : "Base fluid *"}
                 <select
@@ -228,7 +228,7 @@ export function FluidFormPage({
               </label>
 
               <label>
-                {pl ? "Objętość wlewu *" : "Volume *"}
+                {pl ? "Objętość *" : "Volume *"}
                 <div className="fluid-volume-input-wrap">
                   <input
                     id="fluid-volume"
@@ -267,9 +267,9 @@ export function FluidFormPage({
 
             <div className="fluid-presets-row">
               <span className="fluid-presets-label">
-                {pl ? "Szybki wybór objętości:" : "Presets:"}
+                {pl ? "Szybki wybór:" : "Presets:"}
               </span>
-              <div className="fluid-chips">
+              <div className="fluid-chips-scroll">
                 {volumePresets.map((preset) => (
                   <button
                     key={preset}
@@ -288,15 +288,14 @@ export function FluidFormPage({
           <section className="medical-metadata">
             <header className="review-section-heading">
               <h2>
-                <IconNeedle size={18} className="text-cyan-600" aria-hidden="true" />
+                <IconNeedle size={17} className="text-cyan-600" aria-hidden="true" />
                 {pl ? "2. Droga podania i skład wlewu" : "2. Route & medications"}
               </h2>
             </header>
 
-            <div style={{ marginBottom: "0.85rem" }}>
+            <div style={{ marginBottom: "0.75rem" }}>
               <label style={{ marginBottom: "0.35rem", display: "block", fontSize: "0.8125rem", fontWeight: 600 }}>
-                {pl ? "Droga podania *" : "Route *"}
-              </label>
+                {pl ? "Droga podania *" : "Route *"}</label>
               <div className="fluid-segmented-grid">
                 <button
                   type="button"
@@ -304,7 +303,7 @@ export function FluidFormPage({
                   onClick={() => setRoute("iv")}
                 >
                   <span className="fluid-seg-icon">💉</span>
-                  <span>{pl ? "Dożylna (IV — wenflon)" : "Intravenous (IV)"}</span>
+                  <span>{pl ? "Dożylna (IV)" : "IV"}</span>
                 </button>
                 <button
                   type="button"
@@ -312,7 +311,7 @@ export function FluidFormPage({
                   onClick={() => setRoute("sc")}
                 >
                   <span className="fluid-seg-icon">💧</span>
-                  <span>{pl ? "Podskórna (SC)" : "Subcutaneous (SC)"}</span>
+                  <span>{pl ? "Podskórna (SC)" : "SC"}</span>
                 </button>
                 <button
                   type="button"
@@ -320,12 +319,12 @@ export function FluidFormPage({
                   onClick={() => setRoute("io")}
                 >
                   <span className="fluid-seg-icon">🦴</span>
-                  <span>{pl ? "Doszpikowa (IO)" : "Intraosseous (IO)"}</span>
+                  <span>{pl ? "Doszpikowa (IO)" : "IO"}</span>
                 </button>
               </div>
             </div>
 
-            <div style={{ marginBottom: "0.85rem" }}>
+            <div style={{ marginBottom: "0.75rem" }}>
               <label style={{ marginBottom: "0.35rem", display: "block", fontSize: "0.8125rem", fontWeight: 600 }}>
                 {pl
                   ? "Leki i dodatki włączone do wlewu (opcjonalnie)"
@@ -343,9 +342,9 @@ export function FluidFormPage({
               />
               <div className="fluid-presets-row">
                 <span className="fluid-presets-label">
-                  {pl ? "Popularne dodatki:" : "Popular additives:"}
+                  {pl ? "Popularne dodatki:" : "Additives:"}
                 </span>
-                <div className="fluid-chips">
+                <div className="fluid-chips-scroll">
                   {medSuggestions.map((med) => (
                     <button
                       key={med.label}
@@ -379,7 +378,7 @@ export function FluidFormPage({
                   <span className="fluid-presets-label">
                     {pl ? "Szybki stan:" : "Status:"}
                   </span>
-                  <div className="fluid-chips">
+                  <div className="fluid-chips-scroll">
                     {catheterPresets.map((status) => (
                       <button
                         key={status}
@@ -403,12 +402,12 @@ export function FluidFormPage({
           <section className="medical-metadata">
             <header className="review-section-heading">
               <h2>
-                <IconBuildingHospital size={18} className="text-cyan-600" aria-hidden="true" />
+                <IconBuildingHospital size={17} className="text-cyan-600" aria-hidden="true" />
                 {pl ? "3. Miejsce i termin podania" : "3. Location & timing"}
               </h2>
             </header>
 
-            <div style={{ marginBottom: "0.85rem" }}>
+            <div style={{ marginBottom: "0.75rem" }}>
               <label style={{ marginBottom: "0.35rem", display: "block", fontSize: "0.8125rem", fontWeight: 600 }}>
                 {pl ? "Miejsce wykonania" : "Location"}
               </label>
@@ -418,22 +417,22 @@ export function FluidFormPage({
                   className={`fluid-seg-btn ${location === "clinic" ? "is-active" : ""}`}
                   onClick={() => setLocation("clinic")}
                 >
-                  <IconBuildingHospital size={17} />
-                  <span>{pl ? "W lecznicy weterynaryjnej" : "At vet clinic"}</span>
+                  <IconBuildingHospital size={16} />
+                  <span>{pl ? "W lecznicy" : "Clinic"}</span>
                 </button>
                 <button
                   type="button"
                   className={`fluid-seg-btn ${location === "home" ? "is-active" : ""}`}
                   onClick={() => setLocation("home")}
                 >
-                  <IconHome size={17} />
-                  <span>{pl ? "W domu (opiekun)" : "At home (by guardian)"}</span>
+                  <IconHome size={16} />
+                  <span>{pl ? "W domu" : "Home"}</span>
                 </button>
               </div>
             </div>
 
             {location === "clinic" ? (
-              <div className="medical-fields">
+              <div className="fluid-row-2-equal">
                 <label>
                   {pl ? "Lecznica / Gabinet" : "Clinic"}
                   <input
@@ -454,17 +453,17 @@ export function FluidFormPage({
                 </label>
               </div>
             ) : (
-              <div className="fluid-home-hint" style={{ marginBottom: "0.85rem" }}>
+              <div className="fluid-home-hint" style={{ marginBottom: "0.75rem" }}>
                 <IconHome size={16} />
                 <span>
                   {pl
-                    ? "Wlew wykonany w domu przez opiekuna (brak konieczności uzupełniania danych gabinetu)."
+                    ? "Wlew wykonany w domu przez opiekuna (brak konieczności uzupełniania gabinetu)."
                     : "Infusion administered at home by guardian."}
                 </span>
               </div>
             )}
 
-            <div className="medical-fields">
+            <div className="fluid-row-2">
               <label>
                 {pl ? "Data podania *" : "Date *"}
                 <input
@@ -493,7 +492,7 @@ export function FluidFormPage({
           <section className="medical-metadata">
             <header className="review-section-heading">
               <h2>
-                <IconNotes size={18} className="text-cyan-600" aria-hidden="true" />
+                <IconNotes size={17} className="text-cyan-600" aria-hidden="true" />
                 {pl ? "4. Notatki i reakcja pupila (opcjonalnie)" : "4. Notes & pet response"}
               </h2>
               <small style={{ color: "#64748b" }}>{notes.length}/1000</small>

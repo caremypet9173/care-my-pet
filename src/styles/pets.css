@@ -1710,7 +1710,7 @@
 }
 @media (max-width: 48rem) {
   .household-header > .container { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
-  .household-header-actions { margin: 0; justify-content: space-between; }
+  .household-header-actions { margin: 0; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
   .household-brand > span { padding-left: 3rem; }
   .pets-grid, .household-digest, .household-record-columns { grid-template-columns: minmax(0, 1fr); }
   .household-record-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
