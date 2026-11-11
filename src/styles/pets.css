@@ -1764,16 +1764,19 @@
   .household-record-stats strong { font-size: 1rem; margin-block: .25rem .15rem; }
   .household-record-stats p { font-size: .65rem; line-height: 1.3; }
   #record-panel-0:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
-  #record-panel-0 > .household-record-stats { margin-bottom: 0; order: 2; }
   #record-panel-0 > .household-record-columns { display: contents; }
-  #record-panel-0 > .household-record-columns > aside { order: 1; display: grid; gap: 1rem; }
+  #record-panel-0 > .household-record-columns > aside { display: contents; }
+  #record-panel-0 > .household-record-columns > aside > * { width: 100%; min-width: 0; }
+  #record-panel-0 > .household-record-columns > aside > :first-child { order: 1; }
+  #record-panel-0 > .household-record-stats { margin-bottom: 0; order: 2; }
+  #record-panel-0 > .household-record-columns > aside > :nth-child(n+2) { order: 3; }
   #record-panel-0 > .household-record-columns > aside > .pet-panel, .shared-vet-page .household-record-columns > aside > .pet-panel { margin-bottom: 0; padding: .9rem 1rem; }
   #record-panel-0 > .household-record-columns > aside h2, .shared-vet-page .household-record-columns > aside h2 { font-size: .85rem; margin-bottom: .35rem; }
   .household-record .pet-facts > div, .shared-vet-page .pet-facts > div { padding-block: .42rem; }
   .household-summary-weight .household-summary-link { min-height: 28px; margin-top: .15rem; font-size: .72rem; }
-  #record-panel-0 > .household-record-columns > div { order: 3; display: grid; gap: 1rem; }
+  #record-panel-0 > .household-record-columns > div { order: 4; display: grid; gap: 1rem; }
   #record-panel-0 > .household-record-columns > div > .pet-panel { margin-bottom: 0; padding: 1rem; }
-  #record-panel-0 > * { order: 4; }
+  #record-panel-0 > * { order: 5; }
   .shared-vet-page .household-record-columns > aside { order: -1; }
   .household-section-heading > span { display: none; }
   .household-calendar { padding: .9rem .8rem; border-radius: 1.15rem; margin-top: 1.5rem; }
