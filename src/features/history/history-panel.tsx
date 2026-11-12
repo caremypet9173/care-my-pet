@@ -33,6 +33,7 @@ import {HistoryDialog} from './history-dialog';
 import {HistoryDeleteDialog} from './history-delete-dialog';
 import type {PetFluidTherapy} from '@/features/fluid-therapy/types';
 import {FluidDeleteDialog} from '@/features/fluid-therapy/fluid-delete-dialog';
+import {parseMedicationChips} from '@/features/medications/schedule-dates';
 import {deleteFluidTherapy} from '@/features/fluid-therapy/actions';
 
 type FilterCategory = 'all' | 'visit' | 'fluid' | 'lab' | 'descriptive' | 'vaccination' | 'prevention';
@@ -672,12 +673,22 @@ export function HistoryPanel({
                             </span>
                           </div>
 
-                          {fl.medications_added && (
-                            <div className="history-card-desc">
-                              <strong>{pl ? 'Leki i dodatki we wlewie:' : 'Medications in infusion:'}</strong>
-                              <p className="mt-1 text-slate-700">{fl.medications_added}</p>
-                            </div>
-                          )}
+                          {fl.medications_added && (() => {
+                            const medChips = parseMedicationChips(fl.medications_added);
+                            return medChips.length > 0 ? (
+                              <div className="history-card-desc">
+                                <strong>{pl ? 'Leki i dodatki we wlewie:' : 'Medications in infusion:'}</strong>
+                                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                  {medChips.map((chip) => (
+                                    <span key={chip} className="history-product-pill">
+                                      <IconPill size={13} aria-hidden="true" />
+                                      <span>{chip}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
 
                           {fl.catheter_status && (
                             <div className="history-fluid-catheter text-xs text-slate-600 bg-slate-50 p-2 rounded-md border border-slate-200">

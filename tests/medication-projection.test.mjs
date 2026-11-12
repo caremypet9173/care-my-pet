@@ -4,7 +4,9 @@ import { projectMedicationDoses } from '../src/features/medications/projection.t
 import {
   addIsoDays,
   buildFluidScheduleInstructions,
+  formatMedicationChips,
   normalizeScheduledTimes,
+  parseMedicationChips,
 } from '../src/features/medications/schedule-dates.ts';
 
 test('scenariusz 1: jednorazowe (doraźne) podanie leku', () => {
@@ -493,4 +495,19 @@ test('scenariusz 9: kroplówka cykliczna co 2 dni oraz helpery dat i instrukcji'
     ['2026-11-12', '2026-11-14', '2026-11-16'],
   );
   assert.ok(doses.every((d) => d.schedule_category === 'fluid_therapy'));
+});
+
+test('scenariusz 10: parsowanie i formatowanie chipsów leków we wlewie', () => {
+  assert.deepEqual(parseMedicationChips(''), []);
+  assert.deepEqual(parseMedicationChips('  , ; \n '), []);
+
+  assert.deepEqual(
+    parseMedicationChips('Duphalyte 10 ml, cerenia 0.4 ml; Duphalyte 10 ml\nWit. B12'),
+    ['Duphalyte 10 ml', 'cerenia 0.4 ml', 'Wit. B12'],
+  );
+
+  assert.equal(
+    formatMedicationChips(['  Duphalyte 10 ml ', 'Cerenia 0.4 ml', 'duphalyte 10 ml', '']),
+    'Duphalyte 10 ml, Cerenia 0.4 ml',
+  );
 });

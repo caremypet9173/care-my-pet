@@ -14,18 +14,25 @@ import {
   IconAlertCircle,
   IconCalendar,
   IconCalendarRepeat,
+  IconCheck,
   IconClock,
   IconPlus,
+  IconX,
 } from "@tabler/icons-react";
 import { Container } from "@/components/layout/container";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { Pet } from "@/features/pets/types";
-import { saveMedicationScheduleClient } from "@/features/medications/actions";
+import {
+  recordMedicationsStartedHistoryClient,
+  saveMedicationScheduleClient,
+} from "@/features/medications/actions";
 import {
   addIsoDays,
   buildFluidScheduleInstructions,
+  formatMedicationChips,
   nextTimeSlotSuggestion,
   normalizeScheduledTimes,
+  parseMedicationChips,
   todayWarsawIso,
 } from "@/features/medications/schedule-dates";
 import type { IntervalUnit } from "@/features/medications/types";
@@ -41,7 +48,8 @@ export function FluidFormPage({
   pet: Pet;
   therapy: PetFluidTherapy | null;
 }) {
-  const pl = useLocale() === "pl";
+  const locale = useLocale();
+  const pl = locale === "pl";
   const router = useRouter();
 
   const [fluidName, setFluidName] = useState(
@@ -52,7 +60,11 @@ export function FluidFormPage({
 
   const [volumeStr, setVolumeStr] = useState(therapy ? String(therapy.volume_ml) : "150");
   const [route, setRoute] = useState<FluidRoute>(therapy?.route ?? "sc");
-  const [medicationsAdded, setMedicationsAdded] = useState(therapy?.medications_added ?? "");
+  const [medChips, setMedChips] = useState<string[]>(() =>
+    parseMedicationChips(therapy?.medications_added ?? "")
+  );
+  const [customMedInput, setCustomMedInput] = useState("");
+  const [recordMedsInHistory, setRecordMedsInHistory] = useState(false);
   const [location, setLocation] = useState<FluidLocation>(therapy?.location ?? "home");
   const [clinicName, setClinicName] = useState(therapy?.clinic_name ?? "");
   const [doctorName, setDoctorName] = useState(therapy?.doctor_name ?? "");
@@ -123,13 +135,30 @@ export function FluidFormPage({
     setScheduledTimes((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
   }
 
-  function appendMedication(item: string) {
-    setMedicationsAdded((prev) => {
-      const trimmed = prev.trim();
-      if (!trimmed) return item;
-      if (trimmed.toLowerCase().includes(item.toLowerCase())) return prev;
-      return `${trimmed}, ${item}`;
+  const resolvedMedChips = parseMedicationChips([...medChips, customMedInput].join(","));
+  const selectedMedKeys = new Set(medChips.map((chip) => chip.toLowerCase()));
+
+  function toggleMedChip(item: string) {
+    const key = item.trim().toLowerCase();
+    if (!key) return;
+    setMedChips((prev) => {
+      if (prev.some((c) => c.toLowerCase() === key)) {
+        return prev.filter((c) => c.toLowerCase() !== key);
+      }
+      return parseMedicationChips([...prev, item].join(","));
     });
+  }
+
+  function addCustomMedChips() {
+    const parsed = parseMedicationChips(customMedInput);
+    if (!parsed.length) return;
+    setMedChips((prev) => parseMedicationChips([...prev, ...parsed].join(",")));
+    setCustomMedInput("");
+  }
+
+  function removeMedChip(chip: string) {
+    const key = chip.toLowerCase();
+    setMedChips((prev) => prev.filter((c) => c.toLowerCase() !== key));
   }
 
   function appendCatheter(status: string) {
@@ -151,6 +180,8 @@ export function FluidFormPage({
     setSaving(true);
     try {
       const roundedVolume = Math.round(numVolume * 10) / 10;
+      const finalChips = parseMedicationChips([...medChips, customMedInput].join(","));
+      const finalMedicationsAdded = formatMedicationChips(finalChips);
 
       if (!therapy && entryMode === "schedule") {
         const cleanFluid = effectiveFluid.slice(0, 120);
@@ -169,7 +200,7 @@ export function FluidFormPage({
             scheduled_time: validScheduledTimes[0] ?? "",
             scheduled_times: validScheduledTimes,
             instructions: buildFluidScheduleInstructions({
-              medicationsAdded,
+              medicationsAdded: finalMedicationsAdded,
               notes,
               clinicName: location === "clinic" ? clinicName : undefined,
               doctorName: location === "clinic" ? doctorName : undefined,
@@ -196,6 +227,19 @@ export function FluidFormPage({
           return;
         }
 
+        if (recordMedsInHistory && finalChips.length > 0) {
+          await recordMedicationsStartedHistoryClient({
+            petId: pet.id,
+            medications: finalChips,
+            eventDate: startDate,
+            plannedStartDate: startDate,
+            fluidSummary: `${cleanFluid} ${roundedVolume} ml (${route.toUpperCase()})`,
+            clinicName: location === "clinic" ? clinicName : undefined,
+            doctorName: location === "clinic" ? doctorName : undefined,
+            locale,
+          });
+        }
+
         router.push(`/app/zwierzeta/${pet.id}?tab=overview`);
         router.refresh();
         return;
@@ -209,7 +253,7 @@ export function FluidFormPage({
         fluidName: effectiveFluid,
         volumeMl: roundedVolume,
         route,
-        medicationsAdded,
+        medicationsAdded: finalMedicationsAdded,
         location,
         clinicName: location === "clinic" ? clinicName : "",
         doctorName: location === "clinic" ? doctorName : "",
@@ -230,6 +274,18 @@ export function FluidFormPage({
               : `Save error: ${res.error}`
         );
         return;
+      }
+
+      if (!therapy && recordMedsInHistory && finalChips.length > 0) {
+        await recordMedicationsStartedHistoryClient({
+          petId: pet.id,
+          medications: finalChips,
+          eventDate: date,
+          fluidSummary: `${effectiveFluid} ${roundedVolume} ml (${route.toUpperCase()})`,
+          clinicName: location === "clinic" ? clinicName : undefined,
+          doctorName: location === "clinic" ? doctorName : undefined,
+          locale,
+        });
       }
 
       router.push(`/app/zwierzeta/${pet.id}?tab=history`);
@@ -474,30 +530,93 @@ export function FluidFormPage({
             <label htmlFor="fluid-meds" className="fluid-label">
               <span>{pl ? "Leki i dodatki włączone do wlewu (opcjonalnie)" : "Additives (optional)"}</span>
             </label>
-            <input
-              id="fluid-meds"
-              className="fluid-input"
-              value={medicationsAdded}
-              placeholder={
-                pl
-                  ? "np. Duphalyte 10 ml, Cerenia 0.4 ml, Catosal 1 ml, KCl"
-                  : "e.g. Duphalyte 10 ml, Cerenia 0.4 ml, Catosal 1 ml"
-              }
-              onChange={(e) => setMedicationsAdded(e.target.value)}
-            />
+
+            {medChips.length > 0 && (
+              <div className="fluid-med-selected-list" role="list">
+                {medChips.map((chip) => (
+                  <span key={chip} role="listitem" className="fluid-med-tag">
+                    <span>{chip}</span>
+                    <button
+                      type="button"
+                      className="fluid-med-tag-remove"
+                      onClick={() => removeMedChip(chip)}
+                      aria-label={pl ? `Usuń lek ${chip}` : `Remove ${chip}`}
+                    >
+                      <IconX size={13} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="fluid-med-add-row">
+              <input
+                id="fluid-meds"
+                className="fluid-input"
+                value={customMedInput}
+                placeholder={
+                  pl
+                    ? "Wpisz lek i naciśnij Enter (np. Duphalyte 10 ml, Cerenia 0.4 ml)"
+                    : "Type a medication & press Enter (e.g. Duphalyte 10 ml)"
+                }
+                onChange={(e) => setCustomMedInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomMedChips();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="fluid-med-add-btn"
+                onClick={addCustomMedChips}
+                disabled={!customMedInput.trim()}
+              >
+                <IconPlus size={15} aria-hidden="true" />
+                <span>{pl ? "Dodaj" : "Add"}</span>
+              </button>
+            </div>
+
             <div className="fluid-chips-group">
               <span className="fluid-chips-hint">{pl ? "Popularne:" : "Additives:"}</span>
-              {medSuggestions.map((med) => (
-                <button
-                  key={med.label}
-                  type="button"
-                  className="fluid-chip-btn is-add"
-                  onClick={() => appendMedication(med.val)}
-                >
-                  + {med.label}
-                </button>
-              ))}
+              {medSuggestions.map((med) => {
+                const isSelected = selectedMedKeys.has(med.val.toLowerCase());
+                return (
+                  <button
+                    key={med.label}
+                    type="button"
+                    className={`fluid-chip-btn is-add ${isSelected ? "is-selected" : ""}`}
+                    onClick={() => toggleMedChip(med.val)}
+                    aria-pressed={isSelected}
+                  >
+                    {isSelected ? (
+                      <>
+                        <IconCheck size={13} aria-hidden="true" />
+                        <span>{med.label}</span>
+                      </>
+                    ) : (
+                      <span>+ {med.label}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+
+            {!therapy && resolvedMedChips.length > 0 && (
+              <label className="fluid-history-opt">
+                <input
+                  type="checkbox"
+                  checked={recordMedsInHistory}
+                  onChange={(e) => setRecordMedsInHistory(e.target.checked)}
+                />
+                <span>
+                  {pl
+                    ? "Zapisz też w historii leczenia wpis informujący o wdrożeniu tych leków"
+                    : "Also record in treatment history that these medications were started"}
+                </span>
+              </label>
+            )}
           </div>
 
           {route !== "sc" && (
@@ -557,57 +676,83 @@ export function FluidFormPage({
             </div>
           )}
 
-          {!therapy && (
+          {!therapy ? (
+            <div className="fluid-grid-2-equal">
+              <div className="fluid-field">
+                <label className="fluid-label">
+                  <span>{pl ? "Tryb zapisu kroplówki *" : "Recording mode *"}</span>
+                </label>
+                <div className="fluid-segment-grid is-2-col">
+                  <button
+                    type="button"
+                    className={`fluid-segment-btn is-compact ${entryMode === "single" ? "is-active" : ""}`}
+                    onClick={() => setEntryMode("single")}
+                  >
+                    <IconClock size={16} aria-hidden="true" />
+                    <span>{pl ? "Pojedynczy wlew" : "Single"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`fluid-segment-btn is-compact ${entryMode === "schedule" ? "is-active-cyan" : ""}`}
+                    onClick={() => setEntryMode("schedule")}
+                  >
+                    <IconCalendarRepeat size={16} aria-hidden="true" />
+                    <span>{pl ? "Plan cykliczny" : "Recurring"}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="fluid-field">
+                <label className="fluid-label">
+                  <span>{pl ? "Miejsce wykonania *" : "Location *"}</span>
+                </label>
+                <div className="fluid-segment-grid is-2-col">
+                  <button
+                    type="button"
+                    className={`fluid-segment-btn is-compact ${location === "home" ? "is-active" : ""}`}
+                    onClick={() => setLocation("home")}
+                  >
+                    <IconHome size={16} aria-hidden="true" />
+                    <span>{pl ? "W domu" : "At home"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`fluid-segment-btn is-compact ${location === "clinic" ? "is-active" : ""}`}
+                    onClick={() => setLocation("clinic")}
+                  >
+                    <IconBuildingHospital size={16} aria-hidden="true" />
+                    <span>{pl ? "W lecznicy" : "At clinic"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
             <div className="fluid-field">
               <label className="fluid-label">
-                <span>{pl ? "Tryb zapisu kroplówki *" : "Recording mode *"}</span>
+                <span>{pl ? "Miejsce wykonania *" : "Location *"}</span>
               </label>
               <div className="fluid-segment-grid is-2-col">
                 <button
                   type="button"
-                  className={`fluid-segment-btn ${entryMode === "single" ? "is-active" : ""}`}
-                  onClick={() => setEntryMode("single")}
+                  className={`fluid-segment-btn ${location === "home" ? "is-active" : ""}`}
+                  onClick={() => setLocation("home")}
                 >
-                  <IconClock size={17} aria-hidden="true" />
-                  <span>{pl ? "Pojedynczy wlew (już podany)" : "Single infusion (already given)"}</span>
+                  <IconHome size={17} aria-hidden="true" />
+                  <span>{pl ? "W domu (opiekun)" : "At home"}</span>
                 </button>
                 <button
                   type="button"
-                  className={`fluid-segment-btn ${entryMode === "schedule" ? "is-active-cyan" : ""}`}
-                  onClick={() => setEntryMode("schedule")}
+                  className={`fluid-segment-btn ${location === "clinic" ? "is-active" : ""}`}
+                  onClick={() => setLocation("clinic")}
                 >
-                  <IconCalendarRepeat size={17} aria-hidden="true" />
-                  <span>{pl ? "Cykliczny harmonogram (plan)" : "Recurring schedule (plan)"}</span>
+                  <IconBuildingHospital size={17} aria-hidden="true" />
+                  <span>{pl ? "W lecznicy weterynaryjnej" : "At clinic"}</span>
                 </button>
               </div>
             </div>
           )}
 
-          <div className="fluid-field">
-            <label className="fluid-label">
-              <span>{pl ? "Miejsce wykonania *" : "Location *"}</span>
-            </label>
-            <div className="fluid-segment-grid is-2-col">
-              <button
-                type="button"
-                className={`fluid-segment-btn ${location === "home" ? "is-active" : ""}`}
-                onClick={() => setLocation("home")}
-              >
-                <IconHome size={17} aria-hidden="true" />
-                <span>{pl ? "W domu (opiekun)" : "At home"}</span>
-              </button>
-              <button
-                type="button"
-                className={`fluid-segment-btn ${location === "clinic" ? "is-active" : ""}`}
-                onClick={() => setLocation("clinic")}
-              >
-                <IconBuildingHospital size={17} aria-hidden="true" />
-                <span>{pl ? "W lecznicy weterynaryjnej" : "At clinic"}</span>
-              </button>
-            </div>
-          </div>
-
-          {location === "clinic" ? (
+          {location === "clinic" && (
             <div className="fluid-grid-2-equal">
               <div className="fluid-field">
                 <label htmlFor="fluid-clinic" className="fluid-label">
@@ -633,15 +778,6 @@ export function FluidFormPage({
                   onChange={(e) => setDoctorName(e.target.value)}
                 />
               </div>
-            </div>
-          ) : (
-            <div className="fluid-home-box">
-              <IconHome size={18} aria-hidden="true" />
-              <span>
-                {pl
-                  ? "Wlew wykonywany w domu przez opiekuna (brak konieczności wpisywania danych gabinetu)."
-                  : "Infusion administered at home by guardian."}
-              </span>
             </div>
           )}
 

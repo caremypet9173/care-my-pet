@@ -48,3 +48,30 @@ export function buildFluidScheduleInstructions(params: {
 
   return parts.join(" · ").slice(0, 2000);
 }
+
+/**
+ * Dzieli tekst z listą leków lub dodatków we wlewie na znormalizowane, unikalne chipsy.
+ */
+export function parseMedicationChips(raw: string): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const chips: string[] = [];
+
+  for (const part of raw.split(/[,;\n]+/)) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    chips.push(trimmed);
+  }
+
+  return chips;
+}
+
+/**
+ * Scala tablicę chipsów leków w jeden czytelny ciąg oddzielony przecinkami.
+ */
+export function formatMedicationChips(chips: string[]): string {
+  return parseMedicationChips(chips.join(",")).join(", ");
+}
