@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPet } from "@/features/pets/data";
 import { FluidFormPage } from "@/features/fluid-therapy/fluid-form-page";
-import "@/styles/medical.css";
+import "@/styles/pets.css";
+import "@/styles/fluid-form.css";
 
 export async function generateMetadata({
   params,

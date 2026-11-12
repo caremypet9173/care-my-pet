@@ -1,0 +1,462 @@
+/* Styl formularza rejestracji i edycji płynoterapii (kroplówek) */
+
+.fluid-page-shell {
+  padding-block: var(--space-6) var(--space-12);
+}
+
+.fluid-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+  margin-bottom: 1.25rem;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.fluid-back-link:hover {
+  color: var(--color-primary-hover, #0d3b25);
+  transform: translateX(-2px);
+}
+
+.fluid-header-block {
+  margin-bottom: 1.75rem;
+}
+
+.fluid-header-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #ecfeff;
+  color: #0891b2;
+  border: 1px solid #a5f3fc;
+  margin-bottom: 0.5rem;
+}
+
+.fluid-header-title {
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.25;
+  margin: 0 0 0.4rem;
+  letter-spacing: -0.02em;
+}
+
+.fluid-header-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Karta formularza */
+.fluid-form-card {
+  background: var(--color-surface-raised, #ffffff);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: 1.75rem 2rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Sekcje wewnątrz formularza */
+.fluid-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.fluid-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.fluid-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.fluid-section-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.5rem;
+  display: grid;
+  place-items: center;
+  background: #f0fdf4;
+  color: #164d34;
+  border: 1px solid #bbf7d0;
+  flex-shrink: 0;
+}
+
+.fluid-section-icon.is-cyan {
+  background: #ecfeff;
+  color: #0891b2;
+  border-color: #a5f3fc;
+}
+
+.fluid-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+/* Pola i siatki */
+.fluid-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+.fluid-grid-2-equal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+.fluid-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fluid-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fluid-label small {
+  font-weight: 400;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.fluid-input,
+.fluid-select,
+.fluid-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 0.85rem;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-control-border, #cbd5e1);
+  border-radius: 0.55rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fluid-input:focus,
+.fluid-select:focus,
+.fluid-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary, #164d34);
+  box-shadow: 0 0 0 3px rgba(22, 77, 52, 0.15);
+}
+
+.fluid-input[aria-invalid="true"],
+.fluid-select[aria-invalid="true"] {
+  border-color: var(--color-danger, #dc2626);
+  background-color: #fef2f2;
+}
+
+.fluid-volume-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fluid-volume-wrap input {
+  padding-right: 2.5rem;
+}
+
+.fluid-volume-unit {
+  position: absolute;
+  right: 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+/* Chipy szybkiego wyboru */
+.fluid-chips-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.fluid-chips-hint {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-right: 0.25rem;
+}
+
+.fluid-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 30px;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--color-surface-sand, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.fluid-chip-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.fluid-chip-btn.is-active {
+  background: #164d34;
+  border-color: #164d34;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.fluid-chip-btn.is-add {
+  color: #0369a1;
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.fluid-chip-btn.is-add:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+/* Kontrolki segmentowe */
+.fluid-segment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.fluid-segment-grid.is-2-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fluid-segment-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 46px;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.fluid-segment-btn:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.fluid-segment-btn.is-active {
+  border-color: #164d34;
+  background: #eef7f2;
+  color: #164d34;
+  box-shadow: 0 0 0 1px #164d34;
+}
+
+.fluid-segment-btn.is-active-cyan {
+  border-color: #0891b2;
+  background: #ecfeff;
+  color: #0e7490;
+  box-shadow: 0 0 0 1px #0891b2;
+}
+
+/* Komunikat o podaniu w domu */
+.fluid-home-box {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 0.8125rem;
+}
+
+.fluid-home-box svg {
+  flex-shrink: 0;
+  color: #15803d;
+}
+
+/* Blok stanu wenflonu */
+.fluid-catheter-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.65rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Textarea z notatkami */
+.fluid-textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* Pasek akcji na dole karty */
+.fluid-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.fluid-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fluid-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.fluid-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.6rem 1.4rem;
+  border-radius: 0.6rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.fluid-btn-secondary {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+.fluid-btn-secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.fluid-btn-primary {
+  background: #164d34;
+  border: 1px solid #164d34;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(22, 77, 52, 0.25);
+}
+
+.fluid-btn-primary:hover:not(:disabled) {
+  background: #1d6343;
+  border-color: #1d6343;
+}
+
+.fluid-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.fluid-btn-danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.fluid-btn-danger:hover {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.fluid-error-alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+  .fluid-form-card {
+    padding: 1.25rem 1rem;
+    gap: 1.5rem;
+  }
+  .fluid-grid-2,
+  .fluid-grid-2-equal {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .fluid-segment-grid {
+    grid-template-columns: 1fr;
+  }
+  .fluid-segment-grid.is-2-col {
+    grid-template-columns: 1fr;
+  }
+  .fluid-actions-bar {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .fluid-actions-right,
+  .fluid-actions-left {
+    width: 100%;
+    margin-left: 0;
+    flex-direction: column;
+  }
+  .fluid-btn {
+    width: 100%;
+  }
+}
