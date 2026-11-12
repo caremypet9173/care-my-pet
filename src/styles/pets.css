@@ -567,6 +567,11 @@
 .daily-care-visit-item strong { display: block; font-size: .88rem; color: #0369a1; }
 .daily-care-visit-item small { display: block; font-size: .74rem; color: #475569; margin-top: .1rem; }
 .daily-care-prep-notes { margin: .2rem 0 0; font-size: .75rem; color: #0369a1; }
+.daily-care-visit-item.is-fluid { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.daily-care-visit-item.is-fluid svg { color: #15803d; flex-shrink: 0; }
+.daily-care-visit-item.is-fluid strong { color: #15803d; }
+.daily-care-visit-item.is-fluid small { color: #166534; }
+.daily-care-visit-item.is-fluid .daily-care-prep-notes { color: #15803d; }
 .daily-care-vitals-strip { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding-top: .75rem; border-top: 1px dashed #cbe3d7; }
 .daily-care-vitals-title { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #4a6357; }
 .daily-care-vitals-chips { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }

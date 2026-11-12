@@ -105,9 +105,12 @@ export function DailyCareCard({
   );
   const todayFluids = fluids.filter((f) => f.administered_on === todayIso);
 
-  // If there are no medication doses and no visits scheduled for today,
-  // do not render an empty card with redundant add buttons.
-  const hasTasksToday = todayDoses.length > 0 || todayVisits.length > 0;
+  // If there are no medication doses, visits or fluids scheduled/recorded for today,
+  // do not render an empty card.
+  const hasTasksToday =
+    todayDoses.length > 0 ||
+    todayVisits.length > 0 ||
+    todayFluids.length > 0;
   if (!hasTasksToday) {
     return null;
   }
@@ -250,6 +253,15 @@ export function DailyCareCard({
               <IconCalendar size={14} aria-hidden="true" />
               <span>
                 {pl ? `${todayVisits.length} wizyta dzisiaj` : "Visit today"}
+              </span>
+            </span>
+          ) : todayFluids.length > 0 ? (
+            <span className="daily-care-pill-badge is-complete">
+              <IconCheck size={14} aria-hidden="true" />
+              <span>
+                {pl
+                  ? `Kroplówka podana (${todayFluids[0].volume_ml} ml)`
+                  : `Infusion done (${todayFluids[0].volume_ml} ml)`}
               </span>
             </span>
           ) : (
@@ -405,8 +417,59 @@ export function DailyCareCard({
         </div>
       )}
 
-      {/* 3. Today's recorded vitals if any were already logged */}
-      {(todayBP || todayGlucose || todayTemp || todayWeights[0] || todayFluids[0]) && (
+      {/* 3. Today's fluid therapies */}
+      {todayFluids.length > 0 && (
+        <div className="daily-care-section">
+          <h3 className="daily-care-section-title">
+            <IconDroplet size={16} aria-hidden="true" />
+            <span>{pl ? "Płynoterapia / kroplówki z dziś" : "Fluid therapy today"}</span>
+          </h3>
+          <ul className="daily-care-visit-list">
+            {todayFluids.map((f) => {
+              const routeLabel =
+                f.route === "sc"
+                  ? pl ? "podskórnie (SC)" : "subcutaneous (SC)"
+                  : f.route === "iv"
+                    ? pl ? "dożylnie (IV)" : "intravenous (IV)"
+                    : f.route;
+              const timePart = f.administered_at
+                ? new Intl.DateTimeFormat(locale, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "Europe/Warsaw",
+                  }).format(new Date(f.administered_at))
+                : "";
+              const locLabel =
+                f.location === "home"
+                  ? pl ? "w domu" : "at home"
+                  : f.clinic_name
+                    ? `${pl ? "klinika: " : "clinic: "}${f.clinic_name}`
+                    : pl ? "w lecznicy" : "at clinic";
+
+              return (
+                <li key={f.id} className="daily-care-visit-item is-fluid">
+                  <IconDroplet size={18} aria-hidden="true" />
+                  <div>
+                    <strong>
+                      {timePart ? `${timePart} · ` : ""}
+                      {f.fluid_name} — {f.volume_ml} ml ({routeLabel})
+                    </strong>
+                    <small>
+                      {locLabel}
+                      {f.medications_added ? ` · Dodatki: ${f.medications_added}` : ""}
+                      {f.catheter_status ? ` · Wenflon: ${f.catheter_status}` : ""}
+                    </small>
+                    {f.notes && <p className="daily-care-prep-notes">{f.notes}</p>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* 4. Today's recorded vitals if any were already logged */}
+      {(todayBP || todayGlucose || todayTemp || todayWeights[0]) && (
         <div className="daily-care-vitals-strip">
           <span className="daily-care-vitals-title">
             {pl ? "Zarejestrowane dzisiaj:" : "Recorded today:"}
@@ -440,14 +503,6 @@ export function DailyCareCard({
               <span className="daily-care-chip is-recorded">
                 <IconScale size={14} aria-hidden="true" />
                 <span>{Number(todayWeights[0].kg).toFixed(2)} kg</span>
-              </span>
-            )}
-            {todayFluids[0] && (
-              <span className="daily-care-chip is-recorded">
-                <IconDroplet size={14} aria-hidden="true" />
-                <span>
-                  {todayFluids[0].fluid_name.split(" ")[0]} {todayFluids[0].volume_ml} ml
-                </span>
               </span>
             )}
           </div>
