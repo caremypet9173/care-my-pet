@@ -628,6 +628,26 @@ export function MedicalDocuments({
                   >
                     {activeDocument.targetLinkLabel}
                   </Link>
+                  <div style={{ marginTop: ".75rem" }}>
+                    <Link
+                      className="medical-ask-assistant-btn"
+                      href={`/app/zwierzeta/${petId}?tab=assistant&prompt=${encodeURIComponent(
+                        locale === "pl"
+                          ? `Co wynika z dokumentu "${activeDocument.title}" z dnia ${activeDocument.date}? Pomóż zinterpretować opis i zalecenia.`
+                          : `What are the key findings from document "${activeDocument.title}" dated ${activeDocument.date}? Help me interpret the summary and recommendations.`,
+                      )}`}
+                      onClick={() => {
+                        document.body.style.overflow = "";
+                      }}
+                    >
+                      <IconSparkles size={15} aria-hidden="true" />
+                      <span>
+                        {locale === "pl"
+                          ? "Zapytaj Asystenta o ten dokument"
+                          : "Ask Assistant about document"}
+                      </span>
+                    </Link>
+                  </div>
                 </section>
               </aside>
             </div>

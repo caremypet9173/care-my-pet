@@ -39,12 +39,14 @@ export function AssistantPanel({
   initialThreads,
   initialMessages,
   initialQuotaUsed,
+  initialPrompt,
 }: {
   petId: string;
   petName: string;
   initialThreads?: AssistantThread[];
   initialMessages?: AssistantMessage[];
   initialQuotaUsed?: number;
+  initialPrompt?: string;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
@@ -56,13 +58,26 @@ export function AssistantPanel({
   );
   const [quotaUsed, setQuotaUsed] = useState(initialQuotaUsed ?? 0);
   const [loadingInitial, setLoadingInitial] = useState(initialThreads === undefined);
-  const [input, setInput] = useState("");
+  const [prevInitialPrompt, setPrevInitialPrompt] = useState(initialPrompt);
+  const [input, setInput] = useState(initialPrompt ?? "");
+  if (initialPrompt !== prevInitialPrompt) {
+    setPrevInitialPrompt(initialPrompt);
+    setInput(initialPrompt ?? "");
+  }
   const [sending, setSending] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState("");
 
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (initialPrompt) {
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
+    }
+  }, [initialPrompt]);
 
   useEffect(() => {
     if (initialThreads !== undefined) return;

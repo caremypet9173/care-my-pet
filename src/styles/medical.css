@@ -1484,3 +1484,31 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
     padding: 0.45rem 0.75rem;
   }
 }
+
+.medical-ask-assistant-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 34px;
+  padding: .35rem .75rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #eaf6ef 0%, #f4faf7 100%);
+  border: 1px solid #9ecbb5;
+  color: #134e35;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+.medical-ask-assistant-btn:hover {
+  background: #def0e6;
+  border-color: #164d34;
+  color: #0b3322;
+  box-shadow: 0 2px 8px -2px rgba(22, 77, 52, 0.15);
+}
+.medical-ask-assistant-btn:focus-visible {
+  outline: 2px solid #164d34;
+  outline-offset: 2px;
+}

@@ -527,6 +527,52 @@
 .household-quick-toast-close:hover { background: rgba(255, 255, 255, .12); color: #fff; }
 .household-quick-item:focus-visible, .household-quick-vital-tile:focus-visible, .household-quick-pill:focus-visible, .household-quick-tray-btn:focus-visible, .household-quick-popover-close:focus-visible { outline: 2px solid #32766c; outline-offset: 2px; }
 .household-quick-toast-link:focus-visible, .household-quick-toast-close:focus-visible { outline: 2px solid #a7f3d0; outline-offset: 2px; }
+
+/* Dzienny pulpit opieki pupila (Daily Care Hub) */
+.daily-care-card { border-radius: .95rem; padding: 1.15rem 1.25rem; background: linear-gradient(135deg, #ffffff 0%, #f7fbf8 100%); border: 1px solid #cbe3d7; box-shadow: 0 4px 18px -4px rgba(22, 77, 52, 0.08); margin-bottom: 1.25rem; display: grid; gap: 1rem; }
+.daily-care-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.daily-care-badge-row { display: inline-flex; align-items: center; gap: .4rem; }
+.daily-care-icon-badge { width: 1.6rem; height: 1.6rem; border-radius: .45rem; background: #e7f4ec; color: #164d34; display: grid; place-items: center; }
+.daily-care-kicker { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #164d34; }
+.daily-care-title { font-size: 1.05rem; font-weight: 800; color: #153b2a; margin: .15rem 0 0; }
+.daily-care-pill-badge { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+.daily-care-pill-badge.is-complete { background: #e7f4ec; color: #164d34; border: 1px solid #b8d4c5; }
+.daily-care-pill-badge.is-pending { background: #fdf5ea; color: #8a5314; border: 1px solid #f3d4a6; }
+.daily-care-pill-badge.is-visit { background: #e8f4fd; color: #135589; border: 1px solid #b8dcf6; }
+.daily-care-pill-badge.is-quiet { background: #f3f6f4; color: #42584e; border: 1px solid #d5dfd9; }
+.daily-care-section { display: grid; gap: .6rem; }
+.daily-care-section-title { display: inline-flex; align-items: center; gap: .4rem; font-size: .82rem; font-weight: 700; color: #164d34; margin: 0; }
+.daily-care-dose-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.daily-care-dose-item { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .85rem; border-radius: .75rem; border: 1px solid #e1e9e4; background: #fff; transition: background-color .15s, border-color .15s; }
+.daily-care-dose-item.is-completed { background: #f4faf6; border-color: #cbe3d7; }
+.daily-care-dose-item.is-skipped { background: #fdf8f7; border-color: #f7d4d0; }
+.daily-care-dose-info { display: grid; gap: .15rem; min-width: 0; flex: 1; }
+.daily-care-dose-header { display: flex; align-items: baseline; gap: .45rem; flex-wrap: wrap; }
+.daily-care-dose-time { font-size: .75rem; font-weight: 700; color: #164d34; background: #e7f4ec; padding: .1rem .45rem; border-radius: .35rem; }
+.daily-care-dose-name { font-size: .88rem; color: #1b2f25; }
+.daily-care-dose-dosage { font-size: .78rem; color: #5a7367; }
+.daily-care-dose-instructions { margin: 0; font-size: .75rem; color: #687e74; font-style: italic; }
+.daily-care-dose-meta { font-size: .72rem; color: #166534; font-weight: 600; }
+.daily-care-dose-meta.is-skipped { color: #991b1b; }
+.daily-care-dose-actions { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+.daily-care-btn-take { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .75rem; border-radius: .55rem; background: #164d34; color: #fff; font: inherit; font-size: .78rem; font-weight: 700; border: 0; cursor: pointer; transition: background-color .15s; }
+.daily-care-btn-take:hover { background: #103926; }
+.daily-care-btn-skip { display: inline-flex; align-items: center; padding: .35rem .55rem; border-radius: .55rem; background: transparent; color: #64748b; font: inherit; font-size: .75rem; font-weight: 600; border: 1px solid #cbd5e1; cursor: pointer; transition: background-color .15s; }
+.daily-care-btn-skip:hover { background: #f1f5f9; color: #334155; }
+.daily-care-btn-uncheck { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .65rem; border-radius: .55rem; background: #e7f4ec; color: #166534; font: inherit; font-size: .75rem; font-weight: 700; border: 1px solid #b8d4c5; cursor: pointer; }
+.daily-care-btn-uncheck:hover { background: #d4ebd9; }
+.daily-care-btn-uncheck.is-skipped { background: #fdf1f0; color: #a82424; border-color: #f5c2c2; }
+.daily-care-visit-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.daily-care-visit-item { display: flex; align-items: flex-start; gap: .65rem; padding: .65rem .85rem; border-radius: .75rem; background: #edf6fd; border: 1px solid #bee0f8; font-size: .82rem; color: #0c4a6e; }
+.daily-care-visit-item strong { display: block; font-size: .88rem; color: #0369a1; }
+.daily-care-visit-item small { display: block; font-size: .74rem; color: #475569; margin-top: .1rem; }
+.daily-care-prep-notes { margin: .2rem 0 0; font-size: .75rem; color: #0369a1; }
+.daily-care-vitals-strip { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding-top: .75rem; border-top: 1px dashed #cbe3d7; }
+.daily-care-vitals-title { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #4a6357; }
+.daily-care-vitals-chips { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.daily-care-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .6rem; border-radius: 999px; font-size: .74rem; font-weight: 600; background: #e7f4ec; color: #164d34; border: 1px solid #b8d4c5; }
+.daily-care-chip-btn { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .55rem; border-radius: 999px; font-size: .74rem; font-weight: 600; background: #fff; color: #354f42; border: 1px dashed #b8c8c0; cursor: pointer; text-decoration: none; transition: background-color .15s, border-color .15s; }
+.daily-care-chip-btn:hover { background: #f4faf6; border-color: #164d34; color: #164d34; }
 .share-dialog { max-width: 44rem; width: calc(100vw - 2rem); }
 .share-dialog-body { display: grid; gap: 1.15rem; padding: 1.35rem 1.5rem; }
 .share-dialog-body > header { display: flex; align-items: flex-start; gap: .85rem; }
