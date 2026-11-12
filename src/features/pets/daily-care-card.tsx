@@ -10,7 +10,6 @@ import {
   IconDroplet,
   IconHeartRateMonitor,
   IconPill,
-  IconPlus,
   IconScale,
   IconSparkles,
   IconStethoscope,
@@ -28,9 +27,7 @@ import type { ScheduleItem } from "@/features/schedule/types";
 import type { PetFluidTherapy } from "@/features/fluid-therapy/types";
 import type { VitalMeasurement } from "@/features/measurements/types";
 import type { WeightMeasurement } from "@/features/weight/types";
-import { usePetQuickAddOptional } from "./pet-quick-actions";
 import { SkipDoseDialog } from "@/features/medications/skip-dose-dialog";
-import { Link } from "@/i18n/navigation";
 
 function createTempLogId(): string {
   return `temp-${Date.now()}`;
@@ -49,7 +46,6 @@ interface DailyCareCardProps {
 }
 
 export function DailyCareCard({
-  petId,
   petName,
   schedules,
   initialLogs,
@@ -62,7 +58,6 @@ export function DailyCareCard({
   const router = useRouter();
   const locale = useLocale();
   const pl = locale === "pl";
-  const quickAdd = usePetQuickAddOptional();
 
   const [logs, setLogs] = useState<MedicationLog[]>(initialLogs);
   const [skippingDose, setSkippingDose] =
@@ -109,6 +104,13 @@ export function DailyCareCard({
     (v) => v.metric_type === "temperature" && v.measured_on === todayIso,
   );
   const todayFluids = fluids.filter((f) => f.administered_on === todayIso);
+
+  // If there are no medication doses and no visits scheduled for today,
+  // do not render an empty card with redundant add buttons.
+  const hasTasksToday = todayDoses.length > 0 || todayVisits.length > 0;
+  if (!hasTasksToday) {
+    return null;
+  }
 
   async function handleToggleDose(
     dose: ProjectedMedicationDose,
@@ -403,122 +405,54 @@ export function DailyCareCard({
         </div>
       )}
 
-      {/* 3. Today's Vitals & Quick Care strip */}
-      <div className="daily-care-vitals-strip">
-        <span className="daily-care-vitals-title">
-          {pl ? "Pomiary i stan z dziś:" : "Today's logs & checks:"}
-        </span>
-
-        <div className="daily-care-vitals-chips">
-          {/* Blood pressure */}
-          {todayBP ? (
-            <span className="daily-care-chip is-recorded">
-              <IconHeartRateMonitor size={15} aria-hidden="true" />
-              <span>
-                {Math.round(Number(todayBP.value_primary))}
-                {todayBP.value_secondary
-                  ? `/${Math.round(Number(todayBP.value_secondary))}`
-                  : ""}{" "}
-                mmHg
+      {/* 3. Today's recorded vitals if any were already logged */}
+      {(todayBP || todayGlucose || todayTemp || todayWeights[0] || todayFluids[0]) && (
+        <div className="daily-care-vitals-strip">
+          <span className="daily-care-vitals-title">
+            {pl ? "Zarejestrowane dzisiaj:" : "Recorded today:"}
+          </span>
+          <div className="daily-care-vitals-chips">
+            {todayBP && (
+              <span className="daily-care-chip is-recorded">
+                <IconHeartRateMonitor size={14} aria-hidden="true" />
+                <span>
+                  {Math.round(Number(todayBP.value_primary))}
+                  {todayBP.value_secondary
+                    ? `/${Math.round(Number(todayBP.value_secondary))}`
+                    : ""}{" "}
+                  mmHg
+                </span>
               </span>
-            </span>
-          ) : (
-            quickAdd && (
-              <button
-                type="button"
-                className="daily-care-chip-btn"
-                onClick={() => quickAdd.openAction("blood_pressure")}
-              >
-                <IconPlus size={14} aria-hidden="true" />
-                <IconHeartRateMonitor size={15} aria-hidden="true" />
-                <span>{pl ? "Ciśnienie" : "Blood pressure"}</span>
-              </button>
-            )
-          )}
-
-          {/* Glucose */}
-          {todayGlucose ? (
-            <span className="daily-care-chip is-recorded">
-              <IconDroplet size={15} aria-hidden="true" />
-              <span>
-                {Math.round(Number(todayGlucose.value_primary))} mg/dL
+            )}
+            {todayGlucose && (
+              <span className="daily-care-chip is-recorded">
+                <IconDroplet size={14} aria-hidden="true" />
+                <span>{Math.round(Number(todayGlucose.value_primary))} mg/dL</span>
               </span>
-            </span>
-          ) : (
-            quickAdd && (
-              <button
-                type="button"
-                className="daily-care-chip-btn"
-                onClick={() => quickAdd.openAction("glucose")}
-              >
-                <IconPlus size={14} aria-hidden="true" />
-                <IconDroplet size={15} aria-hidden="true" />
-                <span>{pl ? "Cukier" : "Glucose"}</span>
-              </button>
-            )
-          )}
-
-          {/* Temperature */}
-          {todayTemp ? (
-            <span className="daily-care-chip is-recorded">
-              <IconTemperature size={15} aria-hidden="true" />
-              <span>{Number(todayTemp.value_primary).toFixed(1)} °C</span>
-            </span>
-          ) : (
-            quickAdd && (
-              <button
-                type="button"
-                className="daily-care-chip-btn"
-                onClick={() => quickAdd.openAction("temperature")}
-              >
-                <IconPlus size={14} aria-hidden="true" />
-                <IconTemperature size={15} aria-hidden="true" />
-                <span>{pl ? "Temp." : "Temp"}</span>
-              </button>
-            )
-          )}
-
-          {/* Weight */}
-          {todayWeights[0] ? (
-            <span className="daily-care-chip is-recorded">
-              <IconScale size={15} aria-hidden="true" />
-              <span>{Number(todayWeights[0].kg).toFixed(2)} kg</span>
-            </span>
-          ) : (
-            quickAdd && (
-              <button
-                type="button"
-                className="daily-care-chip-btn"
-                onClick={() => quickAdd.openAction("weight")}
-              >
-                <IconPlus size={14} aria-hidden="true" />
-                <IconScale size={15} aria-hidden="true" />
-                <span>{pl ? "Waga" : "Weight"}</span>
-              </button>
-            )
-          )}
-
-          {/* Fluid therapy */}
-          {todayFluids.length > 0 ? (
-            <span className="daily-care-chip is-recorded">
-              <IconDroplet size={15} aria-hidden="true" />
-              <span>
-                {todayFluids[0].fluid_name.split(" ")[0]}{" "}
-                {todayFluids[0].volume_ml} ml
+            )}
+            {todayTemp && (
+              <span className="daily-care-chip is-recorded">
+                <IconTemperature size={14} aria-hidden="true" />
+                <span>{Number(todayTemp.value_primary).toFixed(1)} °C</span>
               </span>
-            </span>
-          ) : (
-            <Link
-              href={`/app/zwierzeta/${petId}/plynoterapia/nowa`}
-              className="daily-care-chip-btn"
-            >
-              <IconPlus size={14} aria-hidden="true" />
-              <IconDroplet size={15} aria-hidden="true" />
-              <span>{pl ? "Kroplówka" : "Infusion"}</span>
-            </Link>
-          )}
+            )}
+            {todayWeights[0] && (
+              <span className="daily-care-chip is-recorded">
+                <IconScale size={14} aria-hidden="true" />
+                <span>{Number(todayWeights[0].kg).toFixed(2)} kg</span>
+              </span>
+            )}
+            {todayFluids[0] && (
+              <span className="daily-care-chip is-recorded">
+                <IconDroplet size={14} aria-hidden="true" />
+                <span>
+                  {todayFluids[0].fluid_name.split(" ")[0]} {todayFluids[0].volume_ml} ml
+                </span>
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {skippingDose && (
         <SkipDoseDialog
