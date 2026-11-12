@@ -6,7 +6,9 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconDeviceFloppy,
+  IconMail,
   IconPill,
+  IconPlus,
   IconStethoscope,
   IconVaccine,
   IconX,
@@ -14,6 +16,11 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { Pet } from "@/features/pets/types";
 import type { HealthEvent } from "@/features/history/types";
+import {
+  MAX_NOTIFY_EMAILS,
+  parseNotifyEmailsInput,
+  splitNotifyEmailDraft,
+} from "../../../supabase/functions/pet-schedule/validation.mjs";
 import type { ScheduleCategory, ScheduleItem } from "./types";
 
 function todayIso(): string {
@@ -61,6 +68,11 @@ export function ScheduleDialog({
   const [clinic, setClinic] = useState(item?.clinic ?? "");
   const [doctor, setDoctor] = useState(item?.doctor ?? "");
   const [prepNotes, setPrepNotes] = useState(item?.prep_notes ?? "");
+  const [notifyEmails, setNotifyEmails] = useState<string[]>(() =>
+    Array.isArray(item?.notify_emails) ? item.notify_emails : [],
+  );
+  const [emailDraft, setEmailDraft] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -100,6 +112,31 @@ export function ScheduleDialog({
     },
   ];
 
+  function tryCommitEmailDraft(raw: string): { ok: boolean; emails: string[] } {
+    const incoming = splitNotifyEmailDraft(raw);
+    if (incoming.length === 0) {
+      setEmailError("");
+      return { ok: true, emails: notifyEmails };
+    }
+    const parsed = parseNotifyEmailsInput([...notifyEmails, ...incoming]);
+    if (!parsed.ok) {
+      setEmailError(
+        parsed.error === "too_many_emails"
+          ? pl
+            ? `Możesz dodać maksymalnie ${MAX_NOTIFY_EMAILS} adresów e-mail.`
+            : `You can add at most ${MAX_NOTIFY_EMAILS} email addresses.`
+          : pl
+            ? `Nieprawidłowy adres e-mail: ${parsed.invalidValue ?? ""}`
+            : `Invalid email address: ${parsed.invalidValue ?? ""}`,
+      );
+      return { ok: false, emails: notifyEmails };
+    }
+    setNotifyEmails(parsed.emails);
+    setEmailDraft("");
+    setEmailError("");
+    return { ok: true, emails: parsed.emails };
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (saving) return;
@@ -111,6 +148,11 @@ export function ScheduleDialog({
           ? "Podaj tytuł terminu oraz datę."
           : "Please enter a title and date.",
       );
+      return;
+    }
+
+    const emailCheck = tryCommitEmailDraft(emailDraft);
+    if (!emailCheck.ok) {
       return;
     }
 
@@ -134,6 +176,7 @@ export function ScheduleDialog({
               clinic: clinic.trim(),
               doctor: doctor.trim(),
               prep_notes: prepNotes.trim(),
+              notify_emails: emailCheck.emails,
               status: item?.status ?? "planned",
             },
           },
@@ -367,6 +410,102 @@ export function ScheduleDialog({
                   : "e.g. Ask about dosage, bring lab results, fast for 8 hours before visit…"
               }
             />
+          </div>
+
+          <div className="schedule-notify-box">
+            <div className="schedule-notify-head">
+              <label htmlFor="schedule-notify-email">
+                <IconMail size={14} aria-hidden="true" />{" "}
+                {pl
+                  ? "Powiadom jeszcze (opcjonalnie, e-mail)"
+                  : "Also notify (optional, email)"}
+              </label>
+              <span className="schedule-notify-count">
+                {notifyEmails.length} / {MAX_NOTIFY_EMAILS}
+              </span>
+            </div>
+
+            {notifyEmails.length > 0 && (
+              <ul className="schedule-notify-chips">
+                {notifyEmails.map((addr) => (
+                  <li key={addr} className="schedule-notify-chip">
+                    <span>{addr}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotifyEmails((prev) =>
+                          prev.filter((itemAddr) => itemAddr !== addr),
+                        );
+                        setEmailError("");
+                      }}
+                      aria-label={
+                        pl ? `Usuń adres ${addr}` : `Remove ${addr}`
+                      }
+                    >
+                      <IconX size={13} aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="schedule-notify-row">
+              <input
+                id="schedule-notify-email"
+                type="email"
+                value={emailDraft}
+                maxLength={160}
+                disabled={notifyEmails.length >= MAX_NOTIFY_EMAILS}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/[,\s;]$/.test(val)) {
+                    tryCommitEmailDraft(val);
+                  } else {
+                    setEmailDraft(val);
+                    if (emailError) setEmailError("");
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault();
+                    tryCommitEmailDraft(emailDraft);
+                  }
+                }}
+                placeholder={
+                  notifyEmails.length >= MAX_NOTIFY_EMAILS
+                    ? pl
+                      ? `Osiągnięto limit ${MAX_NOTIFY_EMAILS} adresów`
+                      : `Limit of ${MAX_NOTIFY_EMAILS} emails reached`
+                    : pl
+                      ? "np. opiekun@domena.pl (Enter lub +)"
+                      : "e.g. caregiver@domain.com (Enter or +)"
+                }
+              />
+              <button
+                type="button"
+                className="schedule-mini-btn is-primary"
+                disabled={
+                  notifyEmails.length >= MAX_NOTIFY_EMAILS ||
+                  !emailDraft.trim()
+                }
+                onClick={() => tryCommitEmailDraft(emailDraft)}
+              >
+                <IconPlus size={14} aria-hidden="true" />
+                <span>{pl ? "Dodaj" : "Add"}</span>
+              </button>
+            </div>
+
+            {emailError && (
+              <p className="weight-dialog-error" role="alert">
+                {emailError}
+              </p>
+            )}
+
+            <small className="schedule-notify-hint">
+              {pl
+                ? "Dodatkowe osoby otrzymają przypomnienie z terminarza wyłącznie o tym terminie (zgodnie z ustawieniami powiadomień domu)."
+                : "Additional recipients will receive schedule reminders only for this visit (following household reminder timing)."}
+            </small>
           </div>
 
           {error && (

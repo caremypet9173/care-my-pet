@@ -95,11 +95,13 @@ interface DueReminderItem {
   doctor: string;
   notes: string;
   offsetDays: -1 | 0 | 1 | 7;
+  extraEmails?: string[];
 }
 
 function buildEmailHtml(
   items: DueReminderItem[],
   isTest: boolean,
+  isExternalRecipient = false,
 ): { subject: string; html: string } {
   const first = items[0];
   const subject = isTest
@@ -171,7 +173,9 @@ function buildEmailHtml(
             ${
               isTest
                 ? "To jest testowa wiadomość wywołana z poziomu Twojego terminarza Care My Pet. Poniżej znajdują się najbliższe zaplanowane wizyty i przypomnienia:"
-                : "Poniżej znajdziesz automatyczne zestawienie nadchodzących wizyt, szczepień i profilaktyki dla Twoich pupili:"
+                : isExternalRecipient
+                  ? "Otrzymujesz to przypomnienie, ponieważ Twój adres e-mail został dopisany przy planowaniu poniższego terminu w aplikacji Care My Pet:"
+                  : "Poniżej znajdziesz automatyczne zestawienie nadchodzących wizyt, szczepień i profilaktyki dla Twoich pupili:"
             }
           </p>
           ${items.length > 0 ? rowsHtml : emptyHtml}
@@ -506,6 +510,11 @@ Deno.serve(async (req) => {
       doctor: String(row.doctor ?? ""),
       notes: String(row.prep_notes ?? ""),
       offsetDays: offset,
+      extraEmails: Array.isArray(row.notify_emails)
+        ? row.notify_emails
+            .map((e: unknown) => String(e).trim().toLowerCase())
+            .filter(Boolean)
+        : [],
     });
   }
 
@@ -530,6 +539,74 @@ Deno.serve(async (req) => {
     });
   }
 
+  async function sendUnsentDigest(
+    householdId: string,
+    email: string,
+    candidateItems: DueReminderItem[],
+    isExternalRecipient: boolean,
+  ): Promise<boolean> {
+    const unsentItems: DueReminderItem[] = [];
+    for (const item of candidateItems) {
+      const { data: existing } = await adminClient
+        .from("schedule_notification_log")
+        .select("id")
+        .eq("household_id", householdId)
+        .eq("source_kind", item.sourceKind)
+        .eq("source_id", item.sourceId)
+        .eq("due_date", item.dueDate)
+        .eq("offset_days", item.offsetDays)
+        .eq("recipient_email", email)
+        .eq("status", "sent")
+        .maybeSingle();
+
+      if (!existing) {
+        unsentItems.push(item);
+      }
+    }
+
+    if (unsentItems.length === 0) return false;
+
+    const { subject, html } = buildEmailHtml(
+      unsentItems,
+      false,
+      isExternalRecipient,
+    );
+    try {
+      await sendEmailViaSmtp(email, subject, html);
+      for (const item of unsentItems) {
+        await adminClient.from("schedule_notification_log").insert({
+          household_id: householdId,
+          pet_id: item.petId,
+          source_kind: item.sourceKind,
+          source_id: item.sourceId,
+          due_date: item.dueDate,
+          offset_days: item.offsetDays,
+          recipient_email: email,
+          subject,
+          status: "sent",
+        });
+      }
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "smtp_error";
+      for (const item of unsentItems) {
+        await adminClient.from("schedule_notification_log").insert({
+          household_id: householdId,
+          pet_id: item.petId,
+          source_kind: item.sourceKind,
+          source_id: item.sourceId,
+          due_date: item.dueDate,
+          offset_days: item.offsetDays,
+          recipient_email: email,
+          subject,
+          status: "failed",
+          error_message: msg,
+        });
+      }
+      return false;
+    }
+  }
+
   let emailsSent = 0;
 
   for (const [householdId, items] of byHousehold.entries()) {
@@ -550,62 +627,30 @@ Deno.serve(async (req) => {
       }
     }
 
+    const householdEmailLowerSet = new Set(
+      Array.from(recipients).map((r) => r.toLowerCase()),
+    );
+
     for (const email of recipients) {
-      const unsentItems: DueReminderItem[] = [];
-      for (const item of items) {
-        const { data: existing } = await adminClient
-          .from("schedule_notification_log")
-          .select("id")
-          .eq("household_id", householdId)
-          .eq("source_kind", item.sourceKind)
-          .eq("source_id", item.sourceId)
-          .eq("due_date", item.dueDate)
-          .eq("offset_days", item.offsetDays)
-          .eq("recipient_email", email)
-          .eq("status", "sent")
-          .maybeSingle();
-
-        if (!existing) {
-          unsentItems.push(item);
-        }
-      }
-
-      if (unsentItems.length === 0) continue;
-
-      const { subject, html } = buildEmailHtml(unsentItems, false);
-      try {
-        await sendEmailViaSmtp(email, subject, html);
+      if (await sendUnsentDigest(householdId, email, items, false)) {
         emailsSent += 1;
+      }
+    }
 
-        for (const item of unsentItems) {
-          await adminClient.from("schedule_notification_log").insert({
-            household_id: householdId,
-            pet_id: item.petId,
-            source_kind: item.sourceKind,
-            source_id: item.sourceId,
-            due_date: item.dueDate,
-            offset_days: item.offsetDays,
-            recipient_email: email,
-            subject,
-            status: "sent",
-          });
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "smtp_error";
-        for (const item of unsentItems) {
-          await adminClient.from("schedule_notification_log").insert({
-            household_id: householdId,
-            pet_id: item.petId,
-            source_kind: item.sourceKind,
-            source_id: item.sourceId,
-            due_date: item.dueDate,
-            offset_days: item.offsetDays,
-            recipient_email: email,
-            subject,
-            status: "failed",
-            error_message: msg,
-          });
-        }
+    // Dodatkowe adresy przypisane per konkretny termin (otrzymują wyłącznie własne pozycje)
+    const extraByEmail = new Map<string, DueReminderItem[]>();
+    for (const item of items) {
+      for (const extraEmail of item.extraEmails ?? []) {
+        if (!extraEmail || householdEmailLowerSet.has(extraEmail)) continue;
+        const list = extraByEmail.get(extraEmail) ?? [];
+        list.push(item);
+        extraByEmail.set(extraEmail, list);
+      }
+    }
+
+    for (const [extraEmail, assignedItems] of extraByEmail.entries()) {
+      if (await sendUnsentDigest(householdId, extraEmail, assignedItems, true)) {
+        emailsSent += 1;
       }
     }
 

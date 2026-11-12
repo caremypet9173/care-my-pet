@@ -1839,13 +1839,24 @@ export function HouseholdSchedule({
             <h4 className="schedule-day-card-title">{entry.title}</h4>
           </div>
 
-          {(entry.clinic || entry.doctor) && (
+          {(entry.clinic ||
+            entry.doctor ||
+            (entry.kind === "schedule_item" &&
+              (entry.item.notify_emails?.length ?? 0) > 0)) && (
             <div className="schedule-day-card-meta">
               {entry.clinic && <span>📍 {entry.clinic}</span>}
               {entry.doctor && <span>🩺 {entry.doctor}</span>}
               {entry.kind === "due_event" && entry.batchOrProduct && (
                 <span>🏷️ {entry.batchOrProduct}</span>
               )}
+              {entry.kind === "schedule_item" &&
+                (entry.item.notify_emails?.length ?? 0) > 0 && (
+                  <span title={entry.item.notify_emails!.join(", ")}>
+                    ✉️{" "}
+                    {pl ? "Powiadom jeszcze:" : "Also notify:"}{" "}
+                    {entry.item.notify_emails!.join(", ")}
+                  </span>
+                )}
             </div>
           )}
 

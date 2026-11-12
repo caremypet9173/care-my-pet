@@ -3,6 +3,7 @@ import {
   formatHealthEventKnowledgeContent,
   indexPetKnowledgeChunk,
 } from "../_shared/rag.ts";
+import { parseNotifyEmailsInput } from "./validation.mjs";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -149,6 +150,9 @@ Deno.serve(async (req) => {
           p_doctor: current.doctor,
           p_prep_notes: current.prep_notes,
           p_status: body.status,
+          p_notify_emails: Array.isArray(current.notify_emails)
+            ? current.notify_emails
+            : [],
         },
       );
       if (error) {
@@ -282,6 +286,11 @@ Deno.serve(async (req) => {
     const doctor = String(raw?.doctor ?? "").trim();
     const prepNotes = String(raw?.prep_notes ?? "").trim();
     const status = validStatuses.has(raw?.status) ? raw.status : "planned";
+    const parsedEmails = parseNotifyEmailsInput(raw?.notify_emails);
+
+    if (!parsedEmails.ok) {
+      return reply({ error: parsedEmails.error }, 400);
+    }
 
     if (
       !uuid.test(id) ||
@@ -313,6 +322,7 @@ Deno.serve(async (req) => {
         p_doctor: doctor,
         p_prep_notes: prepNotes,
         p_status: status,
+        p_notify_emails: parsedEmails.emails,
       },
     );
 

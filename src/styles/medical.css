@@ -432,6 +432,18 @@
 .history-dialog input:not([type="checkbox"]):not([type="radio"]):not(.med-time-input),.history-dialog textarea{min-height:38px;padding:.45rem .7rem;font-size:.8125rem}
 .history-dialog input.med-time-input{min-height:unset;height:auto;padding:.15rem .3rem;font-size:.875rem}
 .history-dialog footer{padding:.9rem 1.35rem 1.1rem}
+.schedule-notify-box{display:grid;gap:.45rem;margin-top:.55rem;padding:.75rem .85rem;border-radius:.75rem;border:1px solid #e6e2da;background:#faf8f4}
+.schedule-notify-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.schedule-notify-head label{display:inline-flex;align-items:center;gap:.35rem;margin:0}
+.schedule-notify-count{font-size:.7rem;font-weight:700;padding:.1rem .48rem;border-radius:999px;background:#e8f3ed;color:#164d34}
+.schedule-notify-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.35rem}
+.schedule-notify-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:999px;background:#fff;border:1px solid #b8d4c5;font-size:.74rem;font-weight:600;color:#164d34}
+.schedule-notify-chip button{border:0;background:transparent;padding:0;display:inline-flex;align-items:center;color:#526462;cursor:pointer}
+.schedule-notify-chip button:hover{color:#a82424}
+.schedule-notify-row{display:flex;align-items:center;gap:.45rem}
+.schedule-notify-row input{flex:1;min-width:0}
+.schedule-notify-row .schedule-mini-btn{min-height:38px;padding:0 .75rem;flex-shrink:0}
+.schedule-notify-hint{font-size:.7rem;line-height:1.35;color:var(--color-text-muted)}
 .history-dialog-icon.is-vaccination{background:#eef2ff;color:#4338ca}
 .history-dialog-icon.is-prevention{background:#fffbeb;color:#b45309}
 .history-dialog-icon.is-fluid{background:#ecfeff;color:#0891b2}

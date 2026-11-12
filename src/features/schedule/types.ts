@@ -12,6 +12,7 @@ export type ScheduleItem = {
   clinic: string;
   doctor: string;
   prep_notes: string;
+  notify_emails?: string[];
   status: ScheduleStatus;
   completed_event_id: string | null;
   revision: number;
