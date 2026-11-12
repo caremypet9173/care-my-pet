@@ -12,11 +12,23 @@ import {
   IconNotes,
   IconTrash,
   IconAlertCircle,
-  IconCheck,
+  IconCalendar,
+  IconCalendarRepeat,
+  IconClock,
+  IconPlus,
 } from "@tabler/icons-react";
 import { Container } from "@/components/layout/container";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { Pet } from "@/features/pets/types";
+import { saveMedicationScheduleClient } from "@/features/medications/actions";
+import {
+  addIsoDays,
+  buildFluidScheduleInstructions,
+  nextTimeSlotSuggestion,
+  normalizeScheduledTimes,
+  todayWarsawIso,
+} from "@/features/medications/schedule-dates";
+import type { IntervalUnit } from "@/features/medications/types";
 import { saveFluidTherapy, deleteFluidTherapy } from "./actions";
 import { FluidDeleteDialog } from "./fluid-delete-dialog";
 import { COMMON_FLUIDS, type FluidLocation, type FluidRoute, type PetFluidTherapy } from "./types";
@@ -46,10 +58,9 @@ export function FluidFormPage({
   const [doctorName, setDoctorName] = useState(therapy?.doctor_name ?? "");
   const [catheterStatus, setCatheterStatus] = useState(therapy?.catheter_status ?? "");
 
-  const todayIso = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Warsaw",
-  }).format(new Date());
+  const todayIso = todayWarsawIso();
 
+  const [entryMode, setEntryMode] = useState<"single" | "schedule">("single");
   const [date, setDate] = useState(therapy?.administered_on ?? todayIso);
   const [time, setTime] = useState(() => {
     if (therapy?.administered_at) {
@@ -61,6 +72,14 @@ export function FluidFormPage({
     }
     return new Date().toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }).slice(0, 5);
   });
+
+  // Stan cyklicznego harmonogramu kroplówki (gdy entryMode === "schedule")
+  const [scheduleType, setScheduleType] = useState<"daily" | "interval">("daily");
+  const [intervalValue, setIntervalValue] = useState<number>(2);
+  const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>("days");
+  const [startDate, setStartDate] = useState(todayIso);
+  const [endDate, setEndDate] = useState("");
+  const [scheduledTimes, setScheduledTimes] = useState<string[]>(["11:00", "22:00"]);
 
   const [notes, setNotes] = useState(therapy?.notes ?? "");
   const [submitted, setSubmitted] = useState(false);
@@ -74,7 +93,35 @@ export function FluidFormPage({
   const isVolumeValid = !isNaN(numVolume) && numVolume > 0 && numVolume <= 5000;
   const isDateValid = Boolean(date && date >= "1900-01-01" && date <= todayIso);
   const isFluidValid = effectiveFluid.length >= 2;
-  const isValid = isVolumeValid && isDateValid && isFluidValid;
+  const validScheduledTimes = normalizeScheduledTimes(scheduledTimes);
+  const isScheduleStartValid = Boolean(startDate && startDate >= "2000-01-01" && startDate <= "2100-12-31");
+  const isScheduleEndValid = !endDate || endDate >= startDate;
+  const isScheduleIntervalValid = scheduleType !== "interval" || (intervalValue >= 1 && intervalValue <= 365);
+  const isScheduleValid =
+    isScheduleStartValid &&
+    isScheduleEndValid &&
+    isScheduleIntervalValid &&
+    validScheduledTimes.length > 0;
+  const isValid =
+    isVolumeValid &&
+    isFluidValid &&
+    (entryMode === "schedule" && !therapy ? isScheduleValid : isDateValid);
+
+  function addTimeSlot() {
+    setScheduledTimes((prev) => [...prev, nextTimeSlotSuggestion(prev)]);
+  }
+
+  function updateTimeSlot(index: number, val: string) {
+    setScheduledTimes((prev) => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  }
+
+  function removeTimeSlot(index: number) {
+    setScheduledTimes((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  }
 
   function appendMedication(item: string) {
     setMedicationsAdded((prev) => {
@@ -103,13 +150,64 @@ export function FluidFormPage({
 
     setSaving(true);
     try {
+      const roundedVolume = Math.round(numVolume * 10) / 10;
+
+      if (!therapy && entryMode === "schedule") {
+        const cleanFluid = effectiveFluid.slice(0, 120);
+        const res = await saveMedicationScheduleClient({
+          id: crypto.randomUUID(),
+          pet_id: pet.id,
+          revision: 0,
+          item: {
+            name: cleanFluid,
+            dosage: `${roundedVolume} ml · ${route.toUpperCase()}`,
+            schedule_type: scheduleType,
+            interval_value: scheduleType === "interval" ? intervalValue : null,
+            interval_unit: scheduleType === "interval" ? intervalUnit : null,
+            start_date: startDate,
+            end_date: endDate.trim() || null,
+            scheduled_time: validScheduledTimes[0] ?? "",
+            scheduled_times: validScheduledTimes,
+            instructions: buildFluidScheduleInstructions({
+              medicationsAdded,
+              notes,
+              clinicName: location === "clinic" ? clinicName : undefined,
+              doctorName: location === "clinic" ? doctorName : undefined,
+              catheterStatus: route !== "sc" ? catheterStatus : undefined,
+            }),
+            is_active: true,
+            stock_quantity: null,
+            low_stock_threshold: 5,
+            stock_unit: pl ? "wlewów" : "infusions",
+            schedule_category: "fluid_therapy",
+            fluid_name: cleanFluid,
+            fluid_volume_ml: roundedVolume,
+            fluid_route: route,
+            fluid_location: location,
+          },
+        });
+
+        if (res.error) {
+          setError(
+            pl
+              ? `Nie udało się zapisać harmonogramu kroplówki (${res.error}).`
+              : `Failed to save fluid schedule (${res.error}).`
+          );
+          return;
+        }
+
+        router.push(`/app/zwierzeta/${pet.id}?tab=overview`);
+        router.refresh();
+        return;
+      }
+
       const combinedDateTime = `${date}T${time || "12:00"}:00`;
       const res = await saveFluidTherapy({
         id: therapy?.id,
         petId: pet.id,
         revision: therapy?.revision ?? 0,
         fluidName: effectiveFluid,
-        volumeMl: Math.round(numVolume * 10) / 10,
+        volumeMl: roundedVolume,
         route,
         medicationsAdded,
         location,
@@ -437,16 +535,53 @@ export function FluidFormPage({
           )}
         </section>
 
-        {/* Sekcja 3: Miejsce wykonania i data */}
+        {/* Sekcja 3: Miejsce wykonania, cykliczność i termin */}
         <section className="fluid-section">
           <div className="fluid-section-header">
             <span className="fluid-section-icon" aria-hidden="true">
               <IconBuildingHospital size={18} />
             </span>
             <h2 className="fluid-section-title">
-              {pl ? "3. Miejsce i termin podania" : "3. Location & timing"}
+              {pl ? "3. Miejsce, cykliczność i termin podania" : "3. Location, recurrence & timing"}
             </h2>
           </div>
+
+          {therapy?.medication_log_id && (
+            <div className="fluid-info-banner">
+              <IconCalendarRepeat size={18} aria-hidden="true" />
+              <span>
+                {pl
+                  ? "Ten wpis powstał automatycznie z cyklicznego harmonogramu w Dziennym planie opieki. Usunięcie go cofnie także odznaczenie tej dawki."
+                  : "This entry was recorded from a recurring care schedule. Deleting it also unchecks the scheduled dose."}
+              </span>
+            </div>
+          )}
+
+          {!therapy && (
+            <div className="fluid-field">
+              <label className="fluid-label">
+                <span>{pl ? "Tryb zapisu kroplówki *" : "Recording mode *"}</span>
+              </label>
+              <div className="fluid-segment-grid is-2-col">
+                <button
+                  type="button"
+                  className={`fluid-segment-btn ${entryMode === "single" ? "is-active" : ""}`}
+                  onClick={() => setEntryMode("single")}
+                >
+                  <IconClock size={17} aria-hidden="true" />
+                  <span>{pl ? "Pojedynczy wlew (już podany)" : "Single infusion (already given)"}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`fluid-segment-btn ${entryMode === "schedule" ? "is-active-cyan" : ""}`}
+                  onClick={() => setEntryMode("schedule")}
+                >
+                  <IconCalendarRepeat size={17} aria-hidden="true" />
+                  <span>{pl ? "Cykliczny harmonogram (plan)" : "Recurring schedule (plan)"}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="fluid-field">
             <label className="fluid-label">
@@ -504,45 +639,221 @@ export function FluidFormPage({
               <IconHome size={18} aria-hidden="true" />
               <span>
                 {pl
-                  ? "Wlew wykonany w domu przez opiekuna (brak konieczności wpisywania danych gabinetu)."
+                  ? "Wlew wykonywany w domu przez opiekuna (brak konieczności wpisywania danych gabinetu)."
                   : "Infusion administered at home by guardian."}
               </span>
             </div>
           )}
 
-          <div className="fluid-grid-2-equal">
-            <div className="fluid-field">
-              <label htmlFor="fluid-date" className="fluid-label">
-                <span>{pl ? "Data podania *" : "Date *"}</span>
-                {submitted && !isDateValid && (
-                  <small style={{ color: "#dc2626" }}>{pl ? "Nie późniejsza niż dziś" : "Max today"}</small>
-                )}
-              </label>
-              <input
-                id="fluid-date"
-                type="date"
-                className="fluid-input"
-                min="1900-01-01"
-                max={todayIso}
-                value={date}
-                aria-invalid={submitted && !isDateValid}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
+          {!therapy && entryMode === "schedule" ? (
+            <div className="fluid-schedule-box">
+              <div className="fluid-field">
+                <label className="fluid-label">
+                  <span>{pl ? "Częstotliwość *" : "Frequency *"}</span>
+                </label>
+                <div className="fluid-segment-grid is-2-col">
+                  <button
+                    type="button"
+                    className={`fluid-segment-btn ${scheduleType === "daily" ? "is-active-cyan" : ""}`}
+                    onClick={() => setScheduleType("daily")}
+                  >
+                    <IconCalendar size={17} aria-hidden="true" />
+                    <span>{pl ? "Codziennie" : "Daily"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`fluid-segment-btn ${scheduleType === "interval" ? "is-active-cyan" : ""}`}
+                    onClick={() => setScheduleType("interval")}
+                  >
+                    <IconCalendarRepeat size={17} aria-hidden="true" />
+                    <span>{pl ? "Co określony odstęp (np. co 2 dni)" : "Custom interval"}</span>
+                  </button>
+                </div>
+              </div>
 
-            <div className="fluid-field">
-              <label htmlFor="fluid-time" className="fluid-label">
-                <span>{pl ? "Godzina podania" : "Time"}</span>
-              </label>
-              <input
-                id="fluid-time"
-                type="time"
-                className="fluid-input"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
+              {scheduleType === "interval" && (
+                <div className="fluid-field">
+                  <label className="fluid-label">
+                    <span>{pl ? "Powtarzaj co *" : "Repeat every *"}</span>
+                  </label>
+                  <div className="fluid-interval-row">
+                    <span>{pl ? "Co" : "Every"}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={intervalValue}
+                      onChange={(e) => setIntervalValue(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="fluid-input fluid-interval-num"
+                    />
+                    <select
+                      value={intervalUnit}
+                      onChange={(e) => setIntervalUnit(e.target.value as IntervalUnit)}
+                      className="fluid-select"
+                    >
+                      <option value="days">{intervalValue === 1 ? (pl ? "dzień" : "day") : (pl ? "dni" : "days")}</option>
+                      <option value="weeks">{intervalValue === 1 ? (pl ? "tydzień" : "week") : (pl ? "tygodnie/tygodni" : "weeks")}</option>
+                      <option value="months">{intervalValue === 1 ? (pl ? "miesiąc" : "month") : (pl ? "miesięcy" : "months")}</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="fluid-grid-2-equal">
+                <div className="fluid-field">
+                  <label htmlFor="fluid-sched-start" className="fluid-label">
+                    <span>{pl ? "Data rozpoczęcia *" : "Start date *"}</span>
+                  </label>
+                  <input
+                    id="fluid-sched-start"
+                    type="date"
+                    className="fluid-input"
+                    value={startDate}
+                    aria-invalid={submitted && !isScheduleStartValid}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="fluid-field">
+                  <label htmlFor="fluid-sched-end" className="fluid-label">
+                    <span>{pl ? "Data zakończenia" : "End date"}</span>
+                    <small>{pl ? "opcjonalnie" : "optional"}</small>
+                  </label>
+                  <input
+                    id="fluid-sched-end"
+                    type="date"
+                    className="fluid-input"
+                    min={startDate}
+                    value={endDate}
+                    aria-invalid={submitted && !isScheduleEndValid}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="fluid-chips-group" style={{ marginTop: 0 }}>
+                <span className="fluid-chips-hint">{pl ? "Czas trwania:" : "Duration:"}</span>
+                {[3, 5, 7, 14].map((days) => {
+                  const targetEnd = startDate ? addIsoDays(startDate, days - 1) : "";
+                  const active = Boolean(targetEnd && endDate === targetEnd);
+                  return (
+                    <button
+                      key={days}
+                      type="button"
+                      className={`fluid-chip-btn ${active ? "is-active" : ""}`}
+                      onClick={() => targetEnd && setEndDate(targetEnd)}
+                    >
+                      {pl ? `${days} dni` : `${days} days`}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className={`fluid-chip-btn ${endDate === "" ? "is-active" : ""}`}
+                  onClick={() => setEndDate("")}
+                >
+                  {pl ? "Bezterminowo" : "Indefinite"}
+                </button>
+              </div>
+
+              <div className="fluid-field">
+                <label className="fluid-label">
+                  <span>{pl ? "Pory podawania w ciągu dnia *" : "Daily infusion times *"}</span>
+                </label>
+                <div className="fluid-time-slots">
+                  {scheduledTimes.map((slot, idx) => (
+                    <div key={idx} className="fluid-time-pill">
+                      <span>{pl ? `Wlew #${idx + 1}:` : `Dose #${idx + 1}:`}</span>
+                      <input
+                        type="time"
+                        value={slot}
+                        onChange={(e) => updateTimeSlot(idx, e.target.value)}
+                        required
+                      />
+                      {scheduledTimes.length > 1 && (
+                        <button
+                          type="button"
+                          className="fluid-time-remove"
+                          onClick={() => removeTimeSlot(idx)}
+                          aria-label={pl ? "Usuń tę godzinę" : "Remove time"}
+                          title={pl ? "Usuń tę godzinę" : "Remove time"}
+                        >
+                          <IconTrash size={14} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="fluid-time-add"
+                    onClick={addTimeSlot}
+                  >
+                    <IconPlus size={14} aria-hidden="true" />
+                    <span>{pl ? "Dodaj porę" : "Add time"}</span>
+                  </button>
+                </div>
+
+                <div className="fluid-chips-group">
+                  <span className="fluid-chips-hint">{pl ? "Szybki wybór:" : "Presets:"}</span>
+                  <button
+                    type="button"
+                    className="fluid-chip-btn"
+                    onClick={() => setScheduledTimes(["08:00"])}
+                  >
+                    1× (08:00)
+                  </button>
+                  <button
+                    type="button"
+                    className="fluid-chip-btn is-add"
+                    onClick={() => setScheduledTimes(["11:00", "22:00"])}
+                  >
+                    2× (11:00, 22:00)
+                  </button>
+                  <button
+                    type="button"
+                    className="fluid-chip-btn"
+                    onClick={() => setScheduledTimes(["08:00", "20:00"])}
+                  >
+                    2× (08:00, 20:00)
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="fluid-grid-2-equal">
+              <div className="fluid-field">
+                <label htmlFor="fluid-date" className="fluid-label">
+                  <span>{pl ? "Data podania *" : "Date *"}</span>
+                  {submitted && !isDateValid && (
+                    <small style={{ color: "#dc2626" }}>{pl ? "Nie późniejsza niż dziś" : "Max today"}</small>
+                  )}
+                </label>
+                <input
+                  id="fluid-date"
+                  type="date"
+                  className="fluid-input"
+                  min="1900-01-01"
+                  max={todayIso}
+                  value={date}
+                  aria-invalid={submitted && !isDateValid}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+
+              <div className="fluid-field">
+                <label htmlFor="fluid-time" className="fluid-label">
+                  <span>{pl ? "Godzina podania" : "Time"}</span>
+                </label>
+                <input
+                  id="fluid-time"
+                  type="time"
+                  className="fluid-input"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Sekcja 4: Notatki */}
@@ -589,9 +900,13 @@ export function FluidFormPage({
           <div className="fluid-error-alert" role="alert">
             <IconAlertCircle size={18} aria-hidden="true" />
             <span>
-              {pl
-                ? "Uzupełnij wymagane pola (płyn bazowy, objętość i poprawną datę) przed zapisaniem."
-                : "Please fill in all required fields before saving."}
+              {entryMode === "schedule" && !therapy
+                ? pl
+                  ? "Uzupełnij płyn bazowy, objętość, zakres dat oraz przynajmniej jedną porę podania."
+                  : "Fill in fluid name, volume, date range and at least one infusion time."
+                : pl
+                  ? "Uzupełnij wymagane pola (płyn bazowy, objętość i poprawną datę) przed zapisaniem."
+                  : "Please fill in all required fields before saving."}
             </span>
           </div>
         )}
@@ -632,9 +947,13 @@ export function FluidFormPage({
                       ? pl
                         ? "Zapisz zmiany"
                         : "Save changes"
-                      : pl
-                        ? "Zapisz kroplówkę"
-                        : "Save infusion"}
+                      : entryMode === "schedule"
+                        ? pl
+                          ? "Utwórz harmonogram kroplówek"
+                          : "Create fluid schedule"
+                        : pl
+                          ? "Zapisz kroplówkę"
+                          : "Save infusion"}
                   </span>
                 </>
               )}

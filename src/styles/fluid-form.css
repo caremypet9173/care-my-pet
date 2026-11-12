@@ -429,6 +429,116 @@
   gap: 0.5rem;
 }
 
+.fluid-info-banner {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #075985;
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.fluid-schedule-box {
+  background: #f8fafc;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 0.75rem;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fluid-interval-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fluid-interval-num {
+  width: 5rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.fluid-time-slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.fluid-time-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--color-control-border, #cbd5e1);
+  background: var(--color-surface, #ffffff);
+  font-size: 0.8125rem;
+}
+
+.fluid-time-pill span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.fluid-time-pill input[type="time"] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.fluid-time-pill input[type="time"]:focus {
+  outline: none;
+}
+
+.fluid-time-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border-radius: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.fluid-time-remove:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.fluid-time-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 38px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 0.55rem;
+  border: 1px dashed #0891b2;
+  background: #ecfeff;
+  color: #0e7490;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.fluid-time-add:hover {
+  background: #cffafe;
+}
+
 /* Responsywność */
 @media (max-width: 768px) {
   .fluid-form-card {

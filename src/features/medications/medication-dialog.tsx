@@ -21,24 +21,19 @@ import {
   type FluidRoute,
 } from "@/features/fluid-therapy/types";
 import type { Pet } from "@/features/pets/types";
+import { saveMedicationScheduleClient } from "./actions";
+import {
+  addIsoDays,
+  nextTimeSlotSuggestion,
+  normalizeScheduledTimes,
+  todayWarsawIso,
+} from "./schedule-dates";
 import type {
   IntervalUnit,
   MedicationSchedule,
   MedicationScheduleCategory,
   MedicationScheduleType,
 } from "./types";
-
-function todayIso(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Warsaw",
-  }).format(new Date());
-}
-
-function addIsoDays(baseIso: string, deltaDays: number): string {
-  const [y, m, d] = baseIso.split("-").map(Number);
-  if (!y || !m || !d) return baseIso;
-  return new Date(Date.UTC(y, m - 1, d + deltaDays)).toISOString().slice(0, 10);
-}
 
 type Props = {
   pets: Pick<Pet, "id" | "imie">[];
@@ -102,7 +97,7 @@ export function MedicationDialog({
     schedule?.schedule_type ?? "daily",
   );
   const [startDate, setStartDate] = useState(
-    schedule?.start_date ?? defaultDate ?? todayIso(),
+    schedule?.start_date ?? defaultDate ?? todayWarsawIso(),
   );
   const [endDate, setEndDate] = useState(schedule?.end_date ?? "");
   const [scheduledTimes, setScheduledTimes] = useState<string[]>(() => {
@@ -139,13 +134,7 @@ export function MedicationDialog({
   );
 
   function addTimeSlot() {
-    setScheduledTimes((prev) => {
-      const last = prev[prev.length - 1] || "08:00";
-      const [h = 8, m = 0] = last.split(":").map(Number);
-      const nextH = (h + 8) % 24;
-      const nextTime = `${String(nextH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      return [...prev, nextTime];
-    });
+    setScheduledTimes((prev) => [...prev, nextTimeSlotSuggestion(prev)]);
   }
 
   function updateTimeSlot(index: number, val: string) {
@@ -239,10 +228,7 @@ export function MedicationDialog({
       return;
     }
 
-    const hhMm = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
-    const validTimes = Array.from(
-      new Set(scheduledTimes.filter((t) => hhMm.test(t.trim()))),
-    ).sort();
+    const validTimes = normalizeScheduledTimes(scheduledTimes);
     if (validTimes.length === 0) {
       setError(
         pl
@@ -293,94 +279,23 @@ export function MedicationDialog({
     };
 
     try {
-      const client = createClient();
-      // Najpierw próbujemy przez Edge Function `pet-medications`
-      let savedSchedule: MedicationSchedule | null = null;
-      try {
-        const { data: fnData, error: fnError } = await client.functions.invoke(
-          "pet-medications",
-          { body: payload },
+      const result = await saveMedicationScheduleClient(payload);
+
+      if (result.error) {
+        setError(
+          result.isConflict
+            ? pl
+              ? "Wpis został zmodyfikowany przez kogoś innego. Odśwież stronę."
+              : "Entry was modified elsewhere. Please refresh."
+            : pl
+              ? "Nie udało się zapisać harmonogramu leku. Spróbuj ponownie."
+              : "Failed to save medication schedule. Please retry.",
         );
-        if (!fnError && fnData?.schedule) {
-          savedSchedule = fnData.schedule as MedicationSchedule;
-        }
-      } catch {
-        // Fallback do bezpośredniego RPC jeśli Edge function nie jest dostępna lokalnie
+        return;
       }
 
-      if (!savedSchedule) {
-        let rpcData: unknown = null;
-        let rpcError: { code?: string; message?: string } | null = null;
-
-        const res = await client.rpc("save_medication_schedule", {
-          p_id: payload.id,
-          p_pet_id: payload.pet_id,
-          p_revision: payload.revision,
-          p_name: payload.item.name,
-          p_dosage: payload.item.dosage,
-          p_schedule_type: payload.item.schedule_type,
-          p_interval_value: payload.item.interval_value,
-          p_interval_unit: payload.item.interval_unit,
-          p_start_date: payload.item.start_date,
-          p_end_date: payload.item.end_date,
-          p_scheduled_time: payload.item.scheduled_time,
-          p_instructions: payload.item.instructions,
-          p_is_active: payload.item.is_active,
-          p_scheduled_times: payload.item.scheduled_times,
-          p_stock_quantity: payload.item.stock_quantity,
-          p_low_stock_threshold: payload.item.low_stock_threshold,
-          p_stock_unit: payload.item.stock_unit,
-          p_schedule_category: payload.item.schedule_category,
-          p_fluid_name: payload.item.fluid_name,
-          p_fluid_volume_ml: payload.item.fluid_volume_ml,
-          p_fluid_route: payload.item.fluid_route,
-          p_fluid_location: payload.item.fluid_location,
-        });
-
-        if (res.error && (res.error.message?.includes("parameter") || res.error.message?.includes("function"))) {
-          const resFallback = await client.rpc("save_medication_schedule", {
-            p_id: payload.id,
-            p_pet_id: payload.pet_id,
-            p_revision: payload.revision,
-            p_name: payload.item.name,
-            p_dosage: payload.item.dosage,
-            p_schedule_type: payload.item.schedule_type,
-            p_interval_value: payload.item.interval_value,
-            p_interval_unit: payload.item.interval_unit,
-            p_start_date: payload.item.start_date,
-            p_end_date: payload.item.end_date,
-            p_scheduled_time: payload.item.scheduled_time,
-            p_instructions: payload.item.instructions,
-            p_is_active: payload.item.is_active,
-            p_scheduled_times: payload.item.scheduled_times,
-            p_stock_quantity: payload.item.stock_quantity,
-            p_low_stock_threshold: payload.item.low_stock_threshold,
-            p_stock_unit: payload.item.stock_unit,
-          });
-          rpcData = resFallback.data;
-          rpcError = resFallback.error;
-        } else {
-          rpcData = res.data;
-          rpcError = res.error;
-        }
-
-        if (rpcError) {
-          setError(
-            rpcError.code === "PT409"
-              ? pl
-                ? "Wpis został zmodyfikowany przez kogoś innego. Odśwież stronę."
-                : "Entry was modified elsewhere. Please refresh."
-              : pl
-                ? "Nie udało się zapisać harmonogramu leku. Spróbuj ponownie."
-                : "Failed to save medication schedule. Please retry.",
-          );
-          return;
-        }
-        savedSchedule = rpcData as MedicationSchedule;
-      }
-
-      if (savedSchedule) {
-        onSave(savedSchedule);
+      if (result.schedule) {
+        onSave(result.schedule);
       }
     } catch {
       setError(
@@ -1049,7 +964,7 @@ export function MedicationDialog({
               </div>
 
               {/* Presety */}
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center flex-wrap gap-1.5 shrink-0">
                 <span className="text-[10px] uppercase font-bold text-slate-400 mr-0.5 hidden md:inline">
                   {pl ? "Szybki wybór:" : "Presets:"}
                 </span>
@@ -1067,6 +982,15 @@ export function MedicationDialog({
                 >
                   2× (08:00, 20:00)
                 </button>
+                {scheduleCategory === "fluid_therapy" && (
+                  <button
+                    type="button"
+                    onClick={() => setScheduledTimes(["11:00", "22:00"])}
+                    className="px-2 py-1 rounded-md border border-sky-200 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/30 hover:border-sky-600 text-[11px] font-medium text-sky-800 dark:text-sky-300 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    2× (11:00, 22:00)
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setScheduledTimes(["08:00", "14:00", "20:00"])}

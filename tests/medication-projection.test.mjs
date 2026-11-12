@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { projectMedicationDoses } from '../src/features/medications/projection.ts';
+import {
+  addIsoDays,
+  buildFluidScheduleInstructions,
+  normalizeScheduledTimes,
+} from '../src/features/medications/schedule-dates.ts';
 
 test('scenariusz 1: jednorazowe (doraźne) podanie leku', () => {
   const schedules = [
@@ -430,4 +435,62 @@ test('scenariusz 8: stała kroplówka 2x dziennie (11:00, 22:00) + dodatkowy lek
   assert.equal(morningFluid.fluid_volume_ml, 150);
   assert.equal(morningFluid.fluid_route, 'sc');
   assert.equal(morningFluid.fluid_location, 'home');
+});
+
+test('scenariusz 9: kroplówka cykliczna co 2 dni oraz helpery dat i instrukcji', () => {
+  assert.equal(addIsoDays('2026-11-12', 2), '2026-11-14'); // kuracja 3 dni (12, 13, 14)
+  assert.equal(addIsoDays('2026-12-30', 3), '2027-01-02');
+  assert.deepEqual(
+    normalizeScheduledTimes(['22:00', '11:00', '11:00', 'invalid']),
+    ['11:00', '22:00'],
+  );
+  assert.equal(
+    buildFluidScheduleInstructions({
+      medicationsAdded: 'Duphalyte 10 ml',
+      clinicName: 'Vetis',
+      notes: 'Podgrzać',
+    }),
+    'Duphalyte 10 ml · Lecznica: Vetis · Podgrzać',
+  );
+
+  const schedules = [
+    {
+      id: 'sched-fluid-every-2d',
+      pet_id: 'pet-1',
+      household_id: 'house-1',
+      name: 'NaCl 0.9%',
+      dosage: '100 ml · SC',
+      schedule_type: 'interval',
+      interval_value: 2,
+      interval_unit: 'days',
+      start_date: '2026-11-12',
+      end_date: '2026-11-16',
+      scheduled_time: '11:00',
+      scheduled_times: ['11:00'],
+      instructions: 'Co 2 dni podskórnie',
+      is_active: true,
+      schedule_category: 'fluid_therapy',
+      fluid_name: 'NaCl 0.9%',
+      fluid_volume_ml: 100,
+      fluid_route: 'sc',
+      fluid_location: 'home',
+      revision: 1,
+      created_by: 'user-1',
+      created_at: '2026-11-12T00:00:00Z',
+      updated_at: '2026-11-12T00:00:00Z',
+    },
+  ];
+
+  const doses = projectMedicationDoses({
+    schedules,
+    logs: [],
+    rangeStart: '2026-11-12',
+    rangeEnd: '2026-11-16',
+  });
+
+  assert.deepEqual(
+    doses.map((d) => d.dose_date),
+    ['2026-11-12', '2026-11-14', '2026-11-16'],
+  );
+  assert.ok(doses.every((d) => d.schedule_category === 'fluid_therapy'));
 });
