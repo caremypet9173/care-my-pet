@@ -35,7 +35,21 @@ import type {PetFluidTherapy} from '@/features/fluid-therapy/types';
 import {FluidDeleteDialog} from '@/features/fluid-therapy/fluid-delete-dialog';
 import {deleteFluidTherapy} from '@/features/fluid-therapy/actions';
 
-type FilterCategory = 'all' | 'visit' | 'fluid' | 'vaccination' | 'lab' | 'prevention';
+type FilterCategory = 'all' | 'visit' | 'fluid' | 'lab' | 'descriptive' | 'vaccination' | 'prevention';
+
+const VALID_FILTERS = new Set<FilterCategory>([
+  'all',
+  'visit',
+  'fluid',
+  'lab',
+  'descriptive',
+  'vaccination',
+  'prevention',
+]);
+
+function parseFilterCategory(raw?: string): FilterCategory {
+  return raw && VALID_FILTERS.has(raw as FilterCategory) ? (raw as FilterCategory) : 'all';
+}
 
 type TimelineItem =
   | {
@@ -49,7 +63,7 @@ type TimelineItem =
   | {
       kind: 'lab';
       id: string;
-      category: 'lab';
+      category: 'lab' | 'descriptive';
       date: string;
       createdAt: string;
       report: MedicalReport;
@@ -72,6 +86,7 @@ export function HistoryPanel({
   initialEvents,
   reports,
   initialFluids = EMPTY_FLUIDS,
+  initialFilter,
 }: {
   petId: string;
   householdId: string;
@@ -79,6 +94,7 @@ export function HistoryPanel({
   initialEvents: HealthEvent[];
   reports: MedicalReport[];
   initialFluids?: PetFluidTherapy[];
+  initialFilter?: string;
 }) {
   const locale = useLocale();
   const pl = locale === 'pl';
@@ -97,7 +113,14 @@ export function HistoryPanel({
     setPrevInitialFluids(initialFluids);
     setFluids(initialFluids);
   }
-  const [filter, setFilter] = useState<FilterCategory>('all');
+
+  const resolvedInitialFilter = parseFilterCategory(initialFilter);
+  const [prevInitialFilter, setPrevInitialFilter] = useState(resolvedInitialFilter);
+  const [filter, setFilter] = useState<FilterCategory>(resolvedInitialFilter);
+  if (resolvedInitialFilter !== prevInitialFilter) {
+    setPrevInitialFilter(resolvedInitialFilter);
+    setFilter(resolvedInitialFilter);
+  }
   const [query, setQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<HealthEvent | null>(null);
@@ -121,7 +144,7 @@ export function HistoryPanel({
     const labItems: TimelineItem[] = reports.map(rep => ({
       kind: 'lab',
       id: `lab-${rep.id}`,
-      category: 'lab',
+      category: rep.rows.length > 0 ? 'lab' : 'descriptive',
       date: rep.test_date,
       createdAt: rep.confirmed_at,
       report: rep,
@@ -144,8 +167,9 @@ export function HistoryPanel({
       all: allItems.length,
       visit: 0,
       fluid: 0,
-      vaccination: 0,
       lab: 0,
+      descriptive: 0,
+      vaccination: 0,
       prevention: 0,
     };
     for (const item of allItems) {
@@ -319,6 +343,7 @@ export function HistoryPanel({
     {id: 'visit', label: pl ? 'Wizyty kontrolne' : 'Check-up visits'},
     {id: 'fluid', label: pl ? 'Płynoterapia i kroplówki' : 'Fluid therapy'},
     {id: 'lab', label: pl ? 'Badania lab' : 'Lab reports'},
+    {id: 'descriptive', label: pl ? 'Badania opisowe' : 'Imaging & descriptive'},
     {id: 'vaccination', label: pl ? 'Szczepienia' : 'Vaccinations'},
     {id: 'prevention', label: pl ? 'Leki i profilaktyka' : 'Meds & prevention'},
   ];
@@ -719,17 +744,19 @@ export function HistoryPanel({
                       ? `${rep.notes.slice(0, 520).trimEnd()}…`
                       : rep.notes;
 
+                  const reportVariantClass = isDescriptive ? 'is-descriptive' : 'is-lab';
+
                   return (
-                    <li key={item.id} className="history-timeline-item is-lab">
-                      <span className="history-node-icon is-lab" aria-hidden="true">
-                        <IconFlask size={20} />
+                    <li key={item.id} className={`history-timeline-item ${reportVariantClass}`}>
+                      <span className={`history-node-icon ${reportVariantClass}`} aria-hidden="true">
+                        {isDescriptive ? <IconFileText size={20} /> : <IconFlask size={20} />}
                       </span>
 
-                      <article className="pet-panel history-card is-lab-card">
+                      <article className={`pet-panel history-card ${isDescriptive ? 'is-descriptive-card' : 'is-lab-card'}`}>
                         <div className="history-card-top">
                           <div className="history-card-heading">
                             <div className="history-card-badges">
-                              <span className="history-category-tag is-lab">
+                              <span className={`history-category-tag ${reportVariantClass}`}>
                                 {isDescriptive
                                   ? pl
                                     ? 'Badanie obrazowe / opisowe'

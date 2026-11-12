@@ -31,13 +31,13 @@ test('result groups collapse, count parameters and navigate to trend',async({pag
  await summary.locator('.household-summary-reports li a').first().click();
  await expect(page.locator('.medical-report-picker select')).toHaveValue(fixture.ids[1]);
  await page.goto(`/pl/app/zwierzeta/${pet.id}?tab=results`);
- const list=page.locator('.medical-report-list');await expect(list.locator('li')).toHaveCount(2);
- await page.getByRole('searchbox').fill('2026-09-16');await expect(list.locator('li')).toHaveCount(1);
- expect((await new AxeBuilder({page}).include('.medical-report-list').analyze()).violations).toEqual([]);
+ const matrix=page.locator('.matrix-comparison-wrap');await expect(matrix.getByRole('button',{name:/Otwórz badanie:/})).toHaveCount(2);
+ // Searchbox in matrix filters parameters, tested separately; verify accessibility of comparison matrix.
+ expect((await new AxeBuilder({page}).include('.matrix-comparison-wrap').analyze()).violations).toEqual([]);
  await page.screenshot({path:`tmp/report-list-${info.project.name}.png`,fullPage:true});
- const open=list.getByRole('button',{name:/Otwórz badanie:/});await open.focus();await page.keyboard.press('Enter');
+ const open=matrix.getByRole('button',{name:/Otwórz badanie:.*2026-09-16/});await open.focus();await page.keyboard.press('Enter');
  await expect(page.getByRole('heading',{name:'Szczegóły badania'})).toBeFocused();
- await expect(page.getByRole('button',{name:'← Wróć do listy badań'})).toBeInViewport({ratio:1});
+ await expect(page.getByRole('button',{name:'← Wróć do porównania wyników'})).toBeInViewport({ratio:1});
  const chart=page.locator('.medical-trend').locator('svg[role=group]');
  const latestTrend=await chart.getAttribute('aria-label');
  const earlierPoint=chart.getByRole('button',{name:/2026-09-15/});
@@ -48,7 +48,7 @@ test('result groups collapse, count parameters and navigate to trend',async({pag
  await page.getByRole('combobox',{name:'Badanie',exact:true}).selectOption(fixture.ids[0]);
  await expect(chart).toBeVisible();await expect(chart).toHaveAttribute('aria-label',latestTrend!);
  await page.getByRole('combobox',{name:'Badanie',exact:true}).selectOption(fixture.ids[1]);
- await page.getByRole('button',{name:'← Wróć do listy badań'}).click();await expect(open).toBeFocused();await expect(page.getByRole('searchbox')).toHaveValue('2026-09-16');await open.click();
+ await page.getByRole('button',{name:'← Wróć do porównania wyników'}).click();await expect(open).toBeFocused();await open.click();
  const groups=page.locator('.medical-group-heading button');await expect(groups).toHaveCount(4);const blood=groups.filter({hasText:'Morfologia'});await expect(blood).toContainText('10');await expect(blood).toHaveAttribute('aria-expanded','true');
  await blood.click();await expect(page.getByRole('button',{name:'Blood 1',exact:true})).not.toBeVisible();await expect(page.getByRole('button',{name:'CREA',exact:true})).toBeVisible();
  await blood.focus();await page.keyboard.press('Enter');await expect(page.getByRole('button',{name:'Blood 1',exact:true})).toBeVisible();

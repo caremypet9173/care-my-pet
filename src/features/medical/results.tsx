@@ -2,14 +2,15 @@
 import { Fragment, useId, useRef, useState } from "react";
 import {useRouter} from "next/navigation";
 import { useLocale } from "next-intl";
-import { IconFileText, IconPlus, IconCalendar, IconShieldCheck, IconPencil, IconStar, IconChevronDown, IconList, IconTable, IconSparkles } from "@tabler/icons-react";
+import { IconFileText, IconFlask, IconPlus, IconCalendar, IconShieldCheck, IconPencil, IconStar, IconChevronDown, IconSparkles } from "@tabler/icons-react";
+import { Link } from "@/i18n/navigation";
 import { ButtonLink } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { medicalMessages } from "./messages";
 import { numeric, rangeStatus, sameParameter } from "./comparison";
 import type { MedicalReport, Measurement, MeasurementCorrection } from "./types";
 import {TrendParameterPicker} from "./trend-parameter-picker";
-import {ReportList} from "./report-list";
+import { DischargeImportButton } from "./discharge-import-button";
 import { LabComparisonMatrix } from "./lab-comparison-matrix";
 import { PdfPreview } from "./pdf-preview";
 import {EditParameterDialog} from "./edit-parameter-dialog";
@@ -30,8 +31,6 @@ export function MedicalResults({
 }) {
   const router=useRouter();
   const [detail,setDetail]=useState(!!initialReportId);
-  const [listMode,setListMode]=useState<"list"|"matrix">("list");
-  const [reportQuery,setReportQuery]=useState('');
   const detailHeading=useRef<HTMLHeadingElement>(null);
   const backToList=useRef<HTMLButtonElement>(null);
   const origin=useRef<string|null>(null);
@@ -110,12 +109,69 @@ export function MedicalResults({
     setParameter(activeReport.rows.find(row=>['above','below'].includes(rangeStatus(row)))??activeReport.rows.find(row=>numeric(row.value)!==null)??null);
     setDetail(true);requestAnimationFrame(()=>{detailHeading.current?.focus({preventScroll:true});backToList.current?.scrollIntoView({block:'start',behavior:'instant'});});
   };
+  const labReports=reports.filter(r=>r.rows.length>0);
+  const descriptiveReports=reports.filter(r=>r.rows.length===0);
   if(!detail)return <div className="medical-results">
-    {reports.length>0&&<div className="medical-mode-switcher" role="group" aria-label={locale==="pl"?"Widok wyników badań":"Results view"}><button type="button" className={`medical-mode-card${listMode==="list"?" is-active":""}`} onClick={()=>setListMode("list")}><span className="medical-mode-icon"><IconList size={20} aria-hidden="true"/></span><div><strong>{locale==="pl"?"Lista badań i opisów":"Reports & imaging list"}</strong><small>{locale==="pl"?`Wszystkie dokumenty i badania (${reports.length})`:`All reports and studies (${reports.length})`}</small></div></button><button type="button" className={`medical-mode-card is-highlight${listMode==="matrix"?" is-active":""}`} onClick={()=>setListMode("matrix")}><span className="medical-mode-icon"><IconTable size={20} aria-hidden="true"/></span><div><strong>{locale==="pl"?"Porównanie parametrów w czasie":"Compare parameters over time"}</strong><small>{locale==="pl"?"Zbiorcza tabela wszystkich wyników + wykres wielu parametrów":"Comparison matrix across dates + multi-parameter chart"}</small></div></button></div>}
-    {listMode==="matrix"?<LabComparisonMatrix reports={reports} onOpenReport={openReportDetail}/>:<ReportList reports={reports} petId={petId} householdId={householdId} petName={petName} query={reportQuery} onQuery={setReportQuery} onOpen={openReportDetail}/>}
+    <section className="pet-panel medical-results-actions-bar">
+      <div className="medical-results-actions-info">
+        <h2>{locale==="pl"?"Wyniki laboratoryjne":"Laboratory results"}</h2>
+        {descriptiveReports.length>0&&(
+          <Link className="medical-descriptive-link" href={`/app/zwierzeta/${petId}?tab=history&filter=descriptive`}>
+            <IconFileText size={15} aria-hidden="true"/>
+            <span>
+              {locale==="pl"
+                ?`Badania opisowe / USG (${descriptiveReports.length}) w Historii →`
+                :`Imaging / descriptive reports (${descriptiveReports.length}) in History →`}
+            </span>
+          </Link>
+        )}
+      </div>
+      <div className="medical-results-actions-buttons">
+        <DischargeImportButton
+          pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
+          householdId={householdId}
+        />
+        <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary" size="sm">
+          <IconPlus size={16} aria-hidden="true"/>
+          {locale==="pl"?"Dodaj badanie":"Add report"}
+        </ButtonLink>
+      </div>
+    </section>
+    {labReports.length>0 ? (
+      <LabComparisonMatrix reports={reports} onOpenReport={openReportDetail}/>
+    ) : descriptiveReports.length>0 ? (
+      <section className="pet-panel medical-empty">
+        <IconFlask size={36} aria-hidden="true"/>
+        <h3>{locale==="pl"?"Brak badań laboratoryjnych z parametrami do porównania":"No numeric lab results to compare"}</h3>
+        <p>{locale==="pl"?`Ten pupil ma wyłącznie badania opisowe lub obrazowe (${descriptiveReports.length}). Zobaczysz je chronologicznie w zakładce Historia.`:`This pet currently has only imaging or descriptive reports (${descriptiveReports.length}). View them chronologically in the History tab.`}</p>
+        <div className="medical-empty-actions">
+          <ButtonLink href={`/app/zwierzeta/${petId}?tab=history&filter=descriptive`} variant="secondary">
+            {locale==="pl"?"Zobacz badania opisowe w Historii →":"View descriptive reports in History →"}
+          </ButtonLink>
+          <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`}>
+            <IconPlus size={16} aria-hidden="true"/>
+            {locale==="pl"?"Dodaj badanie":"Add report"}
+          </ButtonLink>
+        </div>
+      </section>
+    ) : (
+      <section className="pet-panel medical-empty">
+        <IconFileText size={36} aria-hidden="true"/>
+        <h3>{t.empty}</h3>
+        <p>{t.emptyHint}</p>
+      </section>
+    )}
   </div>;
   return <div className="medical-results">
-    <button ref={backToList} className="medical-back-list" type="button" onClick={()=>{setDetail(false);requestAnimationFrame(()=>document.getElementById(`open-report-${origin.current??selected}`)?.focus());}}>{locale==="pl"?"← Wróć do listy badań":"← Back to reports"}</button>
+    <div className="medical-detail-nav">
+      <button ref={backToList} className="medical-back-list" type="button" onClick={()=>{setDetail(false);requestAnimationFrame(()=>document.getElementById(`open-report-${origin.current??selected}`)?.focus());}}>{locale==="pl"?"← Wróć do porównania wyników":"← Back to results comparison"}</button>
+      {report&&report.rows.length===0&&(
+        <Link className="medical-back-history" href={`/app/zwierzeta/${petId}?tab=history&filter=descriptive`}>
+          <IconFileText size={15} aria-hidden="true"/>
+          <span>{locale==="pl"?"← Badania opisowe w Historii":"← Descriptive reports in History"}</span>
+        </Link>
+      )}
+    </div>
     <h2 ref={detailHeading} tabIndex={-1} className="medical-detail-title">{locale==="pl"?"Szczegóły badania":"Report details"}</h2>
     <section className="pet-panel medical-results-heading"><div className="medical-results-title"><h2>{t.heading}</h2><p>{t.intro}</p></div><div className="medical-report-controls">{report&&<><label className="medical-report-picker"><IconCalendar size={18} aria-hidden="true"/><span className="sr-only">{t.report}</span><select aria-label={t.report} value={report.id} onChange={event=>{const next=reports.find(r=>r.id===event.target.value);setSelected(event.target.value);setCollapsed({});setParameter(next?.rows.find(row=>["above","below"].includes(rangeStatus(row)))??next?.rows.find(row=>numeric(row.value)!==null)??null);setSource(null);}}>{reports.map(r=><option key={r.id} value={r.id}>{date(r.test_date)} · {r.laboratory||r.title} ({r.rows.length>0?r.rows.length:locale==="pl"?"opisowe":"descriptive"})</option>)}</select>{report.rows.some(row=>["above","below"].includes(rangeStatus(row)))&&<span className="medical-status medical-status--above">{locale==="pl"?"Odchylenia":"Outside range"}</span>}</label><button className="medical-source-link" type="button" onClick={openSource} disabled={loading}><IconFileText size={16}/>{t.source}</button></>}<ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${petId}/badania/nowe`}><IconPlus size={16}/>{t.add}</ButtonLink></div>
       {report&&report.rows.length>0&&<div className="medical-filters" aria-label={t.table}>{(["all","renal","blood","liver","other"] as const).map(value=><button type="button" key={value} aria-pressed={filter===value} onClick={()=>{setFilter(value);if(value!=="all")setCollapsed(current=>({...current,[value]:false}));}}>{t[value]} ({value==="all"?report.rows.length:report.rows.filter(row=>row.category===value).length})</button>)}</div>}

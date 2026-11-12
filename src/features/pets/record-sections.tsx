@@ -92,6 +92,9 @@ export function RecordSections({
         } else {
           url.searchParams.delete("tab");
         }
+        if (tabId !== 1) {
+          url.searchParams.delete("filter");
+        }
         window.history.replaceState(null, "", url.pathname + url.search);
       } catch {}
     }

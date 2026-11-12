@@ -13,27 +13,58 @@ import {
 } from "@tabler/icons-react";
 import { medicalMessages } from "./messages";
 import { numeric, rangeStatus } from "./comparison";
+import {
+  computeReferenceRatio,
+  convertMeasurementValue,
+  formatConvertedNumber,
+  groupReportsByDate,
+  normalizeUnit,
+  resolveParameterIdentity,
+  type UnitDimension,
+} from "./parameter-normalization";
 import type { Measurement, MedicalReport } from "./types";
 
 type CategoryFilter = "all" | "blood" | "renal" | "liver" | "other";
 
+export type MatrixColumn = {
+  key: string;
+  testDate: string;
+  reports: MedicalReport[];
+};
+
+function getColumnCell(
+  paramRow: MatrixParameterRow,
+  col: MatrixColumn,
+): { report: MedicalReport; cell: MatrixCellEntry } | null {
+  for (const rep of col.reports) {
+    const cell = paramRow.byReportId.get(rep.id);
+    if (cell) return { report: rep, cell };
+  }
+  return null;
+}
+
+export type MatrixCellEntry = {
+  row: Measurement;
+  status: "within" | "above" | "below" | "unknown";
+  numericValue: number | null;
+  displayValue: string;
+  converted: boolean;
+  unitMismatch: boolean;
+  referenceRatio: number | null;
+};
+
 export type MatrixParameterRow = {
   key: string;
   name: string;
+  aliases: string[];
+  dimension?: UnitDimension;
   unit: string;
   reference: string;
   category: "blood" | "renal" | "liver" | "other";
   isKey: boolean;
   hasAttention: boolean;
   numericPointCount: number;
-  byReportId: Map<
-    string,
-    {
-      row: Measurement;
-      status: "within" | "above" | "below" | "unknown";
-      numericValue: number | null;
-    }
-  >;
+  byReportId: Map<string, MatrixCellEntry>;
 };
 
 const SERIES_COLORS = [
@@ -48,15 +79,6 @@ const SERIES_COLORS = [
 function foldText(input: string): string {
   return input
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/ł/g, "l");
-}
-
-function makeParamKey(name: string): string {
-  return name
-    .trim()
-    .toLocaleLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/ł/g, "l");
@@ -84,6 +106,9 @@ export function LabComparisonMatrix({
   >({});
   const [selectedChartKeys, setSelectedChartKeys] = useState<string[]>([]);
   const [detailParamKey, setDetailParamKey] = useState<string | null>(null);
+  const [mergedModalColKey, setMergedModalColKey] = useState<string | null>(
+    null,
+  );
   const chartSectionRef = useRef<HTMLDivElement>(null);
 
   // Sortujemy badania z parametrami malejąco po dacie (od najnowszych do najstarszych)
@@ -97,22 +122,38 @@ export function LabComparisonMatrix({
       );
   }, [reports]);
 
-  // Budujemy wiersze parametrów z najnowszą jednostką/zakresem referencyjnym
-  const parameterRows = useMemo<MatrixParameterRow[]>(() => {
-    const map = new Map<string, MatrixParameterRow>();
+  // Łączymy wszystkie badania laboratoryjne z tego samego dnia w jedną kolumnę daty
+  const matrixColumnsDesc = useMemo<MatrixColumn[]>(() => {
+    const grouped = groupReportsByDate(labReportsDesc, (rep) => rep.test_date);
+    return grouped.map((g) => ({
+      key: g.key,
+      testDate: g.testDate,
+      reports: g.items,
+    }));
+  }, [labReportsDesc]);
 
-    // Iterujemy od najnowszego badania, aby domyślna jednostka/norma pochodziła z najświeższego wyniku
+  // Budujemy wiersze parametrów ze słownikiem aliasów PL/EN i przeliczaniem jednostek do jednostki najnowszego badania
+  const parameterRows = useMemo<MatrixParameterRow[]>(() => {
+    const map = new Map<
+      string,
+      MatrixParameterRow & { aliasSet: Set<string> }
+    >();
+
+    // Krok 1: zbieramy surowe wpisy od najnowszego badania (domyślna jednostka/norma pochodzi z najświeższego wyniku)
     for (const rep of labReportsDesc) {
       for (const row of rep.rows) {
-        const key = makeParamKey(row.name);
+        const identity = resolveParameterIdentity(row, locale);
         const status = rangeStatus(row);
-        const numVal = numeric(row.value);
+        const rawNum = numeric(row.value);
 
-        let entry = map.get(key);
+        let entry = map.get(identity.key);
         if (!entry) {
           entry = {
-            key,
-            name: row.name.trim(),
+            key: identity.key,
+            name: identity.displayName,
+            aliases: [],
+            aliasSet: new Set([row.name.trim(), identity.displayName]),
+            dimension: identity.dimension,
             unit: row.unit.trim(),
             reference: row.reference.trim(),
             category: row.category,
@@ -121,38 +162,86 @@ export function LabComparisonMatrix({
             numericPointCount: 0,
             byReportId: new Map(),
           };
-          map.set(key, entry);
+          map.set(identity.key, entry);
         } else {
+          entry.aliasSet.add(row.name.trim());
           if (!entry.unit && row.unit.trim()) {
             entry.unit = row.unit.trim();
           }
           if (!entry.reference && row.reference.trim()) {
             entry.reference = row.reference.trim();
           }
+          if (entry.category === "other" && row.category !== "other") {
+            entry.category = row.category;
+          }
           if (row.is_key) {
             entry.isKey = true;
           }
         }
 
-        // Jeżeli w jednym badaniu ten sam parametr wystąpił raz, zapisujemy
         if (!entry.byReportId.has(rep.id)) {
           entry.byReportId.set(rep.id, {
             row,
             status,
-            numericValue: numVal,
+            numericValue: rawNum,
+            displayValue: row.value,
+            converted: false,
+            unitMismatch: false,
+            referenceRatio: computeReferenceRatio(row),
           });
           if (status === "above" || status === "below") {
             entry.hasAttention = true;
-          }
-          if (numVal !== null) {
-            entry.numericPointCount += 1;
           }
         }
       }
     }
 
-    return Array.from(map.values());
-  }, [labReportsDesc]);
+    // Krok 2: ujednolicamy wartości liczbowe do wspólnej jednostki wiersza (gdy dostępny jest bezpieczny przelicznik)
+    const result: MatrixParameterRow[] = [];
+    for (const entry of map.values()) {
+      const targetUnitNorm = normalizeUnit(entry.unit);
+      let numericCount = 0;
+
+      for (const cell of entry.byReportId.values()) {
+        const rawNum = cell.numericValue;
+        const cellUnitNorm = normalizeUnit(cell.row.unit);
+
+        if (
+          rawNum !== null &&
+          targetUnitNorm &&
+          cellUnitNorm &&
+          cellUnitNorm !== targetUnitNorm
+        ) {
+          const convertedNum = convertMeasurementValue(
+            rawNum,
+            cell.row.unit,
+            entry.unit,
+            entry.dimension,
+          );
+          if (convertedNum !== null) {
+            cell.numericValue = convertedNum;
+            cell.displayValue = formatConvertedNumber(convertedNum, locale);
+            cell.converted = true;
+          } else {
+            cell.numericValue = null;
+            cell.unitMismatch = true;
+          }
+        }
+
+        if (cell.numericValue !== null && !cell.unitMismatch) {
+          numericCount += 1;
+        }
+      }
+
+      entry.numericPointCount = numericCount;
+      entry.aliases = Array.from(entry.aliasSet).filter(Boolean);
+      const { aliasSet: _unused, ...cleanEntry } = entry;
+      void _unused;
+      result.push(cleanEntry);
+    }
+
+    return result;
+  }, [labReportsDesc, locale]);
 
   const filteredRows = useMemo(() => {
     const q = foldText(searchQuery.trim());
@@ -164,7 +253,9 @@ export function LabComparisonMatrix({
         return false;
       }
       if (q) {
-        const hay = foldText(`${row.name} ${row.unit} ${row.reference}`);
+        const hay = foldText(
+          `${row.name} ${row.aliases.join(" ")} ${row.unit} ${row.reference}`,
+        );
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -235,7 +326,11 @@ export function LabComparisonMatrix({
     ? parameterRows.find((r) => r.key === detailParamKey) ?? null
     : null;
 
-  const totalColumns = 2 + labReportsDesc.length;
+  const activeMergedCol = mergedModalColKey
+    ? matrixColumnsDesc.find((c) => c.key === mergedModalColKey) ?? null
+    : null;
+
+  const totalColumns = 2 + matrixColumnsDesc.length;
 
   return (
     <div className="matrix-comparison-wrap">
@@ -252,44 +347,6 @@ export function LabComparisonMatrix({
                 ? "Daty badań ułożone są od najnowszych (po lewej) do najstarszych. Zaznacz do 6 parametrów przy nazwie, aby porównać ich przebieg na wspólnym wykresie."
                 : "Test dates are ordered from newest (left) to oldest. Check up to 6 parameters to compare their trends on a multi-line chart."}
             </p>
-          </div>
-
-          <div className="matrix-toolbar-controls">
-            <div className="schedule-search-box matrix-search-box">
-              <IconSearch size={15} aria-hidden="true" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={
-                  pl
-                    ? "Szukaj parametru: np. kreatynina, ALT, WBC…"
-                    : "Search parameter: e.g. creatinine, ALT, WBC…"
-                }
-                aria-label={pl ? "Szukaj parametru" : "Search parameter"}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  className="schedule-search-clear"
-                  onClick={() => setSearchQuery("")}
-                  aria-label={pl ? "Wyczyść" : "Clear"}
-                >
-                  <IconX size={14} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-
-            <label className="matrix-deviation-toggle">
-              <input
-                type="checkbox"
-                checked={onlyDeviations}
-                onChange={(e) => setOnlyDeviations(e.target.checked)}
-              />
-              <span>
-                {pl ? "Tylko z odchyleniami" : "Only outside range"}
-              </span>
-            </label>
           </div>
         </div>
 
@@ -327,15 +384,59 @@ export function LabComparisonMatrix({
         {selectedSeriesRows.length > 0 && (
           <MultiParameterTrendChart
             seriesRows={selectedSeriesRows}
-            reportsDesc={labReportsDesc}
+            columnsDesc={matrixColumnsDesc}
             onRemoveSeries={(key) => toggleChartKey(key)}
             onClearAll={() => setSelectedChartKeys([])}
             onOpenReport={onOpenReport}
+            onOpenMergedColumn={(col) => setMergedModalColKey(col.key)}
           />
         )}
       </div>
 
       <section className="pet-panel medical-table-panel matrix-table-panel">
+        <div className="matrix-table-filter-bar">
+          <div className="schedule-search-box matrix-search-box">
+            <IconSearch size={15} aria-hidden="true" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                pl
+                  ? "Szukaj parametru: np. kreatynina, ALT, WBC…"
+                  : "Search parameter: e.g. creatinine, ALT, WBC…"
+              }
+              aria-label={pl ? "Szukaj parametru" : "Search parameter"}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="schedule-search-clear"
+                onClick={() => setSearchQuery("")}
+                aria-label={pl ? "Wyczyść" : "Clear"}
+              >
+                <IconX size={14} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          <div className="matrix-table-filter-actions">
+            <label className="matrix-deviation-toggle">
+              <input
+                type="checkbox"
+                checked={onlyDeviations}
+                onChange={(e) => setOnlyDeviations(e.target.checked)}
+              />
+              <span>
+                {pl ? "Tylko z odchyleniami" : "Only outside range"}
+              </span>
+            </label>
+            <span className="matrix-filtered-count" aria-live="polite">
+              {filteredRows.length} / {parameterRows.length}
+            </span>
+          </div>
+        </div>
+
         {filteredRows.length === 0 ? (
           <p className="matrix-empty-filtered">
             {pl
@@ -355,28 +456,55 @@ export function LabComparisonMatrix({
                       ? "Norma"
                       : "Ref."}
                   </th>
-                  {labReportsDesc.map((rep) => {
-                    const labInfo =
-                      rep.laboratory && rep.laboratory !== rep.title
-                        ? `${rep.laboratory} — ${rep.title}`
-                        : rep.laboratory || rep.title;
+                  {matrixColumnsDesc.map((col) => {
+                    const isMerged = col.reports.length > 1;
+                    const singleRep = col.reports[0];
+                    const labInfo = col.reports
+                      .map((rep) =>
+                        rep.laboratory && rep.laboratory !== rep.title
+                          ? `${rep.laboratory} — ${rep.title}`
+                          : rep.laboratory || rep.title,
+                      )
+                      .join(" · ");
+                    const pdfReps = col.reports.filter((r) => Boolean(r.source_path));
 
                     return (
-                      <th key={rep.id} scope="col" className="matrix-col-date">
+                      <th key={col.key} scope="col" className="matrix-col-date">
                         <div className="matrix-date-header">
-                          {onOpenReport ? (
+                          {isMerged ? (
                             <button
                               type="button"
                               className="matrix-date-btn has-lab-tooltip"
-                              onClick={() => onOpenReport(rep)}
+                              onClick={() => setMergedModalColKey(col.key)}
                               data-lab={labInfo}
+                              aria-label={`${pl ? "Badania z dnia" : "Reports on"}: ${col.testDate} (${col.reports.length})`}
+                              title={
+                                pl
+                                  ? `${labInfo} (kliknij, aby wybrać badanie z tego dnia)`
+                                  : `${labInfo} (click to choose report from this day)`
+                              }
+                            >
+                              <strong>{formatDateShort(col.testDate)}</strong>
+                              <small className="matrix-merged-badge">
+                                {col.reports.length}{" "}
+                                {pl ? "badania" : "reports"}
+                              </small>
+                            </button>
+                          ) : onOpenReport ? (
+                            <button
+                              id={`open-report-${singleRep.id}`}
+                              type="button"
+                              className="matrix-date-btn has-lab-tooltip"
+                              onClick={() => onOpenReport(singleRep)}
+                              data-lab={labInfo}
+                              aria-label={`${pl ? "Otwórz badanie" : "Open report"}: ${singleRep.title}, ${singleRep.test_date}`}
                               title={
                                 pl
                                   ? `${labInfo} (kliknij, aby otworzyć szczegóły badania)`
                                   : `${labInfo} (click to open report details)`
                               }
                             >
-                              <strong>{formatDateShort(rep.test_date)}</strong>
+                              <strong>{formatDateShort(singleRep.test_date)}</strong>
                             </button>
                           ) : (
                             <div
@@ -384,14 +512,14 @@ export function LabComparisonMatrix({
                               data-lab={labInfo}
                               title={labInfo}
                             >
-                              <strong>{formatDateShort(rep.test_date)}</strong>
+                              <strong>{formatDateShort(col.testDate)}</strong>
                             </div>
                           )}
-                          {onOpenDocument && rep.source_path && (
+                          {onOpenDocument && pdfReps.length === 1 && (
                             <button
                               type="button"
                               className="matrix-doc-mini"
-                              onClick={() => onOpenDocument(rep)}
+                              onClick={() => onOpenDocument(pdfReps[0])}
                               title={
                                 pl
                                   ? "Pokaż oryginał dokumentu"
@@ -400,6 +528,21 @@ export function LabComparisonMatrix({
                             >
                               <IconFileText size={13} aria-hidden="true" />
                               <span>PDF</span>
+                            </button>
+                          )}
+                          {onOpenDocument && pdfReps.length > 1 && (
+                            <button
+                              type="button"
+                              className="matrix-doc-mini"
+                              onClick={() => setMergedModalColKey(col.key)}
+                              title={
+                                pl
+                                  ? "Wybierz dokument PDF z tego dnia"
+                                  : "Choose PDF document from this day"
+                              }
+                            >
+                              <IconFileText size={13} aria-hidden="true" />
+                              <span>PDF ({pdfReps.length})</span>
                             </button>
                           )}
                         </div>
@@ -539,7 +682,7 @@ export function LabComparisonMatrix({
                                       </span>
                                       <ParameterSparkline
                                         paramRow={paramRow}
-                                        reportsDesc={labReportsDesc}
+                                        columnsDesc={matrixColumnsDesc}
                                         strokeColor={seriesColor}
                                       />
                                     </button>
@@ -598,12 +741,12 @@ export function LabComparisonMatrix({
                               )}
                             </td>
 
-                            {labReportsDesc.map((rep, repIdx) => {
-                              const cell = paramRow.byReportId.get(rep.id);
-                              if (!cell) {
+                            {matrixColumnsDesc.map((col, colIdx) => {
+                              const found = getColumnCell(paramRow, col);
+                              if (!found) {
                                 return (
                                   <td
-                                    key={rep.id}
+                                    key={col.key}
                                     className="matrix-cell is-empty"
                                   >
                                     —
@@ -611,22 +754,25 @@ export function LabComparisonMatrix({
                                 );
                               }
 
+                              const { cell } = found;
+
                               // Szukamy starszego wyniku, by policzyć kierunek zmiany względem poprzedniego badania
                               let olderNum: number | null = null;
                               if (cell.numericValue !== null) {
                                 for (
-                                  let i = repIdx + 1;
-                                  i < labReportsDesc.length;
+                                  let i = colIdx + 1;
+                                  i < matrixColumnsDesc.length;
                                   i++
                                 ) {
-                                  const olderCell = paramRow.byReportId.get(
-                                    labReportsDesc[i].id,
+                                  const olderFound = getColumnCell(
+                                    paramRow,
+                                    matrixColumnsDesc[i],
                                   );
                                   if (
-                                    olderCell &&
-                                    olderCell.numericValue !== null
+                                    olderFound &&
+                                    olderFound.cell.numericValue !== null
                                   ) {
-                                    olderNum = olderCell.numericValue;
+                                    olderNum = olderFound.cell.numericValue;
                                     break;
                                   }
                                 }
@@ -653,21 +799,42 @@ export function LabComparisonMatrix({
                                   ).format(Number(delta.toFixed(6)))}`
                                 : "";
 
+                              const originalInfo = cell.converted
+                                ? pl
+                                  ? `Przeliczono z: ${cell.row.value} ${cell.row.unit}`
+                                  : `Converted from: ${cell.row.value} ${cell.row.unit}`
+                                : "";
+                              const deltaInfo = hasDelta
+                                ? pl
+                                  ? `Zmiana względem poprzedniego wyniku: ${formattedDelta}`
+                                  : `Change vs. previous result: ${formattedDelta}`
+                                : "";
+                              const cellTitle = [originalInfo, deltaInfo]
+                                .filter(Boolean)
+                                .join(" · ");
+
                               return (
                                 <td
-                                  key={rep.id}
+                                  key={col.key}
                                   className={`matrix-cell is-${cell.status}${hasDelta ? ` has-delta-tooltip${deltaSignClass}` : ""}`}
                                   data-delta={hasDelta ? formattedDelta : undefined}
-                                  title={
-                                    hasDelta
-                                      ? pl
-                                        ? `Zmiana względem poprzedniego wyniku: ${formattedDelta}`
-                                        : `Change vs. previous result: ${formattedDelta}`
-                                      : undefined
-                                  }
+                                  title={cellTitle || undefined}
                                 >
                                   <div className="matrix-cell-val">
-                                    <strong>{cell.row.value}</strong>
+                                    {cell.converted && (
+                                      <span
+                                        className="matrix-approx"
+                                        aria-hidden="true"
+                                      >
+                                        ≈
+                                      </span>
+                                    )}
+                                    <strong>{cell.displayValue}</strong>
+                                    {cell.unitMismatch && cell.row.unit && (
+                                      <small className="matrix-cell-unit">
+                                        {cell.row.unit}
+                                      </small>
+                                    )}
                                     {cell.status === "above" && (
                                       <span
                                         className="matrix-flag is-above"
@@ -717,7 +884,133 @@ export function LabComparisonMatrix({
           onOpenDocument={onOpenDocument}
         />
       )}
+
+      {activeMergedCol && (
+        <MergedDateReportsModal
+          column={activeMergedCol}
+          onClose={() => setMergedModalColKey(null)}
+          onOpenReport={onOpenReport}
+          onOpenDocument={onOpenDocument}
+        />
+      )}
     </div>
+  );
+}
+
+function MergedDateReportsModal({
+  column,
+  onClose,
+  onOpenReport,
+  onOpenDocument,
+}: {
+  column: MatrixColumn;
+  onClose: () => void;
+  onOpenReport?: (report: MedicalReport) => void;
+  onOpenDocument?: (report: MedicalReport) => void;
+}) {
+  const locale = useLocale() as "pl" | "en";
+  const pl = locale === "pl";
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, []);
+
+  const formattedDate = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(column.testDate));
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="matrix-detail-dialog"
+      onCancel={onClose}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) {
+          onClose();
+        }
+      }}
+    >
+      <div className="matrix-detail-shell">
+        <header className="matrix-detail-header">
+          <div className="matrix-detail-title">
+            <div className="matrix-detail-badges">
+              <span className="matrix-key-pill">
+                {column.reports.length} {pl ? "badania z tego dnia" : "reports on this date"}
+              </span>
+            </div>
+            <h2>{formattedDate}</h2>
+          </div>
+
+          <button
+            type="button"
+            className="medical-document-close"
+            onClick={onClose}
+            aria-label={pl ? "Zamknij" : "Close"}
+          >
+            <IconX size={20} aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="matrix-detail-body matrix-merged-body">
+          <ul className="matrix-merged-list">
+            {column.reports.map((rep) => (
+              <li key={rep.id} className="matrix-merged-item">
+                <div className="matrix-merged-info">
+                  <strong>{rep.title}</strong>
+                  <small>
+                    {rep.laboratory || (pl ? "Laboratorium" : "Laboratory")} ·{" "}
+                    {rep.rows.length}{" "}
+                    {pl ? "parametrów" : "parameters"}
+                  </small>
+                </div>
+                <div className="matrix-merged-actions">
+                  {onOpenDocument && rep.source_path && (
+                    <button
+                      type="button"
+                      className="matrix-doc-mini"
+                      onClick={() => {
+                        onClose();
+                        onOpenDocument(rep);
+                      }}
+                    >
+                      <IconFileText size={13} aria-hidden="true" />
+                      <span>PDF</span>
+                    </button>
+                  )}
+                  {onOpenReport && (
+                    <button
+                      type="button"
+                      className="schedule-mini-btn"
+                      onClick={() => {
+                        onClose();
+                        onOpenReport(rep);
+                      }}
+                    >
+                      {pl ? "Otwórz badanie" : "Open report"}
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </dialog>
   );
 }
 
@@ -770,6 +1063,9 @@ function ParameterDetailModal({
       report: MedicalReport;
       value: string;
       unit: string;
+      originalValue: string;
+      originalUnit: string;
+      converted: boolean;
       reference: string;
       status: "within" | "above" | "below" | "unknown";
       numericValue: number | null;
@@ -794,8 +1090,11 @@ function ParameterDetailModal({
 
       list.push({
         report: rep,
-        value: cell.row.value,
-        unit: cell.row.unit || paramRow.unit,
+        value: cell.displayValue,
+        unit: cell.converted ? paramRow.unit : cell.row.unit || paramRow.unit,
+        originalValue: cell.row.value,
+        originalUnit: cell.row.unit,
+        converted: cell.converted,
         reference: cell.row.reference || paramRow.reference,
         status: cell.status,
         numericValue: cell.numericValue,
@@ -966,6 +1265,13 @@ function ParameterDetailModal({
                           )}
                         </div>
 
+                        {entry.converted && (
+                          <small className="matrix-detail-custom-ref">
+                            {pl ? "Oryginalnie:" : "Original:"}{" "}
+                            {entry.originalValue} {entry.originalUnit}
+                          </small>
+                        )}
+
                         {entry.reference &&
                           entry.reference !== paramRow.reference && (
                             <small className="matrix-detail-custom-ref">
@@ -1002,11 +1308,11 @@ function ParameterDetailModal({
 
 function ParameterSparkline({
   paramRow,
-  reportsDesc,
+  columnsDesc,
   strokeColor,
 }: {
   paramRow: MatrixParameterRow;
-  reportsDesc: MedicalReport[];
+  columnsDesc: MatrixColumn[];
   strokeColor?: string;
 }) {
   const points: {
@@ -1014,12 +1320,12 @@ function ParameterSparkline({
     status: "within" | "above" | "below" | "unknown";
   }[] = [];
 
-  for (let i = reportsDesc.length - 1; i >= 0; i--) {
-    const cell = paramRow.byReportId.get(reportsDesc[i].id);
-    if (cell && cell.numericValue !== null) {
+  for (let i = columnsDesc.length - 1; i >= 0; i--) {
+    const found = getColumnCell(paramRow, columnsDesc[i]);
+    if (found && found.cell.numericValue !== null) {
       points.push({
-        val: cell.numericValue,
-        status: cell.status,
+        val: found.cell.numericValue,
+        status: found.cell.status,
       });
     }
   }
@@ -1109,48 +1415,55 @@ function ParameterSparkline({
 
 function MultiParameterTrendChart({
   seriesRows,
-  reportsDesc,
+  columnsDesc,
   onRemoveSeries,
   onClearAll,
   onOpenReport,
+  onOpenMergedColumn,
 }: {
   seriesRows: MatrixParameterRow[];
-  reportsDesc: MedicalReport[];
+  columnsDesc: MatrixColumn[];
   onRemoveSeries: (key: string) => void;
   onClearAll: () => void;
   onOpenReport?: (report: MedicalReport) => void;
+  onOpenMergedColumn?: (col: MatrixColumn) => void;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
   const [scaleMode, setScaleMode] = useState<"normalized" | "relative">(
     "normalized",
   );
-  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [hoveredColKey, setHoveredColKey] = useState<string | null>(null);
   const [hoveredSeriesKey, setHoveredSeriesKey] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Do wykresu czasu bierzemy daty rosnąco (od lewej najstarsza, do prawej najnowsza)
-  const reportsAsc = useMemo(
-    () => [...reportsDesc].reverse(),
-    [reportsDesc],
+  // Do wykresu czasu bierzemy kolumny rosnąco (od lewej najstarsze, do prawej najnowsze)
+  const columnsAsc = useMemo(
+    () => [...columnsDesc].reverse(),
+    [columnsDesc],
   );
 
-  // Zbieramy wszystkie daty, w których przynajmniej jeden z wybranych parametrów ma wartość liczbową
-  const activeDates = useMemo(() => {
-    const dates = new Set<string>();
-    for (const rep of reportsAsc) {
-      for (const s of seriesRows) {
-        const cell = s.byReportId.get(rep.id);
-        if (cell && cell.numericValue !== null) {
-          dates.add(rep.test_date);
-        }
-      }
-    }
-    return Array.from(dates).sort();
-  }, [reportsAsc, seriesRows]);
+  // Zbieramy wyłącznie kolumny badań, w których przynajmniej jeden z wybranych parametrów ma wartość liczbową
+  const activeColumns = useMemo(() => {
+    return columnsAsc.filter((col) =>
+      seriesRows.some((s) => {
+        const found = getColumnCell(s, col);
+        return Boolean(found && found.cell.numericValue !== null);
+      }),
+    );
+  }, [columnsAsc, seriesRows]);
 
   const formatNum = (n: number) =>
     new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(n);
+
+  const formatDelta = (delta: number) => {
+    const abs = Math.abs(delta);
+    const maxDigits = abs >= 10 ? 1 : abs >= 1 ? 2 : 3;
+    const rounded = Number(delta.toFixed(maxDigits));
+    return `${delta > 0 ? "+" : ""}${new Intl.NumberFormat(locale, {
+      maximumFractionDigits: maxDigits,
+    }).format(rounded)}`;
+  };
 
   const formatDateFull = (iso: string) =>
     new Intl.DateTimeFormat(locale, {
@@ -1160,7 +1473,7 @@ function MultiParameterTrendChart({
       timeZone: "UTC",
     }).format(new Date(iso));
 
-  if (activeDates.length < 2) {
+  if (activeColumns.length < 2) {
     return (
       <section className="pet-panel matrix-chart-panel">
         <div className="matrix-chart-header">
@@ -1172,8 +1485,8 @@ function MultiParameterTrendChart({
             </strong>
             <p>
               {pl
-                ? "Wybrane parametry mają pomiary tylko z jednej daty — zaznacz parametry z co najmniej dwoma pomiarami."
-                : "Selected parameters only have measurements from a single date."}
+                ? "Wybrane parametry mają mniej niż dwa pomiary liczbowe — zaznacz parametry z co najmniej dwoma pomiarami."
+                : "Selected parameters have fewer than two numeric measurements."}
             </p>
           </div>
           <button
@@ -1188,15 +1501,20 @@ function MultiParameterTrendChart({
     );
   }
 
-  const firstMs = Date.parse(activeDates[0]);
-  const lastMs = Date.parse(activeDates[activeDates.length - 1]);
-  const timeSpan = Math.max(1, lastMs - firstMs);
-
-  const datePositions = activeDates.map((d) => ({
-    date: d,
-    x: 55 + ((Date.parse(d) - firstMs) / timeSpan) * 620,
-    report: reportsDesc.find((r) => r.test_date === d),
+  // Równomierne rozmieszczenie kolejnych badań na osi X (chronologicznie od najstarszego do najnowszego),
+  // dzięki czemu bliskie daty kontrolne nie zlewają się przy prawej krawędzi
+  const xStart = 72;
+  const xSpan = 586;
+  const columnPositions = activeColumns.map((col, idx) => ({
+    colKey: col.key,
+    date: col.testDate,
+    idx,
+    x: xStart + (idx / (activeColumns.length - 1)) * xSpan,
+    col,
   }));
+  const xByColKey = new Map(columnPositions.map((cp) => [cp.colKey, cp.x]));
+  const labelStride =
+    activeColumns.length > 10 ? Math.ceil(activeColumns.length / 8) : 1;
 
   const seriesData = seriesRows.map((row, idx) => {
     const color = SERIES_COLORS[idx % SERIES_COLORS.length];
@@ -1209,28 +1527,27 @@ function MultiParameterTrendChart({
       refLow !== null && refHigh !== null && refHigh > refLow;
 
     const rawPoints: {
+      colKey: string;
       date: string;
       rawVal: number;
+      referenceRatio: number | null;
       delta: number | null;
       status: "within" | "above" | "below" | "unknown";
     }[] = [];
 
-    for (const rep of reportsAsc) {
-      const cell = row.byReportId.get(rep.id);
-      if (cell && cell.numericValue !== null) {
-        if (
-          rawPoints.length === 0 ||
-          rawPoints[rawPoints.length - 1].date !== rep.test_date
-        ) {
-          const prevPoint =
-            rawPoints.length > 0 ? rawPoints[rawPoints.length - 1] : null;
-          rawPoints.push({
-            date: rep.test_date,
-            rawVal: cell.numericValue,
-            delta: prevPoint ? cell.numericValue - prevPoint.rawVal : null,
-            status: cell.status,
-          });
-        }
+    for (const col of activeColumns) {
+      const found = getColumnCell(row, col);
+      if (found && found.cell.numericValue !== null) {
+        const prevPoint =
+          rawPoints.length > 0 ? rawPoints[rawPoints.length - 1] : null;
+        rawPoints.push({
+          colKey: col.key,
+          date: col.testDate,
+          rawVal: found.cell.numericValue,
+          referenceRatio: found.cell.referenceRatio,
+          delta: prevPoint ? found.cell.numericValue - prevPoint.rawVal : null,
+          status: found.cell.status,
+        });
       }
     }
 
@@ -1239,10 +1556,13 @@ function MultiParameterTrendChart({
     const rawSpan = maxRaw - minRaw || Math.max(Math.abs(maxRaw) * 0.1, 1);
 
     const plotted = rawPoints.map((pt) => {
-      const x = 55 + ((Date.parse(pt.date) - firstMs) / timeSpan) * 620;
+      const x = xByColKey.get(pt.colKey) ?? xStart;
       let yNorm = 0.5;
-      if (scaleMode === "normalized" && hasValidRef) {
-        const ratio = (pt.rawVal - refLow!) / (refHigh! - refLow!);
+      if (scaleMode === "normalized" && (pt.referenceRatio !== null || hasValidRef)) {
+        const ratio =
+          pt.referenceRatio !== null
+            ? pt.referenceRatio
+            : (pt.rawVal - refLow!) / (refHigh! - refLow!);
         yNorm = Math.max(0.04, Math.min(0.96, 0.25 + ratio * 0.5));
       } else {
         yNorm = 0.15 + ((pt.rawVal - minRaw) / rawSpan) * 0.7;
@@ -1264,21 +1584,39 @@ function MultiParameterTrendChart({
     const rect = svg.getBoundingClientRect();
     if (!rect.width) return;
     const relX = ((e.clientX - rect.left) / rect.width) * 720;
-    let closest = datePositions[0];
+    let closest = columnPositions[0];
     let minDiff = Math.abs(relX - closest.x);
-    for (const dp of datePositions) {
-      const diff = Math.abs(relX - dp.x);
+    for (const cp of columnPositions) {
+      const diff = Math.abs(relX - cp.x);
       if (diff < minDiff) {
         minDiff = diff;
-        closest = dp;
+        closest = cp;
       }
     }
-    setHoveredDate(closest.date);
+    setHoveredColKey(closest.colKey);
   }
 
-  const activeHoverInfo = hoveredDate
-    ? datePositions.find((dp) => dp.date === hoveredDate) ?? null
+  const activeHoverInfo = hoveredColKey
+    ? columnPositions.find((cp) => cp.colKey === hoveredColKey) ?? null
     : null;
+
+  function handleChartClick() {
+    if (!activeHoverInfo) return;
+    const matchedReps = activeHoverInfo.col.reports.filter((rep) =>
+      seriesRows.some((s) => s.byReportId.has(rep.id)),
+    );
+    if (matchedReps.length === 1 && onOpenReport) {
+      onOpenReport(matchedReps[0]);
+      return;
+    }
+    if (activeHoverInfo.col.reports.length === 1 && onOpenReport) {
+      onOpenReport(activeHoverInfo.col.reports[0]);
+      return;
+    }
+    if (activeHoverInfo.col.reports.length > 1 && onOpenMergedColumn) {
+      onOpenMergedColumn(activeHoverInfo.col);
+    }
+  }
 
   return (
     <section className="pet-panel matrix-chart-panel">
@@ -1361,18 +1699,14 @@ function MultiParameterTrendChart({
 
       <div
         className="matrix-chart-stage"
-        onMouseLeave={() => setHoveredDate(null)}
+        onMouseLeave={() => setHoveredColKey(null)}
       >
         <svg
           ref={svgRef}
           viewBox="0 0 720 205"
           className="matrix-chart-svg is-interactive"
           onPointerMove={handlePointerMove}
-          onClick={() => {
-            if (activeHoverInfo?.report && onOpenReport) {
-              onOpenReport(activeHoverInfo.report);
-            }
-          }}
+          onClick={handleChartClick}
           role="img"
           aria-label={
             pl
@@ -1437,10 +1771,15 @@ function MultiParameterTrendChart({
             </g>
           )}
 
-          {datePositions.map(({ date: d, x }) => {
-            const isHovered = hoveredDate === d;
+          {columnPositions.map(({ colKey, date: d, idx, x }) => {
+            const isHovered = hoveredColKey === colKey;
+            const showLabel =
+              isHovered ||
+              idx === 0 ||
+              idx === columnPositions.length - 1 ||
+              idx % labelStride === 0;
             return (
-              <g key={d}>
+              <g key={colKey}>
                 <line
                   x1={x}
                   x2={x}
@@ -1450,21 +1789,23 @@ function MultiParameterTrendChart({
                   strokeWidth={isHovered ? "1.75" : "1"}
                   strokeDasharray={isHovered ? "3 2" : "2 3"}
                 />
-                <text
-                  x={x}
-                  y="196"
-                  textAnchor="middle"
-                  fontSize="10"
-                  fontWeight={isHovered ? "700" : "400"}
-                  fill={isHovered ? "#164d34" : "#566b60"}
-                >
-                  {new Intl.DateTimeFormat(locale, {
-                    day: "2-digit",
-                    month: "short",
-                    year: "2-digit",
-                    timeZone: "UTC",
-                  }).format(new Date(d))}
-                </text>
+                {showLabel && (
+                  <text
+                    x={x}
+                    y="196"
+                    textAnchor="middle"
+                    fontSize="10"
+                    fontWeight={isHovered ? "700" : "400"}
+                    fill={isHovered ? "#164d34" : "#566b60"}
+                  >
+                    {new Intl.DateTimeFormat(locale, {
+                      day: "2-digit",
+                      month: "short",
+                      year: "2-digit",
+                      timeZone: "UTC",
+                    }).format(new Date(d))}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -1492,10 +1833,10 @@ function MultiParameterTrendChart({
                   strokeLinejoin="round"
                 />
                 {plotted.map((pt) => {
-                  const isDateHovered = hoveredDate === pt.date;
+                  const isPointHovered = hoveredColKey === pt.colKey;
                   return (
-                    <g key={`${row.key}-${pt.date}`}>
-                      {isDateHovered && (
+                    <g key={`${row.key}-${pt.colKey}`}>
+                      {isPointHovered && (
                         <circle
                           cx={pt.x}
                           cy={pt.y}
@@ -1508,7 +1849,7 @@ function MultiParameterTrendChart({
                         cx={pt.x}
                         cy={pt.y}
                         r={
-                          isDateHovered
+                          isPointHovered
                             ? 6.5
                             : pt.status === "above" || pt.status === "below"
                               ? 5
@@ -1519,7 +1860,7 @@ function MultiParameterTrendChart({
                         strokeWidth="1.75"
                       />
                       {(seriesData.length === 1 || isHighlighted) &&
-                        !hoveredDate && (
+                        !hoveredColKey && (
                           <text
                             x={pt.x}
                             y={pt.y - 9}
@@ -1548,8 +1889,10 @@ function MultiParameterTrendChart({
           >
             <div className="matrix-chart-tooltip-head">
               <strong>{formatDateFull(activeHoverInfo.date)}</strong>
-              {activeHoverInfo.report && onOpenReport && (
+              {(onOpenReport || onOpenMergedColumn) && (
                 <small>
+                  {activeHoverInfo.col.reports.map((r) => r.title).join(" · ")}
+                  {" · "}
                   {pl
                     ? "Kliknij wykres, aby otworzyć badanie"
                     : "Click chart to open report"}
@@ -1559,7 +1902,7 @@ function MultiParameterTrendChart({
             <ul className="matrix-chart-tooltip-list">
               {seriesData.map(({ row, color, plotted }) => {
                 const pt = plotted.find(
-                  (p) => p.date === activeHoverInfo.date,
+                  (p) => p.colKey === activeHoverInfo.colKey,
                 );
                 if (!pt) {
                   return (
@@ -1576,9 +1919,7 @@ function MultiParameterTrendChart({
 
                 const hasDelta =
                   pt.delta !== null && Math.abs(pt.delta) > 1e-9;
-                const deltaStr = hasDelta
-                  ? `${pt.delta! > 0 ? "+" : ""}${formatNum(Number(pt.delta!.toFixed(4)))}`
-                  : "";
+                const deltaStr = hasDelta ? formatDelta(pt.delta!) : "";
 
                 return (
                   <li key={row.key}>

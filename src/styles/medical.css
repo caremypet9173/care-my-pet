@@ -377,6 +377,7 @@
 .history-node-icon.is-visit{background:#eef7f2;border-color:#164d34;color:#164d34}
 .history-node-icon.is-vaccination{background:#eef2ff;border-color:#4338ca;color:#4338ca}
 .history-node-icon.is-lab{background:#f0f9ff;border-color:#0369a1;color:#0369a1}
+.history-node-icon.is-descriptive{background:#f0fdfa;border-color:#0f766e;color:#0f766e}
 .history-node-icon.is-prevention{background:#fffbeb;border-color:#b45309;color:#b45309}
 .history-node-icon.is-fluid{background:#ecfeff;border-color:#0891b2;color:#0891b2}
 
@@ -389,6 +390,7 @@
 .history-category-tag.is-visit{background:#eef7f2;color:#164d34;border:1px solid #cfe3d8}
 .history-category-tag.is-vaccination{background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}
 .history-category-tag.is-lab{background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd}
+.history-category-tag.is-descriptive{background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4}
 .history-category-tag.is-prevention{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
 .history-category-tag.is-fluid{background:#ecfeff;color:#0e7490;border:1px solid #a5f3fc}
 .history-date-tag{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;color:#526462;font-weight:500}
@@ -412,6 +414,7 @@
 
 .history-card-footer{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding-top:.65rem;border-top:1px solid var(--color-border)}
 .history-card-tags{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.history-card-tags:empty{display:none}
 .history-product-pill{display:inline-flex;align-items:center;padding:.2rem .65rem;border-radius:.5rem;background:var(--color-surface);border:1px solid var(--color-border);font-size:.75rem;font-weight:600;color:#526462}
 .history-card-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-left:auto}
 .history-action-btn,.history-action-link{display:inline-flex;align-items:center;gap:.35rem;min-height:38px;padding:.35rem .75rem;border-radius:.55rem;font-size:.75rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);cursor:pointer;text-decoration:none;transition:background-color .15s,border-color .15s}
@@ -468,14 +471,39 @@
 .history-ai-notice.is-warning{background:#fff9eb;color:#92400e;border:1px solid #fde68a}
 
 @media(max-width:640px){
-  .history-header-card.pet-panel{padding:1rem}
-  .history-header-actions{width:100%}
+  .history-panel{gap:.9rem}
+  .history-header-card.pet-panel{padding:.85rem 1rem}
+  .history-header-top{gap:.75rem;padding-bottom:.85rem}
+  .history-header-actions{width:100%;gap:.5rem}
   .history-search{min-width:0;max-width:none;width:100%}
   .history-header-actions>.button{width:100%}
-  .history-timeline-list{margin-left:.65rem;padding-left:.85rem}
-  .history-timeline-item{padding-left:.65rem}
-  .history-node-icon{left:-1.95rem;width:1.95rem;height:1.95rem}
-  .history-card.pet-panel{padding:1rem}
+  .history-filter-pills{margin-top:.75rem;gap:.35rem}
+  .history-filter-pill{min-height:34px;padding:.28rem .65rem;font-size:.75rem;gap:.35rem}
+  .history-timeline{gap:1.1rem}
+  .history-month-group{gap:.6rem}
+  .history-month-badge span{padding:.2rem .7rem;font-size:.65rem}
+  .history-timeline-list{margin-left:.65rem;padding-left:.75rem;gap:.6rem}
+  .history-timeline-item{padding-left:.5rem}
+  .history-node-icon{left:-1.6875rem;top:.65rem;width:1.75rem;height:1.75rem}
+  .history-node-icon svg{width:15px;height:15px}
+  .history-card.pet-panel{padding:.65rem .8rem;gap:.38rem;border-radius:.95rem}
+  .history-card-top{align-items:center;gap:.25rem .4rem}
+  .history-card-heading{display:contents}
+  .history-card-badges{order:1;flex:1 1 auto;min-width:0;gap:.25rem .45rem}
+  .history-card-status{order:2;flex-shrink:0}
+  .history-card-heading h3{order:3;flex:1 0 100%;width:100%;font-size:.9375rem;line-height:1.28;margin-top:.06rem}
+  .history-category-tag{padding:.1rem .48rem;font-size:.625rem}
+  .history-date-tag{font-size:.6875rem;gap:.2rem}
+  .history-status-pill{padding:.15rem .5rem;font-size:.65rem;gap:.22rem}
+  .history-card-meta{gap:.2rem .7rem;font-size:.75rem;line-height:1.3}
+  .history-card-meta svg{width:13px;height:13px}
+  .history-card-desc,.history-fluid-catheter,.history-lab-highlights{display:none}
+  .history-card-footer{padding-top:.4rem;gap:.35rem .5rem}
+  .history-product-pill{padding:.15rem .5rem;font-size:.6875rem}
+  .history-card-tags:empty+.history-card-actions{margin-left:0}
+  .history-card-actions{gap:.35rem}
+  .history-action-btn,.history-action-link{min-height:32px;padding:.22rem .5rem;font-size:.6875rem;gap:.25rem;border-radius:.45rem}
+  .history-action-btn svg,.history-action-link svg{width:13px;height:13px}
   .history-category-picker,.history-dialog-grid{grid-template-columns:minmax(0,1fr)}
   .history-ai-upload-btn{width:100%;justify-content:center}
 }
@@ -576,6 +604,15 @@
 
 
 
+.medical-results-actions-bar.pet-panel{padding:1rem 1.35rem;border-radius:1rem;display:flex;align-items:center;justify-content:space-between;gap:.85rem 1.25rem;flex-wrap:wrap}
+.medical-results-actions-info{display:flex;align-items:center;gap:.65rem 1rem;flex-wrap:wrap;min-width:0}
+.medical-results-actions-info h2{margin:0;font-size:1.15rem}
+.medical-results-actions-buttons{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-left:auto}
+.medical-descriptive-link,.medical-back-history{display:inline-flex;align-items:center;gap:.4rem;min-height:36px;padding:.35rem .75rem;border-radius:999px;background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;font-size:.78rem;font-weight:600;text-decoration:none;transition:background-color .15s,border-color .15s}
+.medical-descriptive-link:hover,.medical-back-history:hover{background:#ccfbf1;border-color:#0f766e}
+.medical-empty-actions{display:flex;align-items:center;justify-content:center;gap:.65rem;flex-wrap:wrap;margin-top:1rem}
+.medical-detail-nav{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
+.medical-detail-nav .medical-back-list{margin-bottom:0}
 .medical-mode-switcher{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:.85rem}
 .medical-mode-card{display:flex;align-items:center;gap:.85rem;padding:.95rem 1.15rem;border-radius:1rem;border:1.5px solid var(--color-border);background:var(--color-surface);text-align:left;cursor:pointer;transition:all .15s}
 .medical-mode-card:hover{border-color:#718b80;background:#faf8f3;transform:translateY(-1px)}
@@ -628,13 +665,18 @@
 .matrix-tooltip-delta.is-pos{background:#b45309}
 .matrix-tooltip-delta.is-neg{background:#1d4ed8}
 
+.matrix-table-panel.pet-panel{overflow:clip}
+.matrix-table-filter-bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:.65rem 1rem;flex-wrap:wrap;padding:.75rem 1.25rem;background:#fffffffa;backdrop-filter:blur(8px);border-bottom:1px solid #e6e2da}
+.matrix-table-filter-bar .matrix-search-box{flex:1 1 16rem;max-width:24rem}
+.matrix-table-filter-actions{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-left:auto}
+.matrix-filtered-count{display:inline-flex;align-items:center;padding:.2rem .6rem;border-radius:999px;background:#f4f2ec;color:#526462;font-size:.72rem;font-weight:700;white-space:nowrap}
 .matrix-empty-filtered{padding:2rem 1.5rem;margin:0;text-align:center}
 .matrix-table-scroll{overflow:auto;max-height:74vh}
 .matrix-table{width:100%;border-collapse:separate;border-spacing:0;min-width:0 !important}
 .matrix-table thead th{position:sticky;top:0;z-index:4;background:#faf8f5;border-bottom:1px solid #e6e2da}
 .matrix-table th,.matrix-table td{border-bottom:1px solid #f1f0ed;vertical-align:middle}
 .matrix-table tr > :last-child{text-align:left}
-.matrix-col-param{position:sticky;left:0;z-index:2;background:#fff;min-width:13.5rem;max-width:17rem;border-right:1px solid #e6e2da}
+.matrix-col-param{position:sticky;left:0;z-index:2;background:#fff;min-width:14.5rem;max-width:18.5rem;border-right:1px solid #e6e2da}
 .matrix-table thead .matrix-col-param{background:#faf8f5;z-index:6}
 .matrix-row-has-attention .matrix-col-param{background:#fffdf6}
 .matrix-col-ref{width:1%;min-width:5rem;max-width:6.4rem;padding:.5rem .55rem !important;background:#fcfbf9;border-right:1px solid #ece8df;white-space:nowrap;text-align:center !important}
@@ -646,6 +688,14 @@
 .matrix-date-btn{cursor:pointer}
 .matrix-date-btn:hover{background:#eef7f2;text-decoration:underline}
 .matrix-date-btn strong,.matrix-date-static strong{font-size:.75rem;display:block;color:var(--color-text)}
+.matrix-merged-badge{display:inline-block;padding:.05rem .38rem;border-radius:999px;background:#e8f3ed;color:#164d34;font-size:.62rem;font-weight:700;line-height:1.25}
+.matrix-merged-body{padding:1rem 1.35rem}
+.matrix-merged-list{list-style:none;margin:0;padding:0;display:grid;gap:.65rem}
+.matrix-merged-item{display:flex;align-items:center;justify-content:space-between;gap:.85rem;padding:.75rem .9rem;border-radius:.75rem;border:1px solid #ece8df;background:#faf8f4}
+.matrix-merged-info{display:grid;gap:.15rem;min-width:0}
+.matrix-merged-info strong{font-size:.86rem;color:var(--color-text)}
+.matrix-merged-info small{font-size:.72rem;color:var(--color-text-muted)}
+.matrix-merged-actions{display:flex;align-items:center;gap:.45rem;flex-shrink:0}
 .has-lab-tooltip::after{content:attr(data-lab);position:absolute;top:calc(100% + 4px);left:50%;transform:translate(-50%,-4px);padding:.26rem .6rem;border-radius:.4rem;background:#1c2b22;color:#fff;font-size:.7rem;font-weight:600;line-height:1.25;white-space:nowrap;max-width:16rem;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 12px #00000028;opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;z-index:20;text-transform:none}
 .has-lab-tooltip:hover::after{opacity:1;transform:translate(-50%,0)}
 .matrix-doc-mini{display:inline-flex;align-items:center;gap:.2rem;padding:.1rem .4rem;border-radius:.35rem;border:1px solid #d5cfc4;background:#fff;font-size:.62rem;font-weight:700;color:#164d34;cursor:pointer}
@@ -657,7 +707,7 @@
 .matrix-chart-check input{width:.95rem;height:.95rem;accent-color:#164d34;cursor:inherit}
 .matrix-param-title{flex:1;min-width:0}
 .matrix-param-name-stack{display:grid;gap:.08rem;min-width:0}
-.matrix-param-title strong{font-size:.82rem;display:inline-flex;align-items:center;gap:.25rem;color:var(--color-text);line-height:1.25;overflow-wrap:anywhere}
+.matrix-param-title strong{font-size:.82rem;display:inline-flex;align-items:center;gap:.25rem;color:var(--color-text);line-height:1.25;overflow-wrap:break-word;word-break:normal}
 .matrix-mobile-ref{display:none;font-size:.66rem;color:var(--color-text-muted);font-weight:500;line-height:1.15}
 .matrix-param-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:.45rem;border:0;background:transparent;padding:.15rem .3rem;margin:-.15rem -.3rem;border-radius:.35rem;text-align:left;cursor:pointer;font:inherit;color:var(--color-text);transition:background-color .12s,color .12s}
 .matrix-param-btn:hover{background:#eef7f2;text-decoration:underline;text-underline-offset:3px}
@@ -677,6 +727,8 @@
 .matrix-cell.has-delta-tooltip:hover::after{opacity:1;transform:translate(-50%,0)}
 .matrix-cell-val{display:inline-flex;align-items:center;justify-content:center;gap:.25rem}
 .matrix-cell-val strong{font-size:.85rem;color:var(--color-text)}
+.matrix-approx{font-size:.75rem;color:var(--color-text-muted);font-weight:600}
+.matrix-cell-unit{font-size:.66rem;color:var(--color-text-muted);font-weight:500}
 .matrix-cell.is-above .matrix-cell-val strong,.matrix-cell.is-below .matrix-cell-val strong{color:#92400e;font-weight:800}
 .matrix-flag{font-size:.72rem;font-weight:800}
 .matrix-flag.is-above,.matrix-flag.is-below{color:#d97706}
@@ -717,6 +769,9 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   .matrix-toolbar-panel.pet-panel{padding:.9rem 1rem;gap:.75rem}
   .matrix-toolbar-top p{display:none}
   .matrix-toolbar-controls{width:100%}
+  .matrix-table-filter-bar{padding:.6rem .85rem;gap:.5rem}
+  .matrix-table-filter-bar .matrix-search-box{min-width:0;max-width:none;width:100%;flex:1 0 100%}
+  .matrix-table-filter-actions{width:100%;justify-content:space-between;margin-left:0}
   .matrix-search-box{min-width:0;width:100%;flex:1}
   .matrix-toolbar-panel .medical-filters{flex-wrap:nowrap;overflow-x:auto;padding-top:.65rem;padding-bottom:.2rem;-webkit-overflow-scrolling:touch}
   .matrix-toolbar-panel .medical-filters button{min-height:34px;padding:.3rem .75rem;font-size:.72rem;flex-shrink:0}
@@ -735,6 +790,9 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavio
   .matrix-detail-meta-item:first-child{grid-column:1 / -1}
   .matrix-detail-header{padding:.95rem 1rem .75rem}
   .matrix-detail-table thead th,.matrix-detail-table tbody td{padding:.65rem 1rem}
+  .medical-results-actions-bar.pet-panel{padding:.85rem 1rem;gap:.65rem}
+  .medical-results-actions-buttons{width:100%;margin-left:0}
+  .medical-results-actions-buttons>.button{flex:1 1 auto;justify-content:center}
 }
 
 /* AI interpretation cards and badges */
