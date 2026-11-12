@@ -4,3 +4,9 @@ const target=new URL(`../public/pdf-worker/${version}/`,import.meta.url);
 await mkdir(target,{recursive:true});
 await copyFile(new URL('../node_modules/pdfjs-dist/build/pdf.worker.min.mjs',import.meta.url),new URL('pdf.worker.min.mjs',target));
 await copyFile(new URL('../node_modules/pdfjs-dist/LICENSE',import.meta.url),new URL('LICENSE',target));
+
+const fontsDir=new URL('../public/fonts/',import.meta.url);
+await mkdir(fontsDir,{recursive:true});
+await copyFile(new URL('../node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf',import.meta.url),new URL('Inter-Regular.ttf',fontsDir));
+await copyFile(new URL('../node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf',import.meta.url),new URL('Inter-Bold.ttf',fontsDir));
+await copyFile(new URL('../node_modules/@expo-google-fonts/inter/LICENSE',import.meta.url),new URL('LICENSE',fontsDir));

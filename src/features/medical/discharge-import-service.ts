@@ -267,6 +267,21 @@ export async function commitDischargeBatchImport(params: {
     throw new Error(rpcError.message || "Błąd zapisu danych do bazy.");
   }
 
+  const reportIds = payloadData.lab_reports.map((r) => r.id).filter(Boolean);
+  const eventIds = payloadData.clinical_events.map((e) => e.id).filter(Boolean);
+  if (reportIds.length > 0 || eventIds.length > 0) {
+    await client.functions
+      .invoke("medical-reports", {
+        body: {
+          action: "index_records",
+          pet_id: petId,
+          report_ids: reportIds,
+          event_ids: eventIds,
+        },
+      })
+      .catch(() => null);
+  }
+
   return {
     success: true,
     reports_count: result?.reports_count ?? 0,

@@ -13,6 +13,8 @@ export type AssistantThread = {
   created_by: string;
   created_at: string;
   updated_at: string;
+  summary_cache?: AssistantPdfSummary | null;
+  summary_fingerprint?: string | null;
 };
 
 export type AssistantMessage = {
@@ -26,4 +28,20 @@ export type AssistantMessage = {
   follow_ups: string[];
   created_by: string;
   created_at: string;
+};
+
+export type AssistantPdfSummary = {
+  document_title: string;
+  executive_summary: string;
+  key_findings: string[];
+  observations_for_owner: string[];
+  questions_for_vet: string[];
+  pet_name: string;
+  species: string;
+  breed: string;
+  birth_date: string;
+  latest_weight: string;
+  generated_at: string;
+  thread_title: string;
+  sources: AssistantSource[];
 };

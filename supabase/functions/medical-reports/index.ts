@@ -3,7 +3,7 @@ import { countPdfPages } from './pdf-counter.ts';
 import { MAX_FILE, uuid, mimeExtensions, validateReport, fileMatches } from './validation.mjs';
 import {fileHash,findDuplicate} from './file-hash.ts';
 import {validMeasurementValue} from './value-type.mjs';
-import {formatReportKnowledgeContent,indexPetKnowledgeChunk} from '../_shared/rag.ts';
+import {formatHealthEventKnowledgeContent,formatReportKnowledgeContent,indexPetKnowledgeChunk} from '../_shared/rag.ts';
 const cors = { 'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS' };
 const reply = (body:unknown,status=200) => Response.json(body,{status,headers:{...cors,'Cache-Control':'private, no-store'}});
 const string = {type:'string'};
@@ -104,6 +104,108 @@ const dischargeSchema = {
 // limit in validateReport and the database; retain the bounded output token limit.
 const schema = {type:'object',properties:{title:string,test_date:string,laboratory:string,doctor:string,notes:string,patient_name:string,ai_interpretation:string,
   rows:{type:'array',items:{type:'object',properties:{name:string,value:string,unit:string,reference:string,category:{type:'string',enum:['blood','renal','liver','other']}},required:['name','value','unit','reference','category']}}},required:['title','test_date','laboratory','doctor','notes','patient_name','ai_interpretation','rows']};
+type EdgeClient = ReturnType<typeof createClient>;
+
+function sanitizeUuidList(input: unknown, maxItems = 50): string[] {
+  if (!Array.isArray(input)) return [];
+  const unique = new Set<string>();
+  for (const item of input) {
+    if (typeof item === 'string' && uuid.test(item)) {
+      unique.add(item);
+      if (unique.size >= maxItems) break;
+    }
+  }
+  return Array.from(unique);
+}
+
+async function indexReportsByIds(client: EdgeClient, petId: string, reportIds: string[]): Promise<number> {
+  if (reportIds.length === 0) return 0;
+  const { data: reports, error } = await client
+    .from('wynik_badania')
+    .select('id,title,test_date,laboratory,doctor,notes,ai_interpretation,rows:pomiar_parametru(ordinal,name,value,unit,reference,category,correction:measurement_correction(value,unit,reference))')
+    .eq('zwierze_id', petId)
+    .in('id', reportIds);
+  if (error || !Array.isArray(reports) || reports.length === 0) return 0;
+
+  let indexed = 0;
+  for (const rep of reports) {
+    const rawRows = (Array.isArray(rep.rows) ? rep.rows : []) as Array<{
+      ordinal?: number | null;
+      name?: string | null;
+      value?: string | null;
+      unit?: string | null;
+      reference?: string | null;
+      category?: string | null;
+      correction?: { value?: string | null; unit?: string | null; reference?: string | null } | Array<{ value?: string | null; unit?: string | null; reference?: string | null }> | null;
+    }>;
+    const normalizedRows = rawRows
+      .slice()
+      .sort((a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0))
+      .map((row) => {
+        const corr = Array.isArray(row.correction) ? row.correction[0] : row.correction;
+        return {
+          name: String(row.name ?? ''),
+          value: String(corr?.value ?? row.value ?? ''),
+          unit: String(corr?.unit ?? row.unit ?? ''),
+          reference: String(corr?.reference ?? row.reference ?? ''),
+          category: String(row.category ?? 'other'),
+        };
+      });
+
+    await indexPetKnowledgeChunk(client, {
+      petId,
+      sourceType: 'medical_report',
+      sourceId: String(rep.id),
+      eventDate: String(rep.test_date ?? ''),
+      title: String(rep.title ?? 'Badanie'),
+      content: formatReportKnowledgeContent({
+        title: String(rep.title ?? ''),
+        test_date: String(rep.test_date ?? ''),
+        laboratory: String(rep.laboratory ?? ''),
+        doctor: String(rep.doctor ?? ''),
+        notes: String(rep.notes ?? ''),
+        ai_interpretation: String(rep.ai_interpretation ?? ''),
+        rows: normalizedRows,
+      }),
+    });
+    indexed += 1;
+  }
+  return indexed;
+}
+
+async function indexEventsByIds(client: EdgeClient, petId: string, eventIds: string[]): Promise<number> {
+  if (eventIds.length === 0) return 0;
+  const { data: events, error } = await client
+    .from('pet_health_event')
+    .select('id,category,title,event_date,next_due_date,clinic,doctor,batch_or_product,description')
+    .eq('pet_id', petId)
+    .in('id', eventIds);
+  if (error || !Array.isArray(events) || events.length === 0) return 0;
+
+  let indexed = 0;
+  for (const ev of events) {
+    await indexPetKnowledgeChunk(client, {
+      petId,
+      sourceType: 'health_event',
+      sourceId: String(ev.id),
+      eventDate: String(ev.event_date ?? ''),
+      title: String(ev.title ?? 'Zdarzenie'),
+      content: formatHealthEventKnowledgeContent({
+        category: String(ev.category ?? 'visit'),
+        title: String(ev.title ?? ''),
+        event_date: String(ev.event_date ?? ''),
+        next_due_date: ev.next_due_date ? String(ev.next_due_date) : null,
+        clinic: String(ev.clinic ?? ''),
+        doctor: String(ev.doctor ?? ''),
+        batch_or_product: String(ev.batch_or_product ?? ''),
+        description: String(ev.description ?? ''),
+      }),
+    });
+    indexed += 1;
+  }
+  return indexed;
+}
+
 Deno.serve(async req => {
   if(req.method==='OPTIONS') return new Response(null,{status:204,headers:cors});
   if(req.method!=='POST') return reply({error:'method_not_allowed'},405);
@@ -133,12 +235,22 @@ Deno.serve(async req => {
         ||typeof c.value!=='string'||!c.value.trim()||c.value.length>60
         ||typeof c.unit!=='string'||c.unit.length>40||typeof c.reference!=='string'||c.reference.length>100
         ||typeof c.note!=='string'||c.note.length>2000||typeof c.is_key!=='boolean')return reply({error:'invalid_input'},400);
-      const {data:measurement}=await client.from('pomiar_parametru').select('value_type').eq('id',body.measurement_id).maybeSingle();
+      const {data:measurement}=await client.from('pomiar_parametru').select('wynik_id,value_type').eq('id',body.measurement_id).maybeSingle();
       if(!measurement)return reply({error:'not_found'},404);
       if(!validMeasurementValue(c.value,measurement.value_type))return reply({error:'invalid_value_type'},400);
       const {data,error}=await client.rpc('correct_measurement',{p_pet_id:pet.id,p_measurement_id:body.measurement_id,p_revision:body.revision,p_value:c.value,p_unit:c.unit,p_reference:c.reference,p_note:c.note,p_is_key:c.is_key});
       if(error)return reply({error:error.code==='PT409'?'edit_conflict':'save_failed'},error.code==='PT409'?409:error.code==='42501'?403:400);
+      if(typeof measurement.wynik_id==='string'){await indexReportsByIds(client,pet.id,[measurement.wynik_id]);}
       return reply({correction:data});
+    }
+    if(body.action==='index_records'){
+      const reportIds=sanitizeUuidList(body.report_ids);
+      const eventIds=sanitizeUuidList(body.event_ids);
+      const [indexedReports,indexedEvents]=await Promise.all([
+        indexReportsByIds(client,pet.id,reportIds),
+        indexEventsByIds(client,pet.id,eventIds),
+      ]);
+      return reply({indexed_reports:indexedReports,indexed_events:indexedEvents});
     }
     if(body.action==='extract') {
       const key=Deno.env.get('GEMINI_API_KEY');if(!key)return reply({error:'ai_unavailable'},503);

@@ -23,6 +23,7 @@
 # production
 /build
 /public/pdf-worker/
+/public/fonts/
 
 # misc
 .DS_Store

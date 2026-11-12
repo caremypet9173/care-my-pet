@@ -555,6 +555,10 @@
 .assistant-thread-item-text small{font-size:.7rem;color:var(--color-text-muted)}
 
 .assistant-chat-card.pet-panel{padding:1.35rem 1.5rem;display:grid;gap:1.15rem}
+.assistant-thread-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;padding:.6rem .85rem;border-radius:.75rem;background:#f8f6f1;border:1px solid var(--color-border)}
+.assistant-thread-toolbar-title{display:flex;align-items:center;gap:.5rem;min-width:0;flex:1}
+.assistant-thread-toolbar-title svg{flex-shrink:0;color:#164d34}
+.assistant-thread-toolbar-title strong{font-size:.875rem;font-weight:700;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .assistant-empty-state{display:grid;justify-items:center;text-align:center;gap:.6rem;padding:1.75rem 1rem 1.25rem}
 .assistant-empty-icon{width:3.25rem;height:3.25rem;border-radius:1rem;display:grid;place-items:center;background:#eef7f2;color:#164d34;border:1px solid #cfe3d8}
 .assistant-empty-state h3{margin:.2rem 0 0;font-size:1.05rem}

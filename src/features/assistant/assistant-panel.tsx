@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import {
   IconAlertCircle,
+  IconFileText,
   IconFlask,
   IconHistory,
   IconInfoCircle,
@@ -17,8 +18,10 @@ import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { FormattedMedicalText } from "@/features/medical/formatted-text";
+import { downloadAssistantSummaryPdf } from "./assistant-pdf";
 import type {
   AssistantMessage,
+  AssistantPdfSummary,
   AssistantSource,
   AssistantThread,
 } from "./types";
@@ -55,6 +58,7 @@ export function AssistantPanel({
   const [loadingInitial, setLoadingInitial] = useState(initialThreads === undefined);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState("");
 
   const threadEndRef = useRef<HTMLDivElement | null>(null);
@@ -171,10 +175,121 @@ export function AssistantPanel({
   }, [activeMessages]);
 
   function startNewChat() {
-    if (sending) return;
+    if (sending || exportingPdf) return;
     setSelectedThreadId(null);
     setError("");
     textareaRef.current?.focus();
+  }
+
+  const selectedThread = useMemo(
+    () => threads.find((t) => t.id === selectedThreadId) ?? null,
+    [threads, selectedThreadId],
+  );
+
+  const lastRealAssistantMsg = useMemo(() => {
+    for (let i = activeMessages.length - 1; i >= 0; i -= 1) {
+      const m = activeMessages[i];
+      if (m.role === "assistant" && !m.id.startsWith("temp")) return m;
+    }
+    return null;
+  }, [activeMessages]);
+
+  const currentSummaryFingerprint = lastRealAssistantMsg
+    ? `${locale}:${lastRealAssistantMsg.id}`
+    : null;
+
+  const cachedSummary =
+    selectedThread &&
+    currentSummaryFingerprint &&
+    selectedThread.summary_fingerprint === currentSummaryFingerprint &&
+    selectedThread.summary_cache
+      ? selectedThread.summary_cache
+      : null;
+
+  const canExportPdf = Boolean(selectedThreadId && lastRealAssistantMsg);
+
+  async function exportThreadPdf() {
+    if (
+      !selectedThreadId ||
+      !canExportPdf ||
+      sending ||
+      exportingPdf ||
+      (!cachedSummary && quotaReached)
+    ) {
+      return;
+    }
+    setError("");
+    setExportingPdf(true);
+    try {
+      if (cachedSummary) {
+        await downloadAssistantSummaryPdf(cachedSummary, pl ? "pl" : "en");
+        return;
+      }
+
+      const client = createClient();
+      const { data, error: fnError } = await client.functions.invoke(
+        "pet-assistant",
+        {
+          body: {
+            action: "summarize_pdf",
+            pet_id: petId,
+            thread_id: selectedThreadId,
+            locale,
+          },
+        },
+      );
+
+      if (fnError || !data?.summary) {
+        const status = fnError?.context?.status;
+        if (status === 429) {
+          setQuotaUsed(DAILY_MESSAGE_LIMIT);
+          setError(
+            pl
+              ? `Wykorzystano dzienny limit ${DAILY_MESSAGE_LIMIT} zapytań do Asystenta AI.`
+              : `Daily limit of ${DAILY_MESSAGE_LIMIT} AI Assistant queries reached.`,
+          );
+        } else {
+          setError(
+            pl
+              ? "Nie udało się wygenerować podsumowania PDF. Spróbuj ponownie za chwilę."
+              : "Could not generate the PDF summary. Please try again shortly.",
+          );
+        }
+        return;
+      }
+
+      const generatedSummary = data.summary as AssistantPdfSummary;
+
+      if (typeof data.used === "number") {
+        setQuotaUsed(data.used);
+      } else if (!data.cached) {
+        setQuotaUsed((u) => Math.min(DAILY_MESSAGE_LIMIT, u + 1));
+      }
+
+      if (currentSummaryFingerprint) {
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.id === selectedThreadId
+              ? {
+                  ...t,
+                  summary_cache: generatedSummary,
+                  summary_fingerprint: currentSummaryFingerprint,
+                }
+              : t,
+          ),
+        );
+      }
+
+      await downloadAssistantSummaryPdf(generatedSummary, pl ? "pl" : "en");
+    } catch {
+      setError(
+        pl
+          ? "Nie udało się utworzyć pliku PDF. Sprawdź połączenie i spróbuj ponownie."
+          : "Could not create the PDF file. Check your connection and retry.",
+      );
+    } finally {
+      setExportingPdf(false);
+    }
   }
 
   async function sendQuestion(questionText?: string) {
@@ -345,7 +460,7 @@ export function AssistantPanel({
               type="button"
               variant="secondary"
               size="sm"
-              disabled={sending || selectedThreadId === null}
+              disabled={sending || exportingPdf || selectedThreadId === null}
               onClick={startNewChat}
             >
               <IconPlus size={16} aria-hidden="true" />
@@ -439,6 +554,44 @@ export function AssistantPanel({
         </aside>
 
         <section className="pet-panel assistant-chat-card" aria-live="polite">
+          {selectedThread && canExportPdf && (
+            <div className="assistant-thread-toolbar">
+              <div className="assistant-thread-toolbar-title">
+                <IconMessageCircle size={17} aria-hidden="true" />
+                <strong>{selectedThread.title}</strong>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={sending || exportingPdf || (!cachedSummary && quotaReached)}
+                onClick={() => void exportThreadPdf()}
+                title={
+                  cachedSummary
+                    ? pl
+                      ? "Wnioski dla aktualnego stanu rozmowy są już zapisane — pobranie PDF nie zużywa limitu AI"
+                      : "Summary for the current conversation is already cached — downloading PDF does not consume AI quota"
+                    : pl
+                      ? "Syntetyzuje tę rozmowę do gotowego pliku PDF (zużywa 1 zapytanie z dziennego limitu)"
+                      : "Synthesizes this conversation into a PDF note (uses 1 query from daily quota)"
+                }
+              >
+                <IconFileText size={16} aria-hidden="true" />
+                {exportingPdf
+                  ? pl
+                    ? "Generowanie PDF…"
+                    : "Generating PDF…"
+                  : cachedSummary
+                    ? pl
+                      ? "Pobierz zapisane wnioski (PDF)"
+                      : "Download saved summary (PDF)"
+                    : pl
+                      ? "Pobierz wnioski (PDF)"
+                      : "Download summary (PDF)"}
+              </Button>
+            </div>
+          )}
+
           {activeMessages.length === 0 ? (
             <div className="assistant-empty-state">
               <div className="assistant-empty-icon" aria-hidden="true">
