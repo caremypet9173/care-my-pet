@@ -15,6 +15,7 @@ import {
   IconChevronRight,
   IconClock,
   IconDeviceMobile,
+  IconDroplet,
   IconFlask,
   IconList,
   IconMailForward,
@@ -1375,19 +1376,28 @@ export function HouseholdSchedule({
     const petName = petMap.get(entry.petId) ?? "";
     const isOverdue = entry.status === "planned" && entry.date < todayIso;
     const isToday = entry.status === "planned" && entry.date === todayIso;
+    const isFluidDose =
+      entry.kind === "medication_dose" &&
+      entry.dose.schedule_category === "fluid_therapy";
     const EvIcon =
-      entry.category === "vaccination"
-        ? IconVaccine
-        : entry.category === "prevention"
-          ? IconPill
-          : entry.category === "lab"
-            ? IconFlask
-            : IconStethoscope;
+      isFluidDose
+        ? IconDroplet
+        : entry.category === "vaccination"
+          ? IconVaccine
+          : entry.category === "prevention"
+            ? IconPill
+            : entry.category === "lab"
+              ? IconFlask
+              : IconStethoscope;
     const categoryLabel =
       entry.kind === "medication_dose"
-        ? pl
-          ? "Lek"
-          : "Medication"
+        ? isFluidDose
+          ? pl
+            ? "Kroplówka"
+            : "Fluid therapy"
+          : pl
+            ? "Lek"
+            : "Medication"
         : entry.category === "vaccination"
           ? pl
             ? "Szczepienie"
@@ -1757,18 +1767,25 @@ export function HouseholdSchedule({
     const isOverdue = entry.status === "planned" && entry.date < todayIso;
     const isBusy = busyKey !== null;
 
+    const isFluidDose =
+      entry.kind === "medication_dose" &&
+      entry.dose.schedule_category === "fluid_therapy";
     const EvIcon =
-      entry.category === "vaccination"
-        ? IconVaccine
-        : entry.category === "prevention"
-          ? IconPill
-          : entry.category === "lab"
-            ? IconFlask
-            : IconStethoscope;
+      isFluidDose
+        ? IconDroplet
+        : entry.category === "vaccination"
+          ? IconVaccine
+          : entry.category === "prevention"
+            ? IconPill
+            : entry.category === "lab"
+              ? IconFlask
+              : IconStethoscope;
 
     const categoryLabel =
       entry.kind === "medication_dose"
-        ? pl ? "Lek / dawka" : "Medication dose"
+        ? isFluidDose
+          ? pl ? "Kroplówka / wlew" : "Fluid therapy"
+          : pl ? "Lek / dawka" : "Medication dose"
         : entry.category === "vaccination"
           ? pl ? "Szczepienie" : "Vaccination"
           : entry.category === "prevention"
@@ -2221,7 +2238,7 @@ export function HouseholdSchedule({
             }}
           >
             <IconPill size={16} aria-hidden="true" />
-            {pl ? "Zaplanuj lek" : "Schedule medication"}
+            {pl ? "Zaplanuj lek / wlew" : "Schedule med / fluid"}
           </Button>
 
           <Button

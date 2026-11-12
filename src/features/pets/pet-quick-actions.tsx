@@ -168,10 +168,10 @@ function buildQuickMenuGroups(petId: string, pl: boolean): {
             key: "medication",
             kind: "action",
             action: "medication",
-            label: pl ? "Lek lub kuracja" : "Medication or treatment",
+            label: pl ? "Harmonogram leku / kroplówki" : "Medication or fluid schedule",
             hint: pl
-              ? "Harmonogram dawkowania i przypomnienia"
-              : "Dosing schedule and reminders",
+              ? "Stałe leki, krótkie kuracje lub cykliczne kroplówki"
+              : "Dosing schedule, cyclical fluids and reminders",
             icon: IconPill,
           },
           {
@@ -419,9 +419,15 @@ export function PetQuickAddProvider({
           defaultPetId={pet.id}
           schedule={null}
           onClose={() => setActiveDialog(null)}
-          onSave={() =>
+          onSave={(saved) =>
             finishSave(
-              pl ? "Dodano lek lub kurację." : "Medication schedule saved.",
+              saved.schedule_category === "fluid_therapy"
+                ? pl
+                  ? "Dodano harmonogram kroplówki."
+                  : "Fluid schedule saved."
+                : pl
+                  ? "Dodano lek lub kurację."
+                  : "Medication schedule saved.",
               0,
               undefined,
               pl ? "Pokaż Podsumowanie →" : "View Summary →",

@@ -1,6 +1,7 @@
 export type MedicationScheduleType = "one_off" | "daily" | "interval";
 export type IntervalUnit = "days" | "weeks" | "months";
 export type DoseLogStatus = "taken" | "skipped";
+export type MedicationScheduleCategory = "medication" | "fluid_therapy";
 
 export type MedicationSchedule = {
   id: string;
@@ -20,6 +21,11 @@ export type MedicationSchedule = {
   stock_quantity?: number | null;
   low_stock_threshold?: number | null;
   stock_unit?: string | null;
+  schedule_category?: MedicationScheduleCategory;
+  fluid_name?: string;
+  fluid_volume_ml?: number | null;
+  fluid_route?: "iv" | "sc" | "io";
+  fluid_location?: "clinic" | "home";
   revision: number;
   created_by: string;
   created_at: string;
@@ -55,5 +61,10 @@ export type ProjectedMedicationDose = {
   instructions: string;
   is_completed: boolean;
   is_skipped: boolean;
+  schedule_category?: MedicationScheduleCategory;
+  fluid_name?: string;
+  fluid_volume_ml?: number | null;
+  fluid_route?: "iv" | "sc" | "io";
+  fluid_location?: "clinic" | "home";
   log?: MedicationLog;
 };

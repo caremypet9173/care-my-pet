@@ -104,13 +104,20 @@ export function DailyCareCard({
     (v) => v.metric_type === "temperature" && v.measured_on === todayIso,
   );
   const todayFluids = fluids.filter((f) => f.administered_on === todayIso);
+  const doseLogIds = new Set(todayDoses.map((d) => d.log?.id).filter(Boolean));
+  const visibleTodayFluids = todayFluids.filter(
+    (f) => !f.medication_log_id || !doseLogIds.has(f.medication_log_id),
+  );
+  const hasFluidDoses = todayDoses.some(
+    (d) => d.schedule_category === "fluid_therapy",
+  );
 
   // If there are no medication doses, visits or fluids scheduled/recorded for today,
   // do not render an empty card.
   const hasTasksToday =
     todayDoses.length > 0 ||
     todayVisits.length > 0 ||
-    todayFluids.length > 0;
+    visibleTodayFluids.length > 0;
   if (!hasTasksToday) {
     return null;
   }
@@ -132,10 +139,9 @@ export function DailyCareCard({
         setLogs((prev) => prev.filter((l) => l.id !== dose.log?.id));
         try {
           const client = createClient();
-          const { error } = await client
-            .from("medication_logs")
-            .delete()
-            .eq("id", dose.log.id);
+          const { error } = await client.rpc("delete_medication_dose_log", {
+            p_log_id: dose.log.id,
+          });
           if (error) {
             setLogs(previousLogs);
           } else {
@@ -277,13 +283,26 @@ export function DailyCareCard({
       {todayDoses.length > 0 && (
         <div className="daily-care-section">
           <h3 className="daily-care-section-title">
-            <IconPill size={16} aria-hidden="true" />
-            <span>{pl ? "Leki zaplanowane na dziś" : "Today's medications"}</span>
+            {hasFluidDoses ? (
+              <IconDroplet size={16} aria-hidden="true" />
+            ) : (
+              <IconPill size={16} aria-hidden="true" />
+            )}
+            <span>
+              {hasFluidDoses
+                ? pl
+                  ? "Leki i kroplówki zaplanowane na dziś"
+                  : "Medications & fluids today"
+                : pl
+                  ? "Leki zaplanowane na dziś"
+                  : "Today's medications"}
+            </span>
           </h3>
 
           <ul className="daily-care-dose-list">
             {todayDoses.map((dose) => {
               const isBusy = busyDoseKey === dose.key;
+              const isFluidDose = dose.schedule_category === "fluid_therapy";
               const givenByName =
                 dose.log?.administered_by && memberNames[dose.log.administered_by]
                   ? memberNames[dose.log.administered_by]
@@ -293,6 +312,8 @@ export function DailyCareCard({
                 <li
                   key={dose.key}
                   className={`daily-care-dose-item${
+                    isFluidDose ? " is-fluid-dose" : ""
+                  }${
                     dose.is_completed
                       ? " is-completed"
                       : dose.is_skipped
@@ -307,10 +328,18 @@ export function DailyCareCard({
                           {dose.scheduled_time.slice(0, 5)}
                         </span>
                       )}
+                      {isFluidDose && (
+                        <span className="daily-care-dose-badge-fluid">
+                          <IconDroplet size={12} aria-hidden="true" />
+                          {pl ? "Kroplówka" : "Fluid"}
+                        </span>
+                      )}
                       <strong className="daily-care-dose-name">{dose.name}</strong>
-                      <span className="daily-care-dose-dosage">
-                        ({dose.dosage})
-                      </span>
+                      {dose.dosage && (
+                        <span className="daily-care-dose-dosage">
+                          ({dose.dosage})
+                        </span>
+                      )}
                     </div>
 
                     {dose.instructions && (
@@ -417,15 +446,15 @@ export function DailyCareCard({
         </div>
       )}
 
-      {/* 3. Today's fluid therapies */}
-      {todayFluids.length > 0 && (
+      {/* 3. Today's ad-hoc fluid therapies */}
+      {visibleTodayFluids.length > 0 && (
         <div className="daily-care-section">
           <h3 className="daily-care-section-title">
             <IconDroplet size={16} aria-hidden="true" />
             <span>{pl ? "Płynoterapia / kroplówki z dziś" : "Fluid therapy today"}</span>
           </h3>
           <ul className="daily-care-visit-list">
-            {todayFluids.map((f) => {
+            {visibleTodayFluids.map((f) => {
               const routeLabel =
                 f.route === "sc"
                   ? pl ? "podskórnie (SC)" : "subcutaneous (SC)"

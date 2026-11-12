@@ -7,6 +7,7 @@ import {
   IconCalendarRepeat,
   IconClock,
   IconDeviceFloppy,
+  IconDroplet,
   IconPackage,
   IconPill,
   IconPlus,
@@ -14,10 +15,16 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  COMMON_FLUIDS,
+  type FluidLocation,
+  type FluidRoute,
+} from "@/features/fluid-therapy/types";
 import type { Pet } from "@/features/pets/types";
 import type {
   IntervalUnit,
   MedicationSchedule,
+  MedicationScheduleCategory,
   MedicationScheduleType,
 } from "./types";
 
@@ -25,6 +32,12 @@ function todayIso(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Warsaw",
   }).format(new Date());
+}
+
+function addIsoDays(baseIso: string, deltaDays: number): string {
+  const [y, m, d] = baseIso.split("-").map(Number);
+  if (!y || !m || !d) return baseIso;
+  return new Date(Date.UTC(y, m - 1, d + deltaDays)).toISOString().slice(0, 10);
 }
 
 type Props = {
@@ -54,8 +67,37 @@ export function MedicationDialog({
   const [petId, setPetId] = useState(
     schedule?.pet_id ?? defaultPetId ?? pets[0]?.id ?? "",
   );
-  const [name, setName] = useState(schedule?.name ?? "");
-  const [dosage, setDosage] = useState(schedule?.dosage ?? "");
+  const [scheduleCategory, setScheduleCategory] =
+    useState<MedicationScheduleCategory>(
+      schedule?.schedule_category ?? "medication",
+    );
+  const [name, setName] = useState(
+    schedule?.schedule_category === "fluid_therapy" ? "" : (schedule?.name ?? ""),
+  );
+  const [dosage, setDosage] = useState(
+    schedule?.schedule_category === "fluid_therapy" ? "" : (schedule?.dosage ?? ""),
+  );
+  const [fluidName, setFluidName] = useState(
+    schedule?.fluid_name ||
+      (schedule?.schedule_category === "fluid_therapy" ? schedule.name : "") ||
+      COMMON_FLUIDS[0].value,
+  );
+  const [customFluidMode, setCustomFluidMode] = useState<boolean>(() => {
+    const initialFluid =
+      schedule?.fluid_name ||
+      (schedule?.schedule_category === "fluid_therapy" ? schedule.name : "");
+    if (!initialFluid) return false;
+    return !COMMON_FLUIDS.some((f) => f.value === initialFluid);
+  });
+  const [fluidVolumeMl, setFluidVolumeMl] = useState<string>(
+    schedule?.fluid_volume_ml != null ? String(schedule.fluid_volume_ml) : "150",
+  );
+  const [fluidRoute, setFluidRoute] = useState<FluidRoute>(
+    schedule?.fluid_route ?? "sc",
+  );
+  const [fluidLocation, setFluidLocation] = useState<FluidLocation>(
+    schedule?.fluid_location ?? "home",
+  );
   const [scheduleType, setScheduleType] = useState<MedicationScheduleType>(
     schedule?.schedule_type ?? "daily",
   );
@@ -142,12 +184,37 @@ export function MedicationDialog({
     e.preventDefault();
     if (saving || deleting) return;
 
-    const cleanName = name.trim();
+    const isFluid = scheduleCategory === "fluid_therapy";
+    const cleanFluidName = fluidName.trim().slice(0, 120);
+    const parsedFluidVolume = Number(fluidVolumeMl);
+    const cleanName = isFluid ? cleanFluidName : name.trim();
+    const cleanDosage = isFluid
+      ? `${Math.round(parsedFluidVolume * 10) / 10} ml · ${fluidRoute.toUpperCase()}`
+      : dosage.trim();
+
     if (!petId) {
       setError(pl ? "Wybierz pupila." : "Select a pet.");
       return;
     }
-    if (!cleanName) {
+    if (isFluid) {
+      if (!cleanFluidName) {
+        setError(pl ? "Podaj lub wybierz rodzaj płynu." : "Enter fluid name.");
+        return;
+      }
+      if (
+        !fluidVolumeMl.trim() ||
+        Number.isNaN(parsedFluidVolume) ||
+        parsedFluidVolume <= 0 ||
+        parsedFluidVolume > 5000
+      ) {
+        setError(
+          pl
+            ? "Podaj poprawną objętość kroplówki w ml (1–5000)."
+            : "Enter a valid fluid volume in ml (1–5000).",
+        );
+        return;
+      }
+    } else if (!cleanName) {
       setError(pl ? "Podaj nazwę leku lub zabiegu." : "Enter medication name.");
       return;
     }
@@ -198,7 +265,7 @@ export function MedicationDialog({
       revision: schedule?.revision ?? 0,
       item: {
         name: cleanName,
-        dosage: dosage.trim(),
+        dosage: cleanDosage,
         schedule_type: scheduleType,
         interval_value: scheduleType === "interval" ? intervalValue : null,
         interval_unit: scheduleType === "interval" ? intervalUnit : null,
@@ -217,6 +284,11 @@ export function MedicationDialog({
             ? Math.max(0, Number(lowStockThreshold))
             : 5,
         stock_unit: trackStock && stockUnit.trim() ? stockUnit.trim() : pl ? "dawek" : "doses",
+        schedule_category: scheduleCategory,
+        fluid_name: isFluid ? cleanFluidName : "",
+        fluid_volume_ml: isFluid ? Math.round(parsedFluidVolume * 10) / 10 : null,
+        fluid_route: isFluid ? fluidRoute : "sc",
+        fluid_location: isFluid ? fluidLocation : "home",
       },
     };
 
@@ -258,6 +330,11 @@ export function MedicationDialog({
           p_stock_quantity: payload.item.stock_quantity,
           p_low_stock_threshold: payload.item.low_stock_threshold,
           p_stock_unit: payload.item.stock_unit,
+          p_schedule_category: payload.item.schedule_category,
+          p_fluid_name: payload.item.fluid_name,
+          p_fluid_volume_ml: payload.item.fluid_volume_ml,
+          p_fluid_route: payload.item.fluid_route,
+          p_fluid_location: payload.item.fluid_location,
         });
 
         if (res.error && (res.error.message?.includes("parameter") || res.error.message?.includes("function"))) {
@@ -276,6 +353,9 @@ export function MedicationDialog({
             p_instructions: payload.item.instructions,
             p_is_active: payload.item.is_active,
             p_scheduled_times: payload.item.scheduled_times,
+            p_stock_quantity: payload.item.stock_quantity,
+            p_low_stock_threshold: payload.item.low_stock_threshold,
+            p_stock_unit: payload.item.stock_unit,
           });
           rpcData = resFallback.data;
           rpcError = resFallback.error;
@@ -390,25 +470,45 @@ export function MedicationDialog({
       <form onSubmit={submit} noValidate>
         <header>
           <span
-            className="weight-dialog-icon history-dialog-icon is-prevention"
+            className={`weight-dialog-icon history-dialog-icon ${
+              scheduleCategory === "fluid_therapy"
+                ? "!bg-sky-50 !text-sky-700 dark:!bg-sky-950/60 dark:!text-sky-300"
+                : "is-prevention"
+            }`}
             aria-hidden="true"
           >
-            <IconPill size={24} />
+            {scheduleCategory === "fluid_therapy" ? (
+              <IconDroplet size={24} />
+            ) : (
+              <IconPill size={24} />
+            )}
           </span>
           <div>
             <h2 id="medication-dialog-title">
               {schedule
-                ? pl
-                  ? "Edytuj lek lub zabieg"
-                  : "Edit medication"
-                : pl
-                  ? "Zaplanuj lek lub zabieg"
-                  : "Schedule medication"}
+                ? scheduleCategory === "fluid_therapy"
+                  ? pl
+                    ? "Edytuj harmonogram kroplówki"
+                    : "Edit fluid schedule"
+                  : pl
+                    ? "Edytuj lek lub zabieg"
+                    : "Edit medication"
+                : scheduleCategory === "fluid_therapy"
+                  ? pl
+                    ? "Zaplanuj kroplówkę / wlew"
+                    : "Schedule fluid therapy"
+                  : pl
+                    ? "Zaplanuj lek lub zabieg"
+                    : "Schedule medication"}
             </h2>
             <p>
-              {pl
-                ? "Skonfiguruj dawkowanie doraźne, codzienne lub interwałowe"
-                : "Configure one-off, daily, or interval dosage schedule"}
+              {scheduleCategory === "fluid_therapy"
+                ? pl
+                  ? "Cykliczna kroplówka automatycznie dopisze się do historii płynoterapii po zatwierdzeniu podania"
+                  : "Scheduled infusions sync automatically to fluid therapy history when marked as given"
+                : pl
+                  ? "Skonfiguruj dawkowanie doraźne, codzienne lub interwałowe"
+                  : "Configure one-off, daily, or interval dosage schedule"}
             </p>
           </div>
           <button
@@ -423,6 +523,34 @@ export function MedicationDialog({
         </header>
 
         <fieldset disabled={saving || deleting} className="flex flex-col gap-4">
+          {/* Rodzaj planu: lek vs kroplówka */}
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setScheduleCategory("medication")}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                scheduleCategory === "medication"
+                  ? "bg-white dark:bg-slate-800 text-teal-800 dark:text-teal-300 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              <IconPill size={15} />
+              <span>{pl ? "Lek / kuracja" : "Medication"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleCategory("fluid_therapy")}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                scheduleCategory === "fluid_therapy"
+                  ? "bg-white dark:bg-slate-800 text-sky-800 dark:text-sky-300 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              <IconDroplet size={15} />
+              <span>{pl ? "Kroplówka / płynoterapia" : "Fluid therapy"}</span>
+            </button>
+          </div>
+
           {/* Wybór zwierzaka */}
           {pets.length > 1 && !defaultPetId ? (
             <div>
@@ -444,45 +572,180 @@ export function MedicationDialog({
             </div>
           ) : null}
 
-          {/* Nazwa leku i dawka w 2 kolumnach */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="med-name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {pl ? "Nazwa leku / zabiegu *" : "Medication / treatment *"}
-              </label>
-              <input
-                id="med-name"
-                value={name}
-                maxLength={120}
-                required
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
-                placeholder={
-                  pl
-                    ? "np. Flora Balance, Melovem, Wlew z ketaminy"
-                    : "e.g. Flora Balance, Melovem, Ketamine infusion"
-                }
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
+          {scheduleCategory === "fluid_therapy" ? (
+            <div className="rounded-xl border border-sky-200/80 dark:border-sky-900/60 bg-sky-50/40 dark:bg-sky-950/20 p-3.5 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="med-fluid-select" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {pl ? "Płyn bazowy *" : "Base fluid *"}
+                  </label>
+                  <select
+                    id="med-fluid-select"
+                    value={customFluidMode ? "__custom__" : fluidName}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomFluidMode(true);
+                        setFluidName("");
+                      } else {
+                        setCustomFluidMode(false);
+                        setFluidName(e.target.value);
+                      }
+                    }}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
+                  >
+                    {COMMON_FLUIDS.map((fluid) => (
+                      <option key={fluid.value} value={fluid.value}>
+                        {fluid.label}
+                      </option>
+                    ))}
+                    <option value="__custom__">
+                      {pl ? "Inny płyn (własna nazwa)..." : "Other fluid (custom)..."}
+                    </option>
+                  </select>
+                  {customFluidMode && (
+                    <input
+                      type="text"
+                      value={fluidName}
+                      maxLength={120}
+                      onChange={(e) => setFluidName(e.target.value)}
+                      placeholder={pl ? "Wpisz nazwę płynu..." : "Enter fluid name..."}
+                      className="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
+                    />
+                  )}
+                </div>
 
-            <div>
-              <label htmlFor="med-dosage" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {pl ? "Dawka i postać" : "Dosage & form"}
-              </label>
-              <input
-                id="med-dosage"
-                value={dosage}
-                maxLength={120}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
-                placeholder={
-                  pl
-                    ? "np. 1 kapsułka, 2.5 ml, 1 tabletka"
-                    : "e.g. 1 capsule, 2.5 ml, 1 tablet"
-                }
-                onChange={(e) => setDosage(e.target.value)}
-              />
+                <div>
+                  <label htmlFor="med-fluid-volume" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {pl ? "Objętość pojedynczego wlewu (ml) *" : "Volume per infusion (ml) *"}
+                  </label>
+                  <input
+                    id="med-fluid-volume"
+                    type="number"
+                    min={1}
+                    max={5000}
+                    step="0.5"
+                    value={fluidVolumeMl}
+                    onChange={(e) => setFluidVolumeMl(e.target.value)}
+                    placeholder="150"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm font-semibold"
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[50, 100, 120, 150, 200, 250].map((ml) => (
+                      <button
+                        key={ml}
+                        type="button"
+                        onClick={() => setFluidVolumeMl(String(ml))}
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors cursor-pointer ${
+                          Number(fluidVolumeMl) === ml
+                            ? "border-sky-600 bg-sky-600 text-white"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-sky-500"
+                        }`}
+                      >
+                        {ml} ml
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {pl ? "Droga podania" : "Route"}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { id: "sc", label: pl ? "Podskórna (SC)" : "SC" },
+                        { id: "iv", label: pl ? "Dożylna (IV)" : "IV" },
+                        { id: "io", label: pl ? "IO" : "IO" },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setFluidRoute(opt.id)}
+                        className={`py-1.5 px-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+                          fluidRoute === opt.id
+                            ? "border-sky-600 bg-sky-50 dark:bg-sky-950/60 text-sky-900 dark:text-sky-200"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {pl ? "Miejsce podania" : "Location"}
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(
+                      [
+                        { id: "home", label: pl ? "W domu" : "Home" },
+                        { id: "clinic", label: pl ? "W lecznicy" : "Clinic" },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setFluidLocation(opt.id)}
+                        className={`py-1.5 px-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+                          fluidLocation === opt.id
+                            ? "border-sky-600 bg-sky-50 dark:bg-sky-950/60 text-sky-900 dark:text-sky-200"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Nazwa leku i dawka w 2 kolumnach */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="med-name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {pl ? "Nazwa leku / zabiegu *" : "Medication / treatment *"}
+                </label>
+                <input
+                  id="med-name"
+                  value={name}
+                  maxLength={120}
+                  required
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
+                  placeholder={
+                    pl
+                      ? "np. Flora Balance, Melovem, Wit. B12"
+                      : "e.g. Flora Balance, Melovem, Vit. B12"
+                  }
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="med-dosage" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {pl ? "Dawka i postać" : "Dosage & form"}
+                </label>
+                <input
+                  id="med-dosage"
+                  value={dosage}
+                  maxLength={120}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
+                  placeholder={
+                    pl
+                      ? "np. 1 kapsułka, 0.5 ml, 1 tabletka"
+                      : "e.g. 1 capsule, 0.5 ml, 1 tablet"
+                  }
+                  onChange={(e) => setDosage(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Wybór scenariusza podawania leku */}
           <div>
@@ -629,10 +892,44 @@ export function MedicationDialog({
                   />
                 </div>
               </div>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mr-0.5">
+                  {pl ? "Czas trwania:" : "Duration:"}
+                </span>
+                {[3, 5, 7, 14].map((days) => {
+                  const targetEnd = startDate ? addIsoDays(startDate, days - 1) : "";
+                  const active = Boolean(targetEnd && endDate === targetEnd);
+                  return (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => targetEnd && setEndDate(targetEnd)}
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors cursor-pointer ${
+                        active
+                          ? "border-teal-700 bg-teal-700 text-white"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-teal-600"
+                      }`}
+                    >
+                      {pl ? `${days} dni` : `${days} days`}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setEndDate("")}
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors cursor-pointer ${
+                    endDate === ""
+                      ? "border-teal-700 bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200"
+                      : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-teal-600"
+                  }`}
+                >
+                  {pl ? "Bezterminowo" : "Indefinite"}
+                </button>
+              </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 {pl
-                  ? "Pozostaw datę zakończenia pustą, jeśli lek jest podawany na stałe (bezterminowo)."
-                  : "Leave end date empty if medication is administered indefinitely."}
+                  ? "Dla krótkiej kuracji (np. leki przez 3 dni) wybierz szybki przycisk powyżej lub wpisz datę końcową."
+                  : "For short treatments (e.g. 3 days), pick a duration preset above or set an end date."}
               </p>
             </div>
           )}
@@ -895,9 +1192,13 @@ export function MedicationDialog({
           {/* Wskazówki i notatki */}
           <div>
             <label htmlFor="med-instructions" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {pl
-                ? "Wskazówki dla opiekuna (opcjonalnie)"
-                : "Instructions & notes (optional)"}
+              {scheduleCategory === "fluid_therapy"
+                ? pl
+                  ? "Stałe dodatki do wlewu / wskazówki (opcjonalnie)"
+                  : "In-bag additives / notes (optional)"
+                : pl
+                  ? "Wskazówki dla opiekuna (opcjonalnie)"
+                  : "Instructions & notes (optional)"}
             </label>
             <textarea
               id="med-instructions"
@@ -905,9 +1206,13 @@ export function MedicationDialog({
               maxLength={2000}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 p-2.5 bg-white dark:bg-slate-900 text-sm"
               placeholder={
-                pl
-                  ? "np. Podawać z mokrą karmą, nie podawać na czczo, wymieszać z sosem"
-                  : "e.g. Give with food, do not administer on empty stomach"
+                scheduleCategory === "fluid_therapy"
+                  ? pl
+                    ? "np. Podgrzać płyn do temp. ciała; jeśli leki są czasowe (np. na 3 dni), dodaj je osobnym harmonogramem leku"
+                    : "e.g. Warm fluid to body temp; add short-term meds as a separate medication schedule"
+                  : pl
+                    ? "np. Podawać przy porannej kroplówce, z mokrą karmą"
+                    : "e.g. Give with morning fluid therapy or food"
               }
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
@@ -951,9 +1256,13 @@ export function MedicationDialog({
                   ? pl
                     ? "Zapisywanie..."
                     : "Saving..."
-                  : pl
-                    ? "Zapisz lek"
-                    : "Save medication"}
+                  : scheduleCategory === "fluid_therapy"
+                    ? pl
+                      ? "Zapisz kroplówkę"
+                      : "Save fluid schedule"
+                    : pl
+                      ? "Zapisz lek"
+                      : "Save medication"}
               </span>
             </button>
           </div>

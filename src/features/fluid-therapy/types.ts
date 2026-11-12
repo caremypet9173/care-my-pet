@@ -16,6 +16,7 @@ export interface PetFluidTherapy {
   administered_at: string;
   administered_on: string;
   notes: string;
+  medication_log_id?: string | null;
   revision: number;
   created_by: string;
   created_at: string;

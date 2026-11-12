@@ -7,6 +7,7 @@ import {
   IconAlertTriangle,
   IconCheck,
   IconClock,
+  IconDroplet,
   IconEdit,
   IconNotes,
   IconPill,
@@ -394,6 +395,7 @@ export function ActiveMedicationsCard({
         setLogs((prev) =>
           prev.map((l) => (l.id === optimisticLogId ? savedLog! : l)),
         );
+        router.refresh();
       } else {
         // Rollback w przypadku błędu serwera
         setLogs(previousLogs);
@@ -483,9 +485,10 @@ export function ActiveMedicationsCard({
               setDialogOpen(true);
             }}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            title={pl ? "Zaplanuj lek, kurację lub kroplówkę" : "Schedule medication or fluid therapy"}
           >
             <IconPlus size={14} />
-            <span>{pl ? "Dodaj lek" : "Add"}</span>
+            <span>{pl ? "Zaplanuj" : "Add"}</span>
           </button>
         </div>
       </header>
@@ -541,16 +544,27 @@ export function ActiveMedicationsCard({
                       className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         isFinished
                           ? "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                          : "bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300"
+                          : s.schedule_category === "fluid_therapy"
+                            ? "bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300"
+                            : "bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300"
                       }`}
                     >
-                      <IconPill size={16} />
+                      {s.schedule_category === "fluid_therapy" ? (
+                        <IconDroplet size={16} />
+                      ) : (
+                        <IconPill size={16} />
+                      )}
                     </span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <strong className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {s.name}
                         </strong>
+                        {s.schedule_category === "fluid_therapy" && (
+                          <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 font-semibold">
+                            {pl ? "Kroplówka" : "Fluid"}
+                          </span>
+                        )}
                         {s.dosage && (
                           <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
                             {s.dosage}

@@ -354,3 +354,80 @@ test('scenariusz 7: normalizacja godzin w formacie PostgreSQL array string ze zd
   assert.equal(doses[1].scheduled_time, '14:00');
   assert.equal(doses[2].scheduled_time, '20:00');
 });
+
+test('scenariusz 8: stała kroplówka 2x dziennie (11:00, 22:00) + dodatkowy lek na 3 dni', () => {
+  const schedules = [
+    {
+      id: 'sched-fluid',
+      pet_id: 'pet-1',
+      household_id: 'house-1',
+      name: 'PWE (Płyn wieloelektrolitowy)',
+      dosage: '150 ml · SC',
+      schedule_type: 'daily',
+      interval_value: null,
+      interval_unit: null,
+      start_date: '2026-11-12',
+      end_date: null,
+      scheduled_time: '11:00',
+      scheduled_times: ['11:00', '22:00'],
+      instructions: 'Podgrzać płyn przed podaniem',
+      is_active: true,
+      schedule_category: 'fluid_therapy',
+      fluid_name: 'PWE (Płyn wieloelektrolitowy)',
+      fluid_volume_ml: 150,
+      fluid_route: 'sc',
+      fluid_location: 'home',
+      revision: 1,
+      created_by: 'user-1',
+      created_at: '2026-11-12T00:00:00Z',
+      updated_at: '2026-11-12T00:00:00Z',
+    },
+    {
+      id: 'sched-addon-3d',
+      pet_id: 'pet-1',
+      household_id: 'house-1',
+      name: 'Catosal',
+      dosage: '1 ml',
+      schedule_type: 'daily',
+      interval_value: null,
+      interval_unit: null,
+      start_date: '2026-11-12',
+      end_date: '2026-11-14', // 3 dni kuracji: 12, 13, 14 listopada
+      scheduled_time: '11:00',
+      scheduled_times: ['11:00'],
+      instructions: 'Dodać do porannej kroplówki o 11:00',
+      is_active: true,
+      schedule_category: 'medication',
+      revision: 1,
+      created_by: 'user-1',
+      created_at: '2026-11-12T00:00:00Z',
+      updated_at: '2026-11-12T00:00:00Z',
+    },
+  ];
+
+  // Dni 12..15 listopada: 3 dni po 3 pozycje (9) + 15 listopada tylko 2 kroplówki = 11
+  const doses = projectMedicationDoses({
+    schedules,
+    logs: [],
+    rangeStart: '2026-11-12',
+    rangeEnd: '2026-11-15',
+  });
+
+  const day12 = doses.filter((d) => d.dose_date === '2026-11-12');
+  const day14 = doses.filter((d) => d.dose_date === '2026-11-14');
+  const day15 = doses.filter((d) => d.dose_date === '2026-11-15');
+
+  assert.equal(day12.length, 3);
+  assert.equal(day14.length, 3);
+  assert.equal(day15.length, 2);
+  assert.ok(day15.every((d) => d.schedule_category === 'fluid_therapy'));
+
+  const morningFluid = day12.find(
+    (d) => d.schedule_category === 'fluid_therapy' && d.scheduled_time === '11:00',
+  );
+  assert.ok(morningFluid);
+  assert.equal(morningFluid.fluid_name, 'PWE (Płyn wieloelektrolitowy)');
+  assert.equal(morningFluid.fluid_volume_ml, 150);
+  assert.equal(morningFluid.fluid_route, 'sc');
+  assert.equal(morningFluid.fluid_location, 'home');
+});

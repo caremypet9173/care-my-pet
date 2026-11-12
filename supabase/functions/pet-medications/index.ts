@@ -18,6 +18,9 @@ const hhMm = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 const validScheduleTypes = new Set(["one_off", "daily", "interval"]);
 const validIntervalUnits = new Set(["days", "weeks", "months"]);
 const validDoseStatuses = new Set(["taken", "skipped"]);
+const validScheduleCategories = new Set(["medication", "fluid_therapy"]);
+const validFluidRoutes = new Set(["iv", "sc", "io"]);
+const validFluidLocations = new Set(["clinic", "home"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -197,17 +200,44 @@ Deno.serve(async (req) => {
         ? item.stock_unit.trim().slice(0, 30)
         : "dawek";
 
+    const scheduleCategory = String(item.schedule_category ?? "medication").trim();
+    const fluidName = String(item.fluid_name ?? "").trim();
+    const fluidVolumeMl =
+      item.fluid_volume_ml != null &&
+      item.fluid_volume_ml !== "" &&
+      !Number.isNaN(Number(item.fluid_volume_ml))
+        ? Math.round(Number(item.fluid_volume_ml) * 10) / 10
+        : null;
+    const fluidRoute = String(item.fluid_route ?? "sc").trim();
+    const fluidLocation = String(item.fluid_location ?? "home").trim();
+
     if (
       name.length < 1 ||
       name.length > 120 ||
       dosage.length > 120 ||
       !validScheduleTypes.has(scheduleType) ||
+      !validScheduleCategories.has(scheduleCategory) ||
       !isoDate.test(startDate) ||
       (endDate !== null && (!isoDate.test(endDate) || endDate < startDate)) ||
       (scheduledTime && !hhMm.test(scheduledTime)) ||
       instructions.length > 2000
     ) {
       return reply({ error: "invalid_input" }, 400);
+    }
+
+    if (scheduleCategory === "fluid_therapy") {
+      const effectiveFluidName = fluidName || name;
+      if (
+        effectiveFluidName.length < 1 ||
+        effectiveFluidName.length > 120 ||
+        fluidVolumeMl === null ||
+        fluidVolumeMl <= 0 ||
+        fluidVolumeMl > 5000 ||
+        !validFluidRoutes.has(fluidRoute) ||
+        !validFluidLocations.has(fluidLocation)
+      ) {
+        return reply({ error: "invalid_fluid_input" }, 400);
+      }
     }
 
     if (scheduleType === "interval") {
@@ -242,6 +272,12 @@ Deno.serve(async (req) => {
         p_stock_quantity: stockQuantity,
         p_low_stock_threshold: lowStockThreshold,
         p_stock_unit: stockUnit,
+        p_schedule_category: scheduleCategory,
+        p_fluid_name:
+          scheduleCategory === "fluid_therapy" ? (fluidName || name).slice(0, 120) : "",
+        p_fluid_volume_ml: scheduleCategory === "fluid_therapy" ? fluidVolumeMl : null,
+        p_fluid_route: scheduleCategory === "fluid_therapy" ? fluidRoute : "sc",
+        p_fluid_location: scheduleCategory === "fluid_therapy" ? fluidLocation : "home",
       },
     );
 

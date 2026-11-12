@@ -1,8 +1,42 @@
 import type {
   MedicationLog,
   MedicationSchedule,
+  MedicationScheduleType,
   ProjectedMedicationDose,
 } from "./types";
+
+function buildProjectedDose(
+  sched: MedicationSchedule,
+  doseDate: string,
+  time: string,
+  scheduleType: MedicationScheduleType,
+  matchingLog: MedicationLog | undefined,
+): ProjectedMedicationDose {
+  const category = sched.schedule_category ?? "medication";
+  return {
+    key: `med-${sched.id}-${doseDate}-${time || "0000"}`,
+    schedule_id: sched.id,
+    pet_id: sched.pet_id,
+    name: sched.name,
+    dosage: sched.dosage,
+    schedule_type: scheduleType,
+    dose_date: doseDate,
+    scheduled_time: time,
+    instructions: sched.instructions,
+    is_completed: matchingLog?.status === "taken",
+    is_skipped: matchingLog?.status === "skipped",
+    schedule_category: category,
+    ...(category === "fluid_therapy"
+      ? {
+          fluid_name: sched.fluid_name || sched.name,
+          fluid_volume_ml: sched.fluid_volume_ml ?? null,
+          fluid_route: sched.fluid_route ?? "sc",
+          fluid_location: sched.fluid_location ?? "home",
+        }
+      : {}),
+    log: matchingLog,
+  };
+}
 
 function parseUtcDate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
@@ -132,20 +166,9 @@ export function projectMedicationDoses({
           const matchingLog =
             logMap.get(`${sched.id}|${schedStartIso}|${time}`) ??
             (times.length === 1 ? logMap.get(`${sched.id}|${schedStartIso}|`) : undefined);
-          doses.push({
-            key: `med-${sched.id}-${schedStartIso}-${time || "0000"}`,
-            schedule_id: sched.id,
-            pet_id: sched.pet_id,
-            name: sched.name,
-            dosage: sched.dosage,
-            schedule_type: "one_off",
-            dose_date: schedStartIso,
-            scheduled_time: time,
-            instructions: sched.instructions,
-            is_completed: matchingLog?.status === "taken",
-            is_skipped: matchingLog?.status === "skipped",
-            log: matchingLog,
-          });
+          doses.push(
+            buildProjectedDose(sched, schedStartIso, time, "one_off", matchingLog),
+          );
         }
       }
       continue;
@@ -165,20 +188,9 @@ export function projectMedicationDoses({
             logMap.get(`${sched.id}|${curIso}|${time}`) ??
             (times.length === 1 ? logMap.get(`${sched.id}|${curIso}|`) : undefined);
 
-          doses.push({
-            key: `med-${sched.id}-${curIso}-${time || "0000"}`,
-            schedule_id: sched.id,
-            pet_id: sched.pet_id,
-            name: sched.name,
-            dosage: sched.dosage,
-            schedule_type: "daily",
-            dose_date: curIso,
-            scheduled_time: time,
-            instructions: sched.instructions,
-            is_completed: matchingLog?.status === "taken",
-            is_skipped: matchingLog?.status === "skipped",
-            log: matchingLog,
-          });
+          doses.push(
+            buildProjectedDose(sched, curIso, time, "daily", matchingLog),
+          );
         }
 
         cur = addDays(cur, 1);
@@ -205,20 +217,9 @@ export function projectMedicationDoses({
               logMap.get(`${sched.id}|${curIso}|${time}`) ??
               (times.length === 1 ? logMap.get(`${sched.id}|${curIso}|`) : undefined);
 
-            doses.push({
-              key: `med-${sched.id}-${curIso}-${time || "0000"}`,
-              schedule_id: sched.id,
-              pet_id: sched.pet_id,
-              name: sched.name,
-              dosage: sched.dosage,
-              schedule_type: "interval",
-              dose_date: curIso,
-              scheduled_time: time,
-              instructions: sched.instructions,
-              is_completed: matchingLog?.status === "taken",
-              is_skipped: matchingLog?.status === "skipped",
-              log: matchingLog,
-            });
+            doses.push(
+              buildProjectedDose(sched, curIso, time, "interval", matchingLog),
+            );
           }
         }
 

@@ -546,6 +546,8 @@
 .daily-care-dose-item { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .85rem; border-radius: .75rem; border: 1px solid #e1e9e4; background: #fff; transition: background-color .15s, border-color .15s; }
 .daily-care-dose-item.is-completed { background: #f4faf6; border-color: #cbe3d7; }
 .daily-care-dose-item.is-skipped { background: #fdf8f7; border-color: #f7d4d0; }
+.daily-care-dose-item.is-fluid-dose:not(.is-completed):not(.is-skipped) { border-color: #bae6fd; background: #f8fcff; }
+.daily-care-dose-badge-fluid { display: inline-flex; align-items: center; gap: .22rem; font-size: .7rem; font-weight: 700; color: #0369a1; background: #e0f2fe; padding: .1rem .45rem; border-radius: 999px; }
 .daily-care-dose-info { display: grid; gap: .15rem; min-width: 0; flex: 1; }
 .daily-care-dose-header { display: flex; align-items: baseline; gap: .45rem; flex-wrap: wrap; }
 .daily-care-dose-time { font-size: .75rem; font-weight: 700; color: #164d34; background: #e7f4ec; padding: .1rem .45rem; border-radius: .35rem; }
