@@ -112,3 +112,30 @@ Wprowadzić rzeczywiste profile czterech kotów. Wyniki badań i prywatne źród
 wdrożono w kolejnym etapie opisanym w `MEDICAL_REPORTS.md`; rzeczywisty odczyt
 Gemini sprawdzono na syntetycznym PDF. Pozostaje ocena prawdziwych badań. Usuwanie profili,
 zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
+
+## Aktualizacja 2026-11-17 — Hero, tagi opiekuńcze i szybki przełącznik kartotek
+
+- **Kolumna `tagi` (`20261117101500_pet_tags.sql`):** tabela `public.zwierze` rozszerzona
+  o `tagi text[] not null default '{}'` (maks. `8` tagów po maks. `40` znaków,
+  deduplikacja case-insensitive w `validation.mjs` i obsługa w `create_pet`).
+  W formularzu `PetForm` komponent `PetTagsInput` łączy dowolny wpis z klikalnym
+  słownikiem podpowiedzi (`src/features/pets/tag-suggestions.ts`, dopasowanym do płci).
+  Tagi wyświetlają się w hero (`PetHeroCover`), na kartach pulpitu (`/app`, maks. 3 + `+N`),
+  w karcie leczenia (`TreatmentSummaryModal`) oraz trafiają do kontekstu Asystenta AI.
+- **Kompaktowe hero i modal „O mnie” (`PetHeroCover`, `GuardianNoteCard`):**
+  pole `notatki` ma w formularzu etykietę „Parę słów o mnie”. Zamiast szerokiego boksu
+  tekstowego w hero wyświetla się przycisk „O mnie” otwierający `<dialog>` z pełnym
+  opisem; przy pustym polu przycisk nie jest renderowany. To samo hero współdzieli
+  widok udostępniony weterynarzowi (`SharedVetRecordView`, bez akcji edycji).
+- **Szybki przełącznik pupili (`PetSwitcher`):** na trasie `/app/zwierzeta/[id]`
+  przy `2–5` pupilach na desktopie (`> 960 px`) renderuje się pasek pigułek obok
+  `← Wszystkie zwierzaki`, a powyżej `5` pupili oraz na węższych ekranach (`≤ 960 px`)
+  rozwijany przycisk dropdown; przełączenie zachowuje aktywną zakładkę (`?tab=...`).
+- **Service Worker (`public/sw.js`):** wersja cache `caremypet-v2`; na `localhost` /
+  `127.0.0.1` wyłączono precache i przechwytywanie `fetch`, aby uniknąć serwowania
+  przestarzałych chunków CSS/JS w trakcie lokalnego developmentu.
+- **Weryfikacja:** `npm run typecheck`, `npm run lint` oraz `node --test tests/*.test.mjs`
+  (`53/53`, w tym testy walidacji tagów w `tests/pets-validation.test.mjs`) przeszły
+  po zmianach; `supabase db push` i `deploy` funkcji `pets` / `pet-assistant` wykonane
+  na projekcie `lrlnqmciarjvngvquchu`. Testy E2E Playwright (`tests/e2e/pets-live.spec.ts`)
+  zaktualizowano pod nowe etykiety i wymagają uruchomienia z poświadczeniami testowymi.

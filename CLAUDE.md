@@ -6,7 +6,8 @@ Instrukcje projektu dla Claude Code. Czytane na starcie każdej sesji.
 
 Care My Pet to aplikacja webowa (PWA) do zarządzania zdrowiem psów i kotów dla
 **właścicieli prywatnych**. Profil zwierzaka, historia medyczna, szczepienia,
-wizyty, wyniki badań, asystent AI i odczyt wyników z dokumentów.
+wizyty, wyniki badań, pomiary życiowe, leki, płynoterapia, asystent AI i odczyt
+wyników z dokumentów.
 
 **Zakres MVP: wyłącznie właściciel prywatny.** Fundacje, schroniska, adopcje,
 integracja KROPiK — świadomie odłożone na v2. Jeśli zadanie sugeruje pracę pod
@@ -15,35 +16,50 @@ poza MVP.
 
 ## Źródło prawdy
 
-**Aktualny etap:** przygotowanie cichego pilotażu — najpierw cztery koty Wojtka i ich badania,
-potem zaproszeni przyjaciele. Decyzja 2026-10-14: budujemy od nowa, zaczynając
-od rejestracji e-mail/hasło i Google. Stare PoC potwierdziły użyteczność Gemini
-w Supabase Edge Functions oraz zastosowanie pgvector do ograniczania kontekstu;
-nie są bazą implementacji. Model JSONB wymaga przeprojektowania.
-Nie zakładaj, że zintegrowany serwis jest już wdrożony. Landing, lista oczekujących i kampania
-nie są wymagane. Wybrana strona główna: „06 — Care My Pet Signature” ze Stitch.
-Fundament frontendu, publiczne demo i Auth są w repo. W projekcie
-`lrlnqmciarjvngvquchu` skonfigurowano Gmail SMTP i Google OAuth. Użytkownik
-potwierdził działanie logowania, sesji i wylogowania; granice testów w docs/AUTH.md.
-Profile zwierząt, gospodarstwa i RLS wdrożono 2026-10-18. Lokalny frontend
-obsługuje listę, dodawanie i edycję; zapis przez Edge Function `pets`.
-Formularz „Poznajmy Twojego pupila” odwzorowuje wskazane ekrany Stitch
-(mapowanie w `docs/stitch/DESIGN.md`), z kadrowaniem prywatnego awatara
-i przybliżoną datą urodzenia. Awatary działają na liście i w profilu.
-Zakres, testy i ograniczenia: `docs/PETS.md`. Następny etap: wprowadzenie
-czterech kotów i dokumentacji medycznej.
-Wyniki badań i weryfikacja Split-Screen 2 wdrożone 2026-10-18:
-`docs/MEDICAL_REPORTS.md`. Działa ręczny zapis z prywatnym oryginałem PDF/JPG/PNG.
-Klucz Gemini skonfigurowany, model `gemini-3.5-flash-lite` (zmieniony z `gemini-3.1-pro-preview` pod kątem szybkości i optymalizacji kosztów). Po doładowaniu Google
-i usunięciu odrzucanego przez dostawcę `maxItems` ze schematu odpowiedzi przeszedł
-rzeczywisty test PDF → Gemini → weryfikacja → zapis (2026-10-18).
-Jakość odczytu na prawdziwych badaniach użytkownika pozostaje do oceny.
+**Aktualny etap (2026-11-17):** zaawansowane przygotowanie cichego pilotażu —
+cztery koty Wojtka i ich rzeczywista dokumentacja, przed szerszym udostępnieniem
+zaproszonym znajomym. W projekcie Supabase `lrlnqmciarjvngvquchu` wdrożono
+**50 migracji SQL** i **10 Edge Functions** (`household`, `medical-reports`,
+`pet-assistant`, `pet-history`, `pet-medications`, `pet-schedule`, `pet-share`,
+`pet-weight`, `pets`, `schedule-notifications` + `_shared/rag.ts`).
+
+Wdrożone obszary aplikacji:
+- **Warstwa publiczna i demo:** strona główna „06 — Care My Pet Signature”
+  (projekt Stitch `1963478756572071889`), pełne demo `/demo/luna`, podstrony
+  informacyjne/prawne oraz waitlista (`waitlist`).
+- **Auth i gospodarstwa:** rejestracja/logowanie (e-mail/hasło z Gmail SMTP i
+  Google OAuth), przełącznik aktywnego gospodarstwa, role właściciela i
+  współopiekuna, zaproszenia oraz bramka pilotażu (`pilot_whitelist`).
+- **Profile i kartoteki pupili (`pets`):** dodawanie/edycja z kadrowaniem
+  prywatnego awatara i przybliżoną datą urodzenia, kolumna `tagi` (krótkie
+  hasła opiekuńczo-zdrowotne ze słownikiem podpowiedzi), opis „Parę słów o mnie”
+  otwierany przyciskiem/modalem **„O mnie”** w kompaktowym `PetHeroCover`,
+  pasek szybkiego przełączania kartotek `PetSwitcher` (pigułki do 5 pupili na
+  desktopie, dropdown powyżej 5 i na mobile) oraz **Dzienny plan opieki**.
+- **Wyniki badań i dokumenty (`medical-reports`):** odczyt PDF/JPG/PNG przez
+  Gemini (`gemini-3.5-flash-lite`) z obowiązkowym ekranem potwierdzenia
+  Split-Screen 2, kontrolą duplikatów SHA-256, normalizacją parametrów i
+  jednostek, macierzą porównawczą trendów, obsługą badań opisowych (USG/TK/RTG)
+  oraz batchowym importem kart wypisowych.
+- **Historia, pomiary życiowe i płynoterapia (`pet-history`, `pet-weight`, `fluid-therapy`):**
+  wizyty, szczepienia i profilaktyka (z ekstrakcją AI), historia masy ciała,
+  ciśnienia krwi (ACVIM/IRIS), glukozy i temperatury, dedykowane widoki
+  płynoterapii z cyklicznymi harmonogramami wlewów.
+- **Leki i terminarz (`pet-medications`, `pet-schedule`, `schedule-notifications`):**
+  harmonogramy leków z wieloma porami podania, logowaniem podań/pominięć,
+  śledzeniem zapasu, Supabase Realtime i kartą leczenia do druku; kalendarz
+  (dzień/tydzień/miesiąc/agenda) z powiadomieniami Web Push (VAPID) i SMTP
+  (Nodemailer, w tym dodatkowi odbiorcy e-mail).
+- **Asystent AI (`pet-assistant`) i udostępnianie (`pet-share`):** wielowątkowy
+  czat z RAG (`pgvector`, `gemini-embedding-2`/`001`), pełnym kontekstem
+  kartoteki (w tym tagów, pomiarów, leków i płynoterapii), eksportem podsumowań
+  do PDF oraz tymczasowymi linkami/QR read-only dla weterynarza (`/udostepnione/[token]`).
+
 Projekt Stitch: https://stitch.withgoogle.com/projects/1963478756572071889.
 Nie wybieraj innego projektu na podstawie domyślnej konfiguracji gcloud.
 Jeśli nie wiadomo, którego szablonu Stitch użyć, zapytaj użytkownika przed
-implementacją. Nie zastępuj wskazanego ekranu podobnym wariantem ani własną interpretacją.
-Logowanie i rejestracja: „Forest — Ekran logowania i rejestracji”,
-ekran `3ba83b4082ce4583ae27cbc1ea89c97f`.
+implementacją. Nie zastępuj wskazanego ekranu podobnym wariantem ani własną
+interpretacją (zatwierdzone korekty: `docs/stitch/DESIGN.md`).
 
 Decyzje produktowe i techniczne żyją w `docs/`. Przed pracą nad funkcją przeczytaj
 odpowiedni dokument, nie zgaduj:
@@ -54,26 +70,28 @@ odpowiedni dokument, nie zgaduj:
 - `docs/MONETIZATION.md` — model płatności (prepaid) i cennik
 - `docs/ROADMAP.md` — integracja PoC, własny pilotaż, przyjaciele i szersze otwarcie (P1 → P4)
 - `docs/IDEAS.md` — zakres odłożony na v2+ (nie implementować bez decyzji)
+- `docs/AUTH.md`, `docs/PETS.md`, `docs/MEDICAL_REPORTS.md`, `docs/WEIGHT.md` — specyfikacje i granice testów modułów
 
 Jeśli zadanie jest sprzeczne z którymś z tych dokumentów, zgłoś sprzeczność
 zamiast działać na nieaktualnym założeniu.
 
 ## Stack
 
-- Frontend: Next.js 16 (App Router), React 19, TypeScript, Tailwind 4, Tabler; komponenty Signature
-- Backend: Supabase — PostgreSQL + RLS, Auth, Storage, Edge Functions (Deno), Realtime
+- Frontend: Next.js 16 (`16.4.5`, App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4, Tabler Icons, `next-intl` (`pl`/`en`); komponenty Signature
+- Backend: Supabase — PostgreSQL + RLS + `pgvector`, Auth, Storage, Edge Functions (Deno), Realtime
 - Hosting pilotażu: Vercel Hobby (Next.js) + Supabase Cloud Free; własny serwer dopiero w planach
-- Treść publiczna: Signature, bez naboru i rejestracji; blog i Sanity odłożone
-- PWA: next-pwa + Workbox; powiadomienia: Web Push (VAPID) + Resend (email)
-- AI: Gemini (ekstrakcja) → Claude Sonnet 4.5 (interpretacja/asystent), Claude Haiku (odczyt plików)
+- Treść publiczna: Signature, demo `/demo/luna`, waitlista w bazie (`waitlist`); blog i Sanity odłożone
+- PWA: natywny manifest (`src/app/manifest.ts`) + własny Service Worker (`public/sw.js`, z bypass na `localhost`/`127.0.0.1`)
+- Powiadomienia: Web Push (VAPID, `web-push`) + e-mail SMTP (`nodemailer`)
+- AI: Gemini (`gemini-3.5-flash-lite`, konfigurowalne przez `GEMINI_MODEL`) do ekstrakcji, opisów i asystenta + embeddingi `gemini-embedding-2` / `gemini-embedding-001` (`pgvector`)
 
 ## Reguły architektoniczne
 
 - **Logika biznesowa w Supabase Edge Functions.** Warstwa hostingu (Vercel lub własny
   Next.js) obsługuje wyłącznie UI i wyzwalacze Cron — nie umieszczaj tam logiki
   domenowej.
-- **Izolacja danych przez RLS.** Każdy wiersz nosi `gospodarstwo_id`; polityki RLS
-  odcinają dostęp do cudzych danych na poziomie bazy. Każda migracja musi
+- **Izolacja danych przez RLS.** Każdy wiersz nosi `gospodarstwo_id` (lub `household_id`);
+  polityki RLS odcinają dostęp do cudzych danych na poziomie bazy. Każda migracja musi
   uwzględniać polityki RLS.
 - **Migracje SQL numerowane i odtwarzalne** — każda zmiana schematu to osobny,
   kolejno numerowany plik migracji.
@@ -92,8 +110,9 @@ zamiast działać na nieaktualnym założeniu.
   per otwarcie.
 - Docelowy asystent: darmowy do 20 wiadomości/dzień, nadwyżka 0,01 EUR z salda.
   Rozliczanie pilotażu pozostaje do ustalenia; Stripe nie blokuje jego startu.
-- **Cap wejścia** (długość wiadomości) musi być twardą walidacją w kodzie, przed
-  wysłaniem do modelu — nie instrukcją w promptcie. Odpowiedź ograniczona `max_tokens`.
+- **Cap wejścia** (długość wiadomości, `MAX_MESSAGE_CHARS = 800`) musi być twardą
+  walidacją w kodzie, przed wysłaniem do modelu — nie instrukcją w promptcie.
+  Odpowiedź ograniczona `MAX_OUTPUT_TOKENS = 1200`.
 
 ## Konwencje pracy
 

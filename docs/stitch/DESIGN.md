@@ -135,13 +135,21 @@ Nie przypisywać poziomu medycznego odchylenia ani strony PDF bez danych.
 Przywracanie dotyczy pierwotnego zatwierdzonego odczytu, nie ponownego OCR.
 
 Cała zakładka wyników korzysta z tego samego wzorca co tabela. Hero zachowuje
-tło, portret 112 × 112 px, datę aktualizacji i prawą, kremową kartę notatki
-opiekuna. Na telefonie notatka przechodzi pod dane. Nie ukrywać tych elementów
-ani nie zastępować hero miniaturowym paskiem. Identyfikacja zawsze ma opis
-(np. „Identyfikacja: brak”), nigdy samotne „Brak”. Nawigacja ma zaokrąglone
-przyciski, a panel badań zawiera wybór badania, dostęp do źródła i filtry.
-Wykres pokazuje rzeczywiste punkty z osiami i etykietami; brak historii ma jawny
-stan pusty. Nie dopisywać nieistniejących informacji o alergiach ani masie.
+tło, portret i datę aktualizacji.
+
+*Korekta zatwierdzona przez użytkownika 2026-11-17 (prywatna kartoteka i widok
+udostępniony weterynarzowi):* kompaktowe hero (`PetHeroCover`) ma portret
+`100 × 100 px` (`88 × 88 px` na mobile), pod metrykami podstawowymi (`Kastracja`,
+`Identyfikacja`) wyświetla wyróżnione ciepłą pigułką `tagi` opiekuńczo-zdrowotne
+(gdy występują), a zamiast prawego boksu długiego tekstu wyświetla przycisk **„O mnie”**
+otwierający modal „Parę słów o mnie” (ukryty całkowicie, gdy opis jest pusty).
+W pasku narzędzi nad hero (`household-record-toolbar`) w widoku prywatnym działa
+przełącznik kartotek `PetSwitcher` (pigułki do 5 pupili na desktopie, dropdown
+powyżej 5 i na `≤ 960 px`). Identyfikacja zawsze ma opis (np. „Identyfikacja: brak”),
+nigdy samotne „Brak”. Nawigacja ma zaokrąglone przyciski, a panel badań zawiera
+wybór badania, dostęp do źródła i filtry. Wykres pokazuje rzeczywiste punkty
+z osiami i etykietami; brak historii ma jawny stan pusty. Nie dopisywać
+nieistniejących informacji o alergiach ani masie.
 
 Tabela wyników (`7cb450a3e2fb4067a1b191cedaf4aa0c`) ma pięć kolumn:
 parametr z etykietą grupy, aktualny wynik z jednostką, poprzedni wynik ze zmianą,

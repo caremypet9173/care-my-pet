@@ -1,71 +1,79 @@
 # ROADMAP
 
-**Wersja:** 0.3 (cichy pilotaż)
-**Data:** 2026-09-28
+**Wersja:** 0.4 (cichy pilotaż — aktualizacja do stanu repo)
+**Data:** 2026-11-17
 **Powiązane:** PRD.md, TECH.md, HOSTING.md, MONETIZATION.md
 
 ## Punkt wyjścia
 
-Decyzja 2026-10-14: aplikację budujemy od nowa. Stare PoC potwierdziły
-użyteczność Gemini w Supabase Edge Functions i wykorzystanie pgvector do
-ograniczania kontekstu asystenta. Model oparty na JSONB nie sprawdził się
-dostatecznie; nie przenosimy implementacji PoC.
-Pierwszy krok: rejestracja e-mail/hasło i Google, logowanie oraz sesja.
-Start: cztery koty Wojtka i ich badania, następnie zaproszeni przyjaciele.
-Publiczny launch, lista oczekujących i kampania nie blokują pilotażu.
+Decyzja 2026-10-14: aplikację budujemy od nowa (bez przenoszenia starego PoC
+opartego na JSONB). Start: cztery koty Wojtka i ich badania, następnie zaproszeni
+przyjaciele. Publiczny launch, blog i kampania nie blokują pilotażu.
 
 ## P1 — Podstawy i własne użycie
 
-- Auth skonfigurowane i sprawdzone lokalnie 2026-10-18: e-mail/hasło,
-  Gmail SMTP, Google OAuth, sesja i wylogowanie (granice testów: docs/AUTH.md).
-- Profile podstawowe, gospodarstwa i RLS wdrożone 2026-10-18; lista,
-  dodawanie i edycja zweryfikowane z rzeczywistym Supabase na desktopie i mobile
-  (zakres i ograniczenia: PETS.md).
-- Formularz „Poznajmy Twojego pupila” według Stitch, prywatne awatary
-  z kadrowaniem i przybliżona data urodzenia wdrożone 2026-10-18.
-- Wyniki badań i ekran weryfikacji według wskazanego Split-Screen 2 wdrożone
-  2026-10-18: ręczny zapis, prywatne źródła, PDF.js, zatwierdzenie parametrów.
-  Rzeczywisty odczyt Gemini przeszedł test na syntetycznym PDF po doładowaniu
-  Google i korekcie schematu odpowiedzi; następnie ocenić prawdziwe badania.
-  Zakres i ograniczenia: MEDICAL_REPORTS.md.
-- Następnie zbudować wizyty, szczepienia, profilaktykę, ręczne wyniki,
-  konta rodzinne i powiadomienia na nowym modelu danych.
-- Przygotować wybrane środowisko: Next.js na Vercel, backend i pliki w Supabase managed (HOSTING.md).
-- Dopracować UI według projektu Stitch 1963478756572071889; strona główna Signature.
-- Wprowadzić cztery koty i reprezentatywną część ich dokumentacji.
-- Sprawdzić przepływ: dokument → kot i data → wpis → odnalezienie historii.
-- Zweryfikować backup i odtworzenie bazy razem z plikami.
+### Zrealizowane w kodzie i Supabase (`2026-10-18` – `2026-11-17`)
+- **Auth i kontrola dostępu:** rejestracja/logowanie e-mail/hasło (Gmail SMTP)
+  i Google OAuth (`docs/AUTH.md`), bramka pilotażu (`pilot_whitelist`) oraz
+  tabela `waitlist`.
+- **Gospodarstwa i konta rodzinne:** role właściciela i współopiekuna,
+  zaproszenia, przełącznik gospodarstwa w nagłówku i pełne RLS.
+- **Profile pupili:** formularz z lokalnym kadrowaniem prywatnego awatara i
+  przybliżoną datą urodzenia (`docs/PETS.md`), system tagów opiekuńczo-zdrowotnych
+  (`tagi` ze słownikiem podpowiedzi), kompaktowe hero z przyciskiem/modalem
+  „O mnie” („Parę słów o mnie”) oraz szybki przełącznik kartotek `PetSwitcher`.
+- **Wyniki badań i dokumenty:** odczyt PDF/JPG/PNG przez Gemini (`gemini-3.5-flash-lite`),
+  ekran weryfikacji Split-Screen 2, kontrola duplikatów SHA-256, korekty pomiarów,
+  normalizacja parametrów/jednostek, macierz porównawcza trendów, obsługa badań
+  opisowych (USG/TK/RTG) i batchowy import kart wypisowych (`docs/MEDICAL_REPORTS.md`).
+- **Pomiary zdrowia i płynoterapia:** waga (`docs/WEIGHT.md`), ciśnienie krwi
+  (ACVIM/IRIS), glukoza, temperatura oraz moduł płynoterapii (wlewy i cykliczne
+  harmonogramy).
+- **Historia, leki i terminarz:** oś czasu wizyt/szczepień/profilaktyki (z
+  odczytem AI z dokumentu), harmonogramy leków (wiele pór dnia, śledzenie zapasu,
+  Dzienny plan opieki w Supabase Realtime, karta leczenia do druku) oraz
+  kalendarz opieki z powiadomieniami Web Push (VAPID) i SMTP (Nodemailer).
+- **Asystent AI i udostępnianie:** wielowątkowy czat z RAG (`pgvector`),
+  kontekst pełnej kartoteki (z tagami, pomiarami, lekami i płynoterapią),
+  eksport podsumowań do PDF oraz tymczasowe linki/QR read-only dla weterynarza.
+
+### Pozostało w P1 przed pełnym przejściem na produkcję pilotażu
+- Publikacja aplikacji Next.js na docelowym środowisku Vercel (`HOSTING.md`) i
+  konfiguracja cyklicznego wyzwalacza Cron dla `schedule-notifications`.
+- Wprowadzenie kompletu danych czterech kotów i weryfikacja przepływu na
+  prawdziwych badaniach (dokument → kot i data → wpis → odnalezienie historii).
+- Praktyczny test backupu i odtworzenia bazy razem z plikami Storage.
 
 ## P2 — AI na rzeczywistych badaniach
 
-- Ekstrakcja i interpretacja, korekta oraz zatwierdzenie przed zapisem.
-- Pomiar błędów wartości, jednostek, dat i przypisania do kota; osobna ocena USG.
-- Interpretacja generowana raz i zapisywana po zatwierdzeniu.
-- Pomiar czasu i kosztów analiz, ponowień oraz asystenta.
-- Ustalenie budżetu pilotażu i limitów przed szerszym udostępnieniem AI.
+- Ocena jakości ekstrakcji, dat, norm i przypisania do kota na rzeczywistym
+  zbiorze badań i opisów USG/TK/wypisów czterech kotów.
+- Analiza czasu odpowiedzi i realnych kosztów z `private.ai_usage_log` /
+  `private.ai_cost_summary` (zarówno ekstrakcji, jak i Asystenta AI).
+- Ustalenie budżetu pilotażu i ewentualna kalibracja limitów (10 analiz/dzień,
+  20 wiadomości/dzień) przed udostępnieniem przyjaciołom.
 
 ## P3 — Przyjaciele
 
-- Dostęp na zaproszenie; kontrola rejestracji w backendzie.
-- Osobne gospodarstwa; sprawdzenie izolacji danych.
-- Feedback z samodzielnego dodawania pupila i badań oraz odnajdywania historii.
-- Weryfikacja powiadomień i możliwość zgłaszania błędów.
-- Link/QR dla weterynarza według potrzeb pilotażu.
+- Udostępnienie kont zaproszonym osobom (`pilot_whitelist`).
+- Weryfikacja izolacji gospodarstw oraz zbieranie feedbacku z samodzielnego
+  dodawania pupili, leków, badań i udostępniania kartoteki linkiem/QR weterynarzowi.
+- Weryfikacja działania powiadomień push i e-mail u zewnętrznych testerów.
 
 ## P4 — Decyzja o szerszym otwarciu
 
-- Zakres publicznego MVP na podstawie użycia i kosztów.
-- Prepaid i Stripe przed uruchomieniem płatnych usług.
-- Publiczna strona główna, ewentualny blog z Sanity i kampania.
-- Dokumenty serwisu dopasowane do działania i rzeczywistych dostawców.
+- Zakres publicznego MVP na podstawie danych o użyciu i kosztach.
+- Prepaid i Stripe przed uruchomieniem płatnych usług (`MONETIZATION.md`).
+- Szersza kampania, ewentualny blog z Sanity i SEO (`TECH.md` §8).
+- Dopasowanie dokumentów prawnych (`/prywatnosc`, `/regulamin`) do docelowych
+  dostawców i operacji przed otwartą rejestracją.
 
 ## Mapowanie wcześniejszych kamieni milowych
 
-M1 → integracja P1; M2 → AI w P2; M3 → udostępnianie według potrzeb P3,
-płatności przy P4. PoC nie oznacza zweryfikowanego wdrożenia całego serwisu.
+M1 → integracja P1; M2 → AI w P2; M3 → udostępnianie wdrożone już w P1 (weryfikacja
+w P3), płatności przy P4.
 
 ## Późniejsze kierunki
 
-Trendy badań, aplikacje natywne według potrzeb, fundacje i schroniska w IDEAS.md.
-Dawne pomysły marketingowe (grupy właścicieli zwierząt, filmy z odczytem badań,
-treści edukacyjne) pozostają opcjami po pilotażu.
+Trendy badań, aplikacje natywne według potrzeb, fundacje, schroniska i KROPiK
+w `IDEAS.md`.

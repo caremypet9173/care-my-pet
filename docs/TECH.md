@@ -1,7 +1,7 @@
 # TECH — Stack i architektura
 
-**Wersja:** 0.3 (MVP / pilotaż)
-**Data:** 2026-09-28
+**Wersja:** 0.4 (MVP / cichy pilotaż — aktualizacja do stanu repo)
+**Data:** 2026-11-17
 **Status:** Aktywny
 **Powiązane:** PRD.md, ROADMAP.md, MONETIZATION.md, DESIGN.md
 
@@ -14,113 +14,126 @@ hosting i warstwa publiczna.
 
 | Warstwa | Technologia |
 |---|---|
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Tabler Icons; komponenty Signature |
-| Backend / BaaS | Supabase — PostgreSQL + RLS, Auth, Storage, Edge Functions (Deno), Realtime |
-| Hosting | Vercel (Next.js) + Supabase managed (backend i pliki) — patrz HOSTING.md |
-| PWA | @ducanh2912/next-pwa + Workbox |
-| Powiadomienia | VAPID Web Push (push) + Resend (email) |
-| Asystent AI | Claude Sonnet 4.5 |
-| Odczyt plików | Claude Haiku |
-| Ekstrakcja danych z dokumentów | Gemini (Pro) |
+| Frontend | Next.js 16 (`16.4.5`, App Router, Turbopack), React 19 (`19.3.0`), TypeScript, Tailwind CSS 4, Tabler Icons, `next-intl` (`pl`/`en`); komponenty Signature |
+| Backend / BaaS | Supabase — PostgreSQL + RLS + `pgvector`, Auth, Storage, Edge Functions (Deno), Realtime |
+| Hosting | Vercel (Next.js) + Supabase managed (backend i pliki) — patrz `HOSTING.md` |
+| PWA | Natywny manifest (`src/app/manifest.ts`) + własny Service Worker (`public/sw.js`, cache `caremypet-v2`, bypass w trybie lokalnym) |
+| Powiadomienia | Web Push VAPID (`web-push`) + e-mail SMTP (`nodemailer`) |
+| AI (ekstrakcja i asystent) | Gemini (`GEMINI_MODEL`, domyślnie `gemini-3.5-flash-lite`) |
+| RAG / embeddingi | `gemini-embedding-2` / `gemini-embedding-001` (768D) + `pgvector` (`pet_knowledge_chunk`) |
+| PDF po stronie klienta | `pdfjs-dist` (podgląd oryginałów) + `pdf-lib` / `@pdf-lib/fontkit` (dzielenie stron wypisów i eksport podsumowań AI) |
+
+*(Uwaga historyczna: wcześniejsze szkice przewidywały użycie Claude Sonnet/Haiku,
+Resend oraz `@ducanh2912/next-pwa` + Workbox. W bieżącej implementacji całość AI
+obsługuje API Gemini, pocztę SMTP realizuje Nodemailer, a PWA opiera się na
+natywnym manifeście Next.js i własnym `public/sw.js`.)*
 
 **Typografia i kolory:** patrz `DESIGN.md`. UI budowany na tokenach
-semantycznych (`--color-primary` itd.), nie na wartościach hex w kodzie —
-motywy kolorystyczne są przełączalne.
+semantycznych (`--color-primary` itd.), nie na wartościach hex w kodzie.
 
 ---
 
 ## 2. Zasady architektury
 
 - **Cała logika biznesowa w Supabase Edge Functions.** Warstwa hostingu
-  (Vercel lub własny Next.js) obsługuje wyłącznie UI i wyzwalacze Cron — nie trzyma
-  logiki domenowej.
-- **Auth przez Supabase** (`@supabase/ssr`), Next.js Middleware jako bramka UI.
+  (Vercel lub własny Next.js) obsługuje wyłącznie UI, SSR oraz wyzwalacze Cron —
+  nie trzyma logiki domenowej. Wdrożone funkcje (`supabase/functions/`):
+  `household`, `medical-reports`, `pet-assistant`, `pet-history`,
+  `pet-medications`, `pet-schedule`, `pet-share`, `pet-weight`, `pets`,
+  `schedule-notifications` (oraz współdzielony moduł `_shared/rag.ts`).
+- **Auth przez Supabase** (`@supabase/ssr`), `src/proxy.ts` jako bramka UI i
+  odświeżania sesji dla tras `/{locale}/app`, `/login`, `/register`, `/auth`.
+  Dostęp kontrolowany przez tabelę `pilot_whitelist` (`check_pilot_access`).
 - **Izolacja danych przez RLS.** Właściciele współdzielą jedną bazę; każdy wiersz
-  ma `gospodarstwo_id`, a polityki RLS odcinają dostęp do cudzych danych na
-  poziomie silnika bazy — ochrona działa nawet przy błędzie w kodzie aplikacji.
-- **Storage:** osobny folder per gospodarstwo we wspólnym buckecie (wyniki badań,
-  zdjęcia). Kompatybilność z S3 zostawia otwartą drogę do migracji na R2/S3.
-- **Bez osobnych baz per tenant.** To był narzut z wizji „platforma dla
-  organizacji". Dla MVP właścicielskiego multi-tenant przez RLS wystarcza; osobne
-  bazy per tenant dokładamy dopiero, gdy realnie wejdzie segment organizacyjny (v2).
-  Hosting i orkiestracja — patrz §7.
+  ma `gospodarstwo_id` (lub `household_id`), a polityki RLS odcinają dostęp do
+  cudzych danych na poziomie silnika bazy. Nowe tabele `public.*` mają jawne
+  uprawnienia `GRANT` przed włączeniem RLS (`AGENTS.md`).
+- **Storage:** prywatne buckety `pet-avatars` i `medical-documents` z politykami
+  RLS na ścieżkach gospodarstwa/użytkownika i czasowymi podpisanymi URL-ami
+  generowanymi po stronie serwera.
+- **Bez osobnych baz per tenant.** Dla MVP właścicielskiego multi-tenant przez RLS
+  wystarcza; osobne bazy per tenant dokładamy dopiero przy wejściu segmentu
+  organizacyjnego (v2).
 
 ---
 
-## 3. Pipeline AI — odczyt wyników badań
+## 3. Pipeline AI — odczyt dokumentów i asystent
 
-Najwyższe ryzyko techniczne projektu, więc opisane osobno.
+### 3.1 Odczyt wyników badań, opisów (USG/TK/RTG) i kart wypisowych
 
 ```
 plik (PDF/JPG/PNG)
    │
-   ├─▶ Gemini        — ekstrakcja: { parametr, wartość, jednostka }
+   ├─▶ SHA-256 + walidacja rozmiaru i sygnatury pliku
    │
-   ├─▶ Claude Sonnet — interpretacja: walidacja norm (gatunek+wiek),
-   │                    streszczenie prostym językiem, propozycja powiązania z wizytą
+   ├─▶ Gemini (gemini-3.5-flash-lite, JSON Schema)
+   │      ├─ badania lab: parametry, wartości, jednostki, zakresy, wstępna interpretacja
+   │      ├─ badania opisowe: pełny opis + wnioski (rows: [])
+   │      └─ karty wypisowe (batch): podział na raporty lab, zdarzenia, pomiary i leki
    │
    ▼
-propozycja do ZATWIERDZENIA przez użytkownika
+ekran weryfikacji Split-Screen 2 — do ZATWIERDZENIA przez użytkownika
    │
    ▼
-zapis do bazy (dopiero po potwierdzeniu)
+zapis atomowy w bazie (RPC) + indeksacja RAG (`pet_knowledge_chunk`) + log kosztu (`private.ai_usage_log`)
 ```
 
-**Twarda zasada:** żadna wartość nie trafia do bazy bez akceptacji użytkownika.
-Interpretacja AI na ekranie wyników jest generowana **raz, przy skanie dokumentu,
-i zapisywana** — nie liczona per kliknięcie. Dzięki temu jest dostępna offline i
-nie generuje kosztu tokenów przy każdym otwarciu.
+**Twarde zasady:**
+- Żadna wartość nie trafia do bazy bez potwierdzenia użytkownika.
+- Wstępna interpretacja wyników jest generowana **raz przy skanie dokumentu**
+  i zapisywana w bazie (nie przeliczana per otwarcie).
+- Korekty parametrów zapisują się jako osobne rewizje (`measurement_correction`),
+  zachowując niezmienny odczyt źródłowy (`pomiar_parametru`).
+- Twarda dzienna quota na ekstrakcję dokumentów (`private.medical_read_quota`,
+  10 prób/dobę UTC na konto).
 
-**Otwarte ryzyko do weryfikacji na prawdziwych dokumentach:** czy AI wiarygodnie
-wyciąga wartości liczbowe z opisowych raportów (np. wymiary narządów z opisu USG).
-Do walidacji ręcznej przed dopuszczeniem ekstrakcji liczbowej z opisów.
+### 3.2 Kontrola kosztu i kontekst Asystenta AI (`pet-assistant`)
 
-### Kontrola kosztu asystenta konwersacyjnego
-
-Koszt zapytania zależy od tokenów, nie od liczby wiadomości, więc limit 20/dzień
-nie wystarcza — trzeba ograniczyć rozmiar pojedynczego wywołania. Trzy warstwy:
-
-- **Cap wejścia (twardy, w aplikacji).** Walidacja długości wiadomości **przed**
-  wysłaniem do modelu. To musi być kod, nie instrukcja w system promptcie — koszt
-  nalicza się od tego, co użytkownik wysłał, zanim model zareaguje na prompt.
-- **Ograniczenie kontekstu.** Ilość historii zwierzaka doklejanej do promptu jest
-  wyznaczana po stronie aplikacji, więc górny koszt zapytania jest z góry znany
-  niezależnie od treści pytania.
-- **Cap wyjścia.** `max_tokens` na odpowiedź ogranicza koszt generacji.
-
-Konkretne wartości dobierane przy implementacji.
-
----
-
-## 4. Model danych (szkic)
-
-Kilkanaście tabel — struktura nieskomplikowana:
-
-- `gospodarstwo` — jednostka izolacji (nośnik `gospodarstwo_id` dla RLS)
-- `uzytkownik` — członek gospodarstwa (rola: właściciel / członek)
-- `zwierze` — profil (gatunek, rasa, płeć, chip, notatki)
-- `pomiar_wagi` — historia wagi
-- `wizyta` — wizyty weterynaryjne
-- `szczepienie`, `profilaktyka` — rejestry z terminami następnych dawek
-- `lek` — historia leczenia
-- `wynik_badania` + załącznik pliku
-- `udostepnienie` — link/QR read-only dla weterynarza (TTL, status, log otwarć)
-
-**Przechowywanie wyników badań:** kierunek to model znormalizowany
-(`pomiar_parametru`, `slownik_parametru`, `norma_parametru`) zamiast trzymania
-parametrów w JSONB — daje sensowne trendy i walidację norm. Finalizacja tego
-schematu jest w toku (domykana po ustaleniu warstwy wizualnej wyników).
+Koszt zapytania zależy od tokenów, więc działają twarde zabezpieczenia w kodzie
+Edge Function `pet-assistant`:
+- **Cap wejścia:** `MAX_MESSAGE_CHARS = 800` walidowany przed wysłaniem do modelu.
+- **Cap wyjścia:** `MAX_OUTPUT_TOKENS = 1200`.
+- **Dzienny limit wiadomości:** `DAILY_MESSAGE_LIMIT = 20` atomowo przez `private.ai_assistant_quota`.
+- **Ograniczony kontekst (RAG + strukturalny snapshot):** wyszukiwanie
+  semantyczne (`match_pet_knowledge` na `pgvector`) + lekki ranking leksykalny i
+  najnowsze wpisy z profilu (w tym `tagi` i `notatki`), wagi, parametrów
+  życiowych, leków, płynoterapii oraz terminarza.
+- **Księgowanie użycia:** każde wywołanie AI loguje tokeny, czas i szacowany
+  koszt USD w `private.ai_usage_log` (widok `private.ai_cost_summary`).
 
 ---
 
-## 5. Decyzje odłożone
+## 4. Model danych (stan z 50 migracji SQL)
 
-| Temat | Uwagi |
+- **Gospodarstwa i dostęp:** `gospodarstwo`, `czlonek_gospodarstwa`,
+  `zaproszenie_gospodarstwa`, `pilot_whitelist`, `waitlist`
+- **Pupile:** `zwierze` (m.in. gatunek, rasa, płeć, przybliżona data urodzenia,
+  kastracja, identyfikacja/chip, `tagi text[]`, `notatki`, `avatar_path`)
+- **Wyniki badań (znormalizowane):** `wynik_badania`, `pomiar_parametru`,
+  `measurement_correction`
+- **Pomiary zdrowia i terapia:** `pet_weight`, `pet_vital_measurement`
+  (ciśnienie krwi, glukoza, temperatura), `pet_fluid_therapy`
+- **Historia, leki i terminarz:** `pet_health_event`, `medication_schedules`
+  (obsługuje też cykliczne harmonogramy płynoterapii), `medication_logs`,
+  `pet_schedule_item`, `household_notification_settings`,
+  `schedule_notification_log`, `pet_push_subscription`
+- **Udostępnianie weterynarzowi:** `pet_share_link`, `pet_share_open_log`
+- **AI / RAG:** `pet_knowledge_chunk` (`vector(768)` + indeks HNSW),
+  `pet_assistant_thread`, `pet_assistant_message`
+- **Schemat prywatny (`private.*`):** `medical_read_quota`,
+  `ai_assistant_quota`, `ai_usage_log`
+
+---
+
+## 5. Status wcześniejszych tematów i decyzje otwarte
+
+| Temat | Status / uwagi |
 |---|---|
-| Model Claude dla asystenta vs. koszt | Sonnet 4.5 domyślnie; obserwować koszt/jakość na realnym ruchu |
-| Finalny schemat wyników (normalizacja) | Domknąć po warstwie wizualnej ekranu wyników |
-| Ekstrakcja liczb z raportów opisowych | Walidacja ręczna na prawdziwych USG przed dopuszczeniem |
-| Migracja Storage na R2/S3 | Dopiero jeśli koszt/skala tego wymaga |
+| Znormalizowany schemat wyników badań | **Wdrożone** (`wynik_badania`, `pomiar_parametru`, `measurement_correction`, normalizacja jednostek i macierz trendów) |
+| Badania opisowe (USG/TK/RTG) i import wypisów | **Wdrożone** (obsługa `rows: []`, `notes` do 12 000 znaków, batchowy import kart wypisowych) |
+| Model AI do odczytu i asystenta | **Gemini (`gemini-3.5-flash-lite`)** w obu rolach; obserwować jakość i koszt w pilotażu |
+| Migracja Storage na R2/S3 | Odłożone — obecny `Supabase Storage` wystarcza na pilotaż |
+| Automatyczny Cron dla `schedule-notifications` | Do wpięcia przy produkcyjnym wdrożeniu (wyzwalacz harmonogramu powiadomień) |
 
 ---
 
@@ -131,69 +144,36 @@ schematu jest w toku (domykana po ustaleniu warstwy wizualnej wyników).
 | Flutter + własny backend Node.js | Zbędny narzut na MVP; Next.js + Supabase daje UI i backend w jednym ekosystemie |
 | Osobna baza per tenant | Multi-tenant przez RLS wystarcza dla właścicieli prywatnych |
 | Lokalny model AI (Llama/Mistral) | Słabszy odczyt PDF/obrazów, wymóg GPU, wyższy koszt przy małej skali |
-| Firebase / NoSQL | Utrudnia multi-tenant z RLS; brak natywnego PostgreSQL |
+| Firebase / NoSQL | Utrudnia multi-tenant z RLS i relacyjne zapytania z `pgvector` |
 
 ---
 
 ## 7. Hosting i infrastruktura — Vercel + Supabase managed
 
 **Decyzja 2026-09-28:** pilotaż na Vercel Hobby + Supabase Cloud Free.
-Własny serwer jest dopiero w planach. Dostępność potencjalnego administratora
-pozostaje atutem przy ewentualnej późniejszej migracji.
-
-Uzasadnienie i porównanie: [HOSTING.md](HOSTING.md). Wybór architektury nie oznacza
-jeszcze utworzenia usług ani zakupu płatnych planów.
-
-Next.js działa na Vercel; baza, Auth, Storage i Edge Functions w Supabase managed.
-AI i poczta są osobnymi usługami. Logika domenowa pozostaje w Edge Functions;
-konfigurację wyzwalaczy Cron ustalimy przy wdrożeniu.
+Własny serwer jest w planach na później (`HOSTING.md`). Next.js działa na Vercel;
+baza, Auth, Storage, Realtime i Edge Functions w Supabase managed.
 
 ### Utrzymanie i ewentualny późniejszy self-host
 
-W pilotażu dostawcy utrzymują infrastrukturę usług; po naszej stronie pozostają
-kod, konfiguracja dostępu, kontrola kosztów i odtworzenie danych wraz z kopiami
-plików. Poniższy podział z administratorem dotyczy dopiero własnego hostingu.
-
-Wojtek odpowiada za produkt, kod, model danych i AI. Administrator za uzgodniony
-zakres aktualizacji, sieci, TLS, monitoringu, backupów i odtwarzania.
-Konfiguracja wersjonowana, sekrety poza repo; właściciel ma dostęp i instrukcję
-odtworzenia niezależną od dostępności administratora. Backup obejmuje bazę
-**i pliki badań**, z testem odtworzenia.
-
-K8s nie jest wymaganiem. Propozycja dla jednego serwera: Docker Compose.
-Istniejący, utrzymywany klaster można wykorzystać po ocenie kosztu.
-Dostęp administratora i faktycznych dostawców uwzględniamy w dokumentach
-prywatności. Lokalizacja serwera nie opisuje przepływu danych do dostawców AI.
+W pilotażu po naszej stronie pozostają kod, migracje, konfiguracja dostępu,
+kontrola kosztów AI i kopie zapasowe (bazy **oraz plików Storage**, ponieważ
+backup Supabase nie obejmuje zawartości bucketów). Dla ewentualnego self-hosta
+punktem wyjścia pozostaje pojedynczy serwer z Docker Compose.
 
 ### Cache
 
-Panel, odpowiedzi sesyjne i badania nie trafiają do publicznego cache.
-Publiczne assety mogą być cache'owane. TTL linku nie oznacza jednorazowości.
-Self-host wymaga konfiguracji reverse proxy, TLS, obrazów i harmonogramów;
-wiele instancji wymaga uzgodnienia cache i rewalidacji.
-[Dokumentacja Next.js](https://nextjs.org/docs/app/guides/self-hosting).
+Panel (`/app/*`), odpowiedzi sesyjne i dokumenty nie trafiają do publicznego
+cache (`Cache-Control: private, no-store`). Publiczne assety mogą być
+cache'owane na produkcji; w trybie lokalnym (`127.0.0.1` / `localhost`)
+Service Worker `public/sw.js` całkowicie pomija przechwytywanie żądań `fetch`.
 
-## 8. Strona główna i późniejsza warstwa publiczna
+---
 
-Wybrana strona główna: „06 — Care My Pet Signature” ze Stitch (2026-10-01).
-Fundament frontendu i publiczne demo są wdrożone lokalnie w repo; logowanie
-i zaproszenia wymagają integracji backendu. Lista oczekujących, cennik i blog
-nie są wymagane. Zakres pierwszej implementacji opisuje `IMPLEMENTATION.md`.
-Ukrycie rejestracji lub noindex nie zastępuje kontroli dostępu w backendzie.
+## 8. Strona główna i warstwa publiczna
 
-Kierunek: jeden projekt Next.js, wspólne tokeny marki, osobne route groups dla
-strony głównej, logowania i panelu. Panel pod /app/*, za autoryzacją, z noindex.
-Route groups nie pojawiają się w URL.
-
-### Po decyzji o publicznym otwarciu
-
-- Landing pozostaje jedną z opcji; wtedy wraca temat bloga i SEO.
-- Sanity pozostaje dotychczasowym wyborem CMS dla osoby nietechnicznej.
-  Autor treści nie otrzymuje dostępu do bazy kartotek.
-- Metadane, sitemap, Article JSON-LD, podglądy społecznościowe oraz informacja,
-  że treści zdrowotne nie zastępują konsultacji z weterynarzem.
-- Artykuły jako szkice; publikacja po przeglądzie właściciela.
-- CMS wyzwala rewalidację; przy cache Cloudflare także unieważnienie na brzegu.
-- Zakres aplikacji bez zmian: właściciele prywatni, psy i koty.
-
-tmp/brief-zmian-landing.md to historyczna propozycja pre-launch, nie bieżący zakres.
+Strona główna „06 — Care My Pet Signature” ze Stitch oraz pełne publiczne demo
+`/demo/luna` (profil, historia, wyniki, dokumenty) są wdrożone w repozytorium.
+Moduł Auth, zaproszenia do gospodarstw, lista kontrolna pilotażu
+(`pilot_whitelist`) i tabela listy oczekujących (`waitlist`) działają w backendzie.
+Blog i CMS Sanity pozostają odłożone do decyzji o szerokim, publicznym otwarciu.
