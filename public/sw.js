@@ -1,6 +1,9 @@
 /* Care My Pet - Service Worker (PWA) */
 
-const CACHE_NAME = "caremypet-v1";
+const CACHE_NAME = "caremypet-v2";
+const IS_LOCALHOST =
+  self.location.hostname === "127.0.0.1" ||
+  self.location.hostname === "localhost";
 
 const PRECACHE_ASSETS = [
   "/",
@@ -13,8 +16,12 @@ const PRECACHE_ASSETS = [
   "/brand/icon-maskable.png",
 ];
 
-// Install: precache static shell assets
+// Install: precache static shell assets (skip precache on localhost dev server)
 self.addEventListener("install", (event) => {
+  if (IS_LOCALHOST) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   event.waitUntil(
     caches
       .open(CACHE_NAME)
@@ -26,7 +33,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate: clean up outdated caches
+// Activate: clean up outdated caches (and all caches on localhost)
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -34,7 +41,7 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) =>
         Promise.all(
           cacheNames.map((name) => {
-            if (name !== CACHE_NAME) {
+            if (IS_LOCALHOST || name !== CACHE_NAME) {
               return caches.delete(name);
             }
           })
@@ -44,8 +51,12 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Fetch: Network-First for HTML navigations, Cache-First/SWR for static assets
+// Fetch: bypass completely on localhost dev server; Network-First for HTML, Cache-First/SWR for production static assets
 self.addEventListener("fetch", (event) => {
+  if (IS_LOCALHOST) {
+    return;
+  }
+
   const { request } = event;
 
   // Only handle GET requests

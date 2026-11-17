@@ -23,6 +23,9 @@ export function PwaProvider() {
       const registerSw = () => {
         navigator.serviceWorker
           .register("/sw.js")
+          .then((registration) => {
+            void registration.update().catch(() => undefined);
+          })
           .catch((err) => {
             console.warn("[PWA] Service Worker registration failed:", err);
           });
