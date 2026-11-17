@@ -26,6 +26,7 @@ type PetSummaryData = {
   identyfikacja?: string;
   numer_id?: string | null;
   notatki?: string | null;
+  tagi?: string[];
 };
 
 type Props = {
@@ -204,6 +205,23 @@ export function TreatmentSummaryModal({
               <div className="col-span-2">
                 <span className="text-slate-500 block text-[11px] font-medium">{pl ? "Identyfikator (Chip/Tatuaż):" : "Microchip ID:"}</span>
                 <span className="font-mono text-slate-800">{pet.numer_id}</span>
+              </div>
+            )}
+            {(pet.tagi?.length ?? 0) > 0 && (
+              <div className="col-span-2 sm:col-span-4 pt-2 border-t border-slate-200/80">
+                <span className="text-slate-500 block text-[11px] font-medium mb-1">
+                  {pl ? "Tagi / ważne hasła:" : "Tags / key notes:"}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(pet.tagi ?? []).map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
             {pet.notatki && (

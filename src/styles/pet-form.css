@@ -75,3 +75,23 @@
   .pet-choice-options label { flex-basis: 25%; }
   .pet-crop-dialog { padding: 1rem; width: min(30rem, calc(100vw - 1rem)); max-width: calc(100vw - 1rem); }
 }
+
+.pet-tags-field > label > small { font-variant-numeric: tabular-nums; }
+.pet-selected-tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+.pet-selected-tag { display: inline-flex; align-items: center; gap: .35rem; padding: .28rem .4rem .28rem .6rem; border-radius: 999px; background: #fef6e4; border: 1px solid #ead198; color: #5c3b09; font-size: .75rem; font-weight: 600; line-height: 1.2; }
+.pet-selected-tag > svg { color: #b47418; flex-shrink: 0; }
+.pet-selected-tag button { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; color: #7a5216; cursor: pointer; }
+.pet-selected-tag button:hover { background: #f2dfb3; color: #402704; }
+.pet-selected-tag button:focus-visible { outline: 2px solid #32766c; outline-offset: 1px; }
+.pet-tag-input-row { display: flex; align-items: stretch; gap: .5rem; }
+.pet-tag-input-row input { flex: 1; min-width: 0; }
+.pet-tag-add-btn { min-height: 44px; flex-shrink: 0; }
+.pet-tag-suggestions { display: grid; gap: .65rem; margin-top: .25rem; padding-top: .65rem; border-top: 1px dashed var(--color-border); }
+.pet-tag-suggestion-group { display: grid; gap: .35rem; }
+.pet-tag-suggestion-group > span { font-size: .68rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.pet-tag-suggestion-list { display: flex; flex-wrap: wrap; gap: .35rem; }
+.pet-tag-chip { display: inline-flex; align-items: center; gap: .3rem; min-height: 32px; padding: .25rem .65rem; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface-raised); color: var(--color-text); font-size: .72rem; font-weight: 500; cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
+.pet-tag-chip:hover:not(:disabled) { border-color: #b47418; background: #fffaf0; }
+.pet-tag-chip.is-active { background: #1d4a40; border-color: #1d4a40; color: #fff; font-weight: 600; }
+.pet-tag-chip:disabled { opacity: .45; cursor: not-allowed; }
+.pet-tag-chip:focus-visible { outline: 2px solid #32766c; outline-offset: 2px; }

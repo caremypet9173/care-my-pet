@@ -164,6 +164,9 @@
 .household-card-identity h3 { font-size: 1rem; text-transform: uppercase; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; overflow-wrap: anywhere; }
 .household-card-identity p { font-size: .7rem; margin-block: .3rem; }
 .household-tag { display: inline-flex; align-items: center; background: var(--color-surface-sand); color: var(--color-text-muted); border: 1px solid var(--color-border); border-radius: 999px; padding: .125rem .5rem; font-size: .65rem; font-weight: 500; text-transform: none; overflow-wrap: anywhere; }
+.household-card-care-tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+.household-care-tag { display: inline-flex; align-items: center; padding: .18rem .58rem; border-radius: 999px; background: #fef6e4; border: 1px solid #ead198; color: #5c3b09; font-size: .7rem; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.household-care-tag.is-more { background: var(--color-surface-sand); border-color: var(--color-border); color: var(--color-text-muted); }
 .household-card-notice { display: flex; align-items: flex-start; gap: .5rem; background: var(--color-surface-sand); border: 1px solid var(--color-border); border-radius: .75rem; padding: .875rem; }
 .household-card-notice svg { flex-shrink: 0; color: var(--color-primary); }
 .household-card-notice strong { font-size: .75rem; font-weight: 600; }
@@ -458,7 +461,49 @@
 .schedule-day-card-actions { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; padding-top: .35rem; }
 .household-advisory { display: flex; align-items: flex-start; gap: .75rem; font-size: .7rem; background: var(--color-surface-sand); padding: 1rem; border-radius: .75rem; margin-top: 2rem; }
 .household-advisory svg { flex-shrink: 0; color: var(--color-primary); }
-.household-record-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; font-size: .8125rem; flex-wrap: wrap; }
+.household-record-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .75rem 1rem; margin-bottom: 1rem; font-size: .8125rem; flex-wrap: wrap; }
+.household-record-toolbar-nav { display: flex; align-items: center; gap: .65rem .85rem; flex-wrap: wrap; min-width: 0; flex: 1 1 auto; }
+.household-record-back { white-space: nowrap; flex-shrink: 0; }
+.pet-switcher { display: flex; align-items: center; min-width: 0; }
+.pet-switcher-pills { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; padding-left: .75rem; border-left: 1px solid var(--color-border); }
+.pet-switcher-pill { display: inline-flex; align-items: center; gap: .4rem; min-height: 36px; padding: .2rem .7rem .2rem .35rem; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface-raised); color: var(--color-text); font-size: .78rem; font-weight: 500; text-decoration: none; transition: background-color .15s, border-color .15s, color .15s; }
+.pet-switcher-pill:hover { background: #f4faf6; border-color: #9ec5b0; color: #164d34; }
+.pet-switcher-pill.is-active { background: #e8f3ed; border-color: #164d34; color: #164d34; font-weight: 700; cursor: default; }
+.pet-switcher-pill:focus-visible { outline: 2px solid #32766c; outline-offset: 2px; }
+.pet-switcher-pill-name { max-width: 7.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-switcher-avatar { display: inline-grid; place-items: center; border-radius: 999px; background: var(--color-surface-sand); color: var(--color-primary); overflow: hidden; flex-shrink: 0; border: 1px solid var(--color-border); }
+.pet-switcher-avatar.is-sm { width: 1.45rem; height: 1.45rem; }
+.pet-switcher-avatar.is-md { width: 1.95rem; height: 1.95rem; }
+.pet-switcher-avatar.has-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pet-switcher-dropdown-wrap { position: relative; }
+.pet-switcher-dropdown-wrap.is-responsive { display: none; }
+.pet-switcher-trigger { display: inline-flex; align-items: center; gap: .45rem; min-height: 38px; padding: .25rem .7rem .25rem .4rem; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface-raised); color: var(--color-text); font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.pet-switcher-trigger:hover, .pet-switcher-trigger[aria-expanded="true"] { border-color: #164d34; background: #f4faf6; color: #164d34; }
+.pet-switcher-trigger:focus-visible { outline: 2px solid #32766c; outline-offset: 2px; }
+.pet-switcher-trigger-name { max-width: 8.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-switcher-chevron { color: var(--color-text-muted); transition: transform .15s ease; flex-shrink: 0; }
+.pet-switcher-chevron.is-open { transform: rotate(180deg); }
+.pet-switcher-menu { position: absolute; left: 0; top: calc(100% + .4rem); z-index: 60; width: min(18rem, calc(100vw - 2rem)); max-height: 22rem; overflow-y: auto; border-radius: .9rem; border: 1px solid var(--color-border); background: var(--color-surface-raised); box-shadow: 0 14px 32px -8px rgba(20, 42, 30, .2), 0 4px 10px rgba(20, 42, 30, .06); }
+.pet-switcher-menu-header { padding: .6rem .85rem .45rem; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+.pet-switcher-menu-list { list-style: none; margin: 0; padding: .35rem; display: grid; gap: .2rem; }
+.pet-switcher-option { display: flex; align-items: center; gap: .6rem; padding: .48rem .6rem; border-radius: .65rem; text-decoration: none; color: var(--color-text); transition: background-color .15s; }
+.pet-switcher-option:hover { background: #f4faf6; }
+.pet-switcher-option.is-active { background: #e8f3ed; color: #164d34; }
+.pet-switcher-option:focus-visible { outline: 2px solid #32766c; outline-offset: 2px; }
+.pet-switcher-option-text { min-width: 0; flex: 1; display: grid; gap: .08rem; }
+.pet-switcher-option-text strong { font-size: .82rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-switcher-option-text small { font-size: .7rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-switcher-option.is-active .pet-switcher-option-text small { color: #2a6349; }
+.pet-switcher-option-check { color: #164d34; flex-shrink: 0; }
+@media (max-width: 60rem) {
+  .pet-switcher-pills { display: none; }
+  .pet-switcher-dropdown-wrap.is-responsive { display: block; }
+}
+@media (max-width: 39.9375rem) {
+  .household-record-toolbar-nav { width: 100%; justify-content: space-between; }
+  .pet-switcher-menu { left: auto; right: 0; }
+  .pet-switcher-trigger-name { max-width: 7rem; }
+}
 .household-record-toolbar-actions { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .household-quick-anchor { position: relative; display: inline-flex; }
 .household-quick-chevron { transition: transform .15s ease; }

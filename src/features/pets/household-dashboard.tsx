@@ -201,6 +201,21 @@ export function HouseholdDashboard({
                 </div>
               </div>
 
+              {(pet.tagi?.length ?? 0) > 0 && (
+                <div className="household-card-care-tags" aria-label={t.tagi}>
+                  {(pet.tagi ?? []).slice(0, 3).map((tag) => (
+                    <span key={tag} className="household-care-tag">
+                      {tag}
+                    </span>
+                  ))}
+                  {(pet.tagi?.length ?? 0) > 3 && (
+                    <span className="household-care-tag is-more">
+                      +{(pet.tagi?.length ?? 0) - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="household-card-notice">
                 <IconFiles size={18} aria-hidden="true" />
                 <div>

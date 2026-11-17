@@ -64,6 +64,7 @@ interface Props {
     identyfikacja?: string;
     numer_id?: string | null;
     notatki?: string | null;
+    tagi?: string[];
   };
   weight?: { kg: number; measured_on: string } | null;
   reports?: Array<{

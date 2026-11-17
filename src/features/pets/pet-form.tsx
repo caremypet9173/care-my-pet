@@ -8,6 +8,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { petMessages } from "./messages";
 import { petFormMessages } from "./form-messages";
 import { PhotoCropDialog } from "./photo-crop-dialog";
+import { PetTagsInput } from "./pet-tags-input";
 import type { Pet } from "./types";
 import "@/styles/pet-form.css";
 
@@ -22,11 +23,12 @@ export function PetForm({ pet }: { pet?: Pet }) {
   const locale = useLocale(); const t = petMessages[locale]; const d = petFormMessages[locale];
   const router = useRouter();
   const [species, setSpecies] = useState(pet?.gatunek ?? "");
-  const [sex, setSex] = useState(pet?.plec ?? "unknown");
+  const [sex, setSex] = useState<Pet["plec"]>(pet?.plec ?? "unknown");
   const [neutered, setNeutered] = useState(pet?.kastracja == null ? "unknown" : pet.kastracja ? "yes" : "no");
   const [identification, setIdentification] = useState(pet?.identyfikacja ?? "unknown");
   const [birthdate, setBirthdate] = useState(pet?.data_urodzenia ?? "");
   const [approximate, setApproximate] = useState(pet?.data_urodzenia_przyblizona ?? false);
+  const [tags, setTags] = useState<string[]>(pet?.tagi ?? []);
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -51,7 +53,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
   }, [isDirty, busy]);
   function report(next: Record<string, string>) {
     setErrors(next);
-    if (Object.keys(next).some(key => ["numer_id", "notatki", "identyfikacja", "kastracja"].includes(key)) && details.current) details.current.open = true;
+    if (Object.keys(next).some(key => ["numer_id", "tagi", "notatki", "identyfikacja", "kastracja"].includes(key)) && details.current) details.current.open = true;
     requestAnimationFrame(() => summary.current?.focus());
   }
   function acceptPhoto(blob: Blob) {
@@ -89,6 +91,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
         action: pet ? "update" : "create", id: pet?.id, updated_at: pet?.updated_at,
         pet: { ...values, gatunek: species, plec: sex, identyfikacja: identification,
           kastracja: neutered === "unknown" ? null : neutered === "yes",
+          tagi: tags,
           data_urodzenia_przyblizona: !!birthdate && approximate, avatar_path: avatarPath },
       } });
       if (invokeError) {
@@ -143,7 +146,24 @@ export function PetForm({ pet }: { pet?: Pet }) {
             <Choices name="kastracja" label={t.kastracja} options={[{ value: "yes", label: t.yes }, { value: "no", label: t.no }, { value: "unknown", label: t.unknown }]} value={neutered} onChange={setNeutered} />
             <Choices name="identyfikacja" label={t.identyfikacja} options={(["chip", "tattoo", "none", "unknown"] as const).map(value => ({ value, label: t[value] }))} value={identification} onChange={value => setIdentification(value as Pet["identyfikacja"])} />
             {(identification === "chip" || identification === "tattoo") && <div className="pet-form-field"><label htmlFor="pet-number">{t.numer_id} *</label><input id="pet-number" name="numer_id" required maxLength={identification === "chip" ? 15 : 50} pattern={identification === "chip" ? "[0-9]{15}" : ".*\\S.*"} inputMode={identification === "chip" ? "numeric" : "text"} defaultValue={pet?.numer_id ?? ""} aria-invalid={!!errors.numer_id} aria-describedby={errors.numer_id ? "numer_id-error" : "chip-hint"} /><small id="chip-hint">{identification === "chip" ? t.chipHint : ""}</small>{fieldError("numer_id")}</div>}
-            <div className="pet-form-field"><label htmlFor="pet-notes">{t.notatki}</label><textarea id="pet-notes" name="notatki" rows={4} maxLength={4000} defaultValue={pet?.notatki ?? ""} aria-invalid={!!errors.notatki} />{fieldError("notatki")}</div>
+            <PetTagsInput
+              locale={locale}
+              sex={sex}
+              value={tags}
+              onChange={(nextTags) => {
+                setTags(nextTags);
+                setIsDirty(true);
+                if (errors.tagi) {
+                  setErrors((current) => {
+                    const next = { ...current };
+                    delete next.tagi;
+                    return next;
+                  });
+                }
+              }}
+              error={errors.tagi}
+            />
+            <div className="pet-form-field"><label htmlFor="pet-notes">{t.notatki}</label><textarea id="pet-notes" name="notatki" rows={4} maxLength={4000} defaultValue={pet?.notatki ?? ""} aria-invalid={!!errors.notatki} aria-describedby={errors.notatki ? "notes-hint notatki-error" : "notes-hint"} /><small id="notes-hint">{d.notesHint}</small>{fieldError("notatki")}</div>
           </div></details>
         </div>
       </fieldset>

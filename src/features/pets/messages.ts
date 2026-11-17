@@ -1,26 +1,26 @@
 import type { Locale } from "@/i18n/types";
 const pl = {
   home: "Twój dom", title: "Twoje zwierzaki i domowa opieka zdrowotna", intro: "Zarządzaj kartotekami medycznymi, terminami badań i dokumentacją stada w jednym miejscu.",
-  add: "Dodaj pupila", edit: "Edytuj profil", back: "Wszystkie zwierzaki", empty: "Poznajmy Twojego pierwszego pupila",
+  add: "Dodaj pupila", edit: "Edytuj profil", back: "Wszystkie zwierzaki", switchPet: "Zmień pupila", petsInHousehold: "Pupile w gospodarstwie", empty: "Poznajmy Twojego pierwszego pupila",
   emptyBody: "Dodaj kota lub psa, aby stworzyć jego własny profil.", profile: "Profil pupila", basics: "Podstawowe informacje",
   imie: "Imię", gatunek: "Gatunek", rasa: "Rasa", data_urodzenia: "Data urodzenia", plec: "Płeć", kastracja: "Kastracja / sterylizacja",
-  identyfikacja: "Identyfikacja", numer_id: "Numer identyfikacyjny", notatki: "Notatki opiekuna", cat: "Kot", dog: "Pies",
+  identyfikacja: "Identyfikacja", numer_id: "Numer identyfikacyjny", tagi: "Tagi / ważne hasła", notatki: "Parę słów o mnie", aboutMe: "O mnie", cat: "Kot", dog: "Pies",
   female: "Samica", male: "Samiec", unknown: "Nie wiadomo", none: "Brak", chip: "Mikroczip", tattoo: "Tatuaż",
   yes: "Tak", no: "Nie", save: "Zapisz profil", cancel: "Anuluj", optional: "Pola oznaczone * są wymagane. Pozostałe możesz uzupełnić później.",
   chipHint: "Numer mikroczipa składa się z 15 cyfr.", failed: "Nie udało się zapisać profilu. Spróbuj ponownie.",
   invalid: "Sprawdź dane w polu:", conflict: "Profil zmienił się lub nie masz już do niego dostępu. Otwórz go ponownie przed kolejną edycją.",
-  loadFailed: "Nie udało się pobrać profili. Odśwież stronę, aby spróbować ponownie.", missing: "Nie uzupełniono", noNotes: "Nie dodano jeszcze notatek.",
+  loadFailed: "Nie udało się pobrać profili. Odśwież stronę, aby spróbować ponownie.", missing: "Nie uzupełniono", noNotes: "Nie dodano jeszcze opisu.",
 };
 const en: typeof pl = {
   home: "Your household", title: "Your pets and care at home", intro: "A place for every pet. Start with the basics.",
-  add: "Add a pet", edit: "Edit profile", back: "All pets", empty: "Let’s meet your first pet",
+  add: "Add a pet", edit: "Edit profile", back: "All pets", switchPet: "Switch pet", petsInHousehold: "Pets in household", empty: "Let’s meet your first pet",
   emptyBody: "Add a cat or dog to create their own profile.", profile: "Pet profile", basics: "Basic information",
   imie: "Name", gatunek: "Species", rasa: "Breed", data_urodzenia: "Date of birth", plec: "Sex", kastracja: "Neutered / spayed",
-  identyfikacja: "Identification", numer_id: "Identification number", notatki: "Caregiver notes", cat: "Cat", dog: "Dog",
+  identyfikacja: "Identification", numer_id: "Identification number", tagi: "Tags / key notes", notatki: "A few words about me", aboutMe: "About me", cat: "Cat", dog: "Dog",
   female: "Female", male: "Male", unknown: "Unknown", none: "None", chip: "Microchip", tattoo: "Tattoo",
   yes: "Yes", no: "No", save: "Save profile", cancel: "Cancel", optional: "Fields marked * are required. You can fill in the rest later.",
   chipHint: "A microchip number contains 15 digits.", failed: "Could not save the profile. Please try again.",
   invalid: "Check this field:", conflict: "This profile has changed or is no longer available to you. Reopen it before editing again.",
-  loadFailed: "Could not load profiles. Refresh the page to try again.", missing: "Not provided", noNotes: "No notes yet.",
+  loadFailed: "Could not load profiles. Refresh the page to try again.", missing: "Not provided", noNotes: "No description added yet.",
 };
 export const petMessages: Record<Locale, typeof pl> = { pl, en };

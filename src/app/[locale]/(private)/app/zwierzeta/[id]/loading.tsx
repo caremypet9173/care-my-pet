@@ -42,7 +42,7 @@ export default function PetLoading() {
       <section
         className="household-cover"
         style={{
-          minHeight: "18rem",
+          minHeight: "13.5rem",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
@@ -88,12 +88,6 @@ export default function PetLoading() {
                   style={{ width: "7rem", height: "1.25rem", borderRadius: "9999px" }}
                 />
               </div>
-            </div>
-          </div>
-          <div className="household-guardian-note" style={{ flex: 1, minWidth: "14rem" }}>
-            <div style={{ display: "grid", gap: "0.4rem", width: "100%" }}>
-              <div className="skeleton-bone" style={{ width: "5rem", height: "0.875rem" }} />
-              <div className="skeleton-bone" style={{ width: "90%", height: "0.875rem" }} />
             </div>
           </div>
         </div>

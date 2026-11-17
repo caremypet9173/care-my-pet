@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useLocale } from "next-intl";
-import Image from "next/image";
 import {
   IconCalendar,
   IconClock,
@@ -21,14 +20,13 @@ import {
   IconVaccine,
   IconX,
 } from "@tabler/icons-react";
-import { PetIcon } from "@/features/pets/pet-icon";
+import { PetHeroCover } from "@/features/pets/pet-hero-cover";
 import { petMessages } from "@/features/pets/messages";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
 import { FormattedMedicalText } from "@/features/medical/formatted-text";
 import { LabComparisonMatrix } from "@/features/medical/lab-comparison-matrix";
 import { PdfPreview } from "@/features/medical/pdf-preview";
 import { rangeStatus } from "@/features/medical/comparison";
-import { assets } from "@/lib/assets";
 import type { SharedPetRecordPayload } from "./types";
 
 type TabId = "summary" | "history" | "results" | "weight";
@@ -189,66 +187,11 @@ export function SharedVetRecordView({
         </div>
       </div>
 
-      <section className="household-cover">
-        <Image
-          src={assets.lunaCover}
-          alt=""
-          fill
-          sizes="(min-width: 1280px) 1184px, 100vw"
-          className="household-cover-image"
-          preload
-        />
-        <div className="household-cover-top">
-          <span>
-            {pl ? "Kartoteka pacjenta" : "Patient record"}
-          </span>
-        </div>
-        <div className="household-profile-glass">
-          <div className="household-profile-identity">
-            <div className="household-portrait">
-              <PetIcon
-                species={pet.gatunek}
-                src={pet.avatar_url}
-                name={pet.imie}
-              />
-              {!pet.avatar_url && <small>{d.noPhoto}</small>}
-            </div>
-            <div className="household-profile-details">
-              <div className="household-profile-name">
-                <h1>{pet.imie}</h1>
-                <span className="household-tag">{t[pet.gatunek]}</span>
-              </div>
-              <p>
-                {pet.rasa || t.missing} · {t[pet.plec]}
-              </p>
-              <div className="household-profile-tags">
-                <span className="household-tag">
-                  {t.kastracja}:{" "}
-                  {pet.kastracja == null
-                    ? t.unknown
-                    : pet.kastracja
-                      ? t.yes
-                      : t.no}
-                </span>
-                <span className="household-tag">
-                  {pet.identyfikacja === "none" ||
-                  pet.identyfikacja === "unknown"
-                    ? `${t.identyfikacja}: ${t[pet.identyfikacja].toLocaleLowerCase(locale)}`
-                    : t[pet.identyfikacja]}
-                  {pet.numer_id ? `: ${pet.numer_id}` : ""}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="household-guardian-note">
-            <IconHeart size={20} aria-hidden="true" />
-            <div>
-              <strong>{t.notatki}</strong>
-              <p className="pet-notes">{pet.notatki || t.noNotes}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PetHeroCover
+        pet={pet}
+        locale={locale}
+        badgeLabel={pl ? "Kartoteka pacjenta" : "Patient record"}
+      />
 
       <div className="household-record-tabs" role="tablist">
         <button

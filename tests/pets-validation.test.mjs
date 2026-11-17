@@ -33,3 +33,12 @@ test('rejects malformed input and length overflow', () => {
     assert.equal(validatePet(input).ok, false);
   }
 });
+test('normalizes and validates pet tags', () => {
+  assert.deepEqual(validatePet(base).value.tagi, []);
+  const res = validatePet({ ...base, tagi: ['  nerkowiec ', 'Onkologiczna', 'onkologiczna', '   ', 'stres  u   weta'] });
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.value.tagi, ['nerkowiec', 'Onkologiczna', 'stres u weta']);
+  for (const badTags of ['nerkowiec', [123], ['a'.repeat(41)], Array.from({ length: 9 }, (_, i) => `tag-${i}`)]) {
+    assert.deepEqual(validatePet({ ...base, tagi: badTags }), { ok: false, field: 'tagi' });
+  }
+});

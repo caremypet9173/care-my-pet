@@ -15,14 +15,13 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/container";
 import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
-import { getPet } from "@/features/pets/data";
-import { PetIcon } from "@/features/pets/pet-icon";
+import { getPet, listPets } from "@/features/pets/data";
+import { PetHeroCover } from "@/features/pets/pet-hero-cover";
+import { PetSwitcher } from "@/features/pets/pet-switcher";
 import { petMessages } from "@/features/pets/messages";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
 import { RecordSections } from "@/features/pets/record-sections";
 import { IconCalendar, IconScale, IconFlask, IconHeart, IconHistory, IconStethoscope, IconVaccine, IconPill } from "@tabler/icons-react";
-import Image from "next/image";
-import { assets } from "@/lib/assets";
 import "@/styles/pets.css";
 import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
@@ -73,8 +72,16 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   const requestedPrompt = resolvedSearch.prompt;
   const tab = resolvedSearch.tab;
   const initialTab = tab === "history" ? 1 : tab === "results" ? 2 : tab === "documents" || (!tab && resolvedSearch.document) ? 3 : (tab === "weight" || tab === "measurements") ? 4 : tab === "assistant" || Boolean(requestedPrompt) ? 5 : 0;
+  const initialTabQuery =
+    tab && ["weight", "measurements", "history", "results", "documents", "assistant"].includes(tab)
+      ? tab
+      : resolvedSearch.document
+        ? "documents"
+        : requestedPrompt
+          ? "assistant"
+          : null;
   const isAssistantTab = initialTab === 5;
-  const [reports,weights,vitalMeasurements,fluids,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails] = await Promise.all([
+  const [reports,weights,vitalMeasurements,fluids,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails,householdPets] = await Promise.all([
     listReports(pet.id, requestedReport),
     listWeights(pet.id),
     listVitalMeasurements(pet.id),
@@ -87,8 +94,16 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     isAssistantTab ? getAssistantQuotaUsed() : Promise.resolve(undefined),
     listPetMedicationSchedules(pet.id),
     listPetMedicationLogs(pet.id),
-    getHouseholdDetails(pet.gospodarstwo_id)
+    getHouseholdDetails(pet.gospodarstwo_id),
+    listPets(pet.gospodarstwo_id)
   ]);
+  const switcherPets = (householdPets ?? [pet]).map(({ id, imie, gatunek, avatar_url, tagi }) => ({
+    id,
+    imie,
+    gatunek,
+    avatar_url,
+    tagi,
+  }));
   const memberNames: Record<string, string> = {};
   if (householdDetails?.owner?.user_id) {
     memberNames[householdDetails.owner.user_id] = householdDetails.owner.email?.split("@")[0] || (locale === "pl" ? "Właściciel" : "Owner");
@@ -117,12 +132,14 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     [t.plec, t[pet.plec]], [t.kastracja, pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no],
     [t.identyfikacja, t[pet.identyfikacja]], ...(pet.numer_id ? [[t.numer_id, pet.numer_id]] : []),
   ];
-  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><Link href="/app">← {t.back}</Link><div className="household-record-toolbar-actions"><PetQuickAddToolbarButton /><ShareRecordButton petId={pet.id} petName={pet.imie} /><ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink></div></div>
-    <section className="household-cover">
-      <Image src={assets.lunaCover} alt="" fill sizes="(min-width: 1280px) 1184px, 100vw" className="household-cover-image" preload />
-      <div className="household-cover-top"><span>{t.profile}</span><small>{locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}{new Intl.DateTimeFormat(locale, {dateStyle:"medium"}).format(new Date(pet.updated_at))}</small></div>
-      <div className="household-profile-glass"><div className="household-profile-identity"><div className="household-portrait"><PetIcon species={pet.gatunek} src={pet.avatar_url} name={pet.imie} />{!pet.avatar_url && <small>{d.noPhoto}</small>}</div><div className="household-profile-details"><div className="household-profile-name"><h1>{pet.imie}</h1><span className="household-tag">{t[pet.gatunek]}</span></div><p>{pet.rasa || t.missing} · {t[pet.plec]}</p><div className="household-profile-tags"><span className="household-tag">{t.kastracja}: {pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no}</span><span className="household-tag">{pet.identyfikacja === "none" || pet.identyfikacja === "unknown" ? `${t.identyfikacja}: ${t[pet.identyfikacja].toLocaleLowerCase(locale)}` : t[pet.identyfikacja]}{pet.numer_id ? `: ${pet.numer_id}` : ""}</span></div></div></div><div className="household-guardian-note"><IconHeart size={20} aria-hidden="true" /><div><strong>{t.notatki}</strong><p className="pet-notes">{pet.notatki || t.noNotes}</p></div></div></div>
-    </section>
+  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions"><PetQuickAddToolbarButton /><ShareRecordButton petId={pet.id} petName={pet.imie} /><ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink></div></div>
+    <PetHeroCover
+      pet={pet}
+      locale={locale}
+      badgeLabel={t.profile}
+      updatedLabel={`${locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}${new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(pet.updated_at))}`}
+      editHref={`/app/zwierzeta/${pet.id}/edytuj`}
+    />
     <RecordSections key={`${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter}/>} weight={<HealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames}/><div className="household-record-stats">{[
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
@@ -177,7 +194,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Pomiary zdrowia →':'Health measurements →'}</Link></dd></div>
     </dl></section>
-    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} />
+    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} />
   </aside></div>
     <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} />
     </RecordSections>

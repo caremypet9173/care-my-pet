@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
     const { data: pet, error: petError } = await client
       .from("zwierze")
       .select(
-        "id,gospodarstwo_id,imie,gatunek,rasa,data_urodzenia,data_urodzenia_przyblizona,plec,kastracja,notatki",
+        "id,gospodarstwo_id,imie,gatunek,rasa,data_urodzenia,data_urodzenia_przyblizona,plec,kastracja,notatki,tagi",
       )
       .eq("id", petId)
       .maybeSingle();
@@ -912,7 +912,8 @@ DANE PROFILOWE PUPILA:
 - Rasa: ${pet.rasa || "Brak danych"}
 - Data urodzenia: ${pet.data_urodzenia ? `${pet.data_urodzenia}${pet.data_urodzenia_przyblizona ? " (przybliżona)" : ""}` : "Nieznana"}
 - Płeć: ${sexLabel}, Kastracja/sterylizacja: ${neuteredLabel}
-- Notatki opiekuna: ${pet.notatki || "Brak"}
+- Tagi / ważne hasła: ${Array.isArray(pet.tagi) && pet.tagi.length > 0 ? pet.tagi.join(", ") : "Brak"}
+- Opis pupila (Parę słów o mnie): ${pet.notatki || "Brak"}
 
 POMIARY WAGI (od najnowszych):
 ${weightLines}
