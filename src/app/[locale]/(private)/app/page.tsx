@@ -57,9 +57,10 @@ export default async function AppPage() {
     listHouseholdMedicationLogs(householdId),
   ]);
   const d = dashboardMessages[locale];
+  const activePets = (pets ?? []).filter((pet) => !pet.archived_at);
   const empty = pets?.length === 0;
   const firstPet = locale === "pl" ? "Dodaj pierwszego pupila" : "Add your first pet";
-  const primaryPet = pets && pets.length > 0 ? pets[0] : null;
+  const primaryPet = activePets.length > 0 ? activePets[0] : null;
 
   return (
     <Container className="pets-page">

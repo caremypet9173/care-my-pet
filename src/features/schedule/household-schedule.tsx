@@ -155,6 +155,7 @@ export function HouseholdSchedule({
   fixedPetId,
   memberNames = {},
   currentUserId,
+  readOnly = false,
 }: {
   pets: Pick<Pet, "id" | "imie">[];
   initialScheduleItems: ScheduleItem[];
@@ -166,6 +167,7 @@ export function HouseholdSchedule({
   fixedPetId?: string;
   memberNames?: Record<string, string>;
   currentUserId?: string;
+  readOnly?: boolean;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
@@ -1125,6 +1127,7 @@ export function HouseholdSchedule({
   }
 
   function openNewDialogForDate(dateIso?: string) {
+    if (readOnly) return;
     setEditingItem(null);
     setDialogDefaultDate(dateIso);
     setDialogOpen(true);
@@ -1520,7 +1523,7 @@ export function HouseholdSchedule({
               </button>
             )}
 
-            {(entry.kind === "schedule_item" || entry.kind === "due_event") &&
+            {!readOnly && (entry.kind === "schedule_item" || entry.kind === "due_event") &&
               entry.status === "planned" && (
                 <button
                   type="button"
@@ -1551,7 +1554,7 @@ export function HouseholdSchedule({
                 </button>
               )}
 
-            {entry.kind === "schedule_item" && (
+            {!readOnly && entry.kind === "schedule_item" && (
               <>
                 {entry.status === "planned" && (
                   <>
@@ -1610,7 +1613,7 @@ export function HouseholdSchedule({
               </>
             )}
 
-            {entry.kind === "medication_dose" && (
+            {!readOnly && entry.kind === "medication_dose" && (
               <>
                 {entry.status === "planned" ? (
                   entry.dose.dose_date > todayIso ? (
@@ -1985,7 +1988,7 @@ export function HouseholdSchedule({
           )}
 
           <div className="schedule-day-card-actions">
-            {(entry.kind === "schedule_item" || entry.kind === "due_event") &&
+            {!readOnly && (entry.kind === "schedule_item" || entry.kind === "due_event") &&
               entry.status === "planned" && (
                 <button
                   type="button"
@@ -2016,7 +2019,7 @@ export function HouseholdSchedule({
                 </button>
               )}
 
-            {entry.kind === "schedule_item" && entry.status === "planned" && (
+            {!readOnly && entry.kind === "schedule_item" && entry.status === "planned" && (
               <>
                 <button
                   type="button"
@@ -2064,7 +2067,7 @@ export function HouseholdSchedule({
               </Link>
             )}
 
-            {entry.kind === "medication_dose" && (
+            {!readOnly && entry.kind === "medication_dose" && (
               <>
                 {entry.status === "planned" ? (
                   entry.dose.dose_date > todayIso ? (
@@ -2210,54 +2213,56 @@ export function HouseholdSchedule({
           </p>
         </div>
 
-        <div className="schedule-heading-actions">
-          <button
-            type="button"
-            className={`schedule-notif-toggle-btn${notificationsOpen ? " is-active" : ""}`}
-            onClick={() => setNotificationsOpen((prev) => !prev)}
-            title={
-              pl
-                ? "Ustawienia powiadomień e-mail"
-                : "Email notification settings"
-            }
-          >
-            <IconBell size={16} aria-hidden="true" />
-            <span>{pl ? "Powiadomienia" : "Notifications"}</span>
-          </button>
+        {!readOnly && (
+          <div className="schedule-heading-actions">
+            <button
+              type="button"
+              className={`schedule-notif-toggle-btn${notificationsOpen ? " is-active" : ""}`}
+              onClick={() => setNotificationsOpen((prev) => !prev)}
+              title={
+                pl
+                  ? "Ustawienia powiadomień e-mail"
+                  : "Email notification settings"
+              }
+            >
+              <IconBell size={16} aria-hidden="true" />
+              <span>{pl ? "Powiadomienia" : "Notifications"}</span>
+            </button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setEditingMedicationSchedule(null);
-              setMedicationDefaultDate(
-                displayLayout !== "agenda" ? selectedDayIso : undefined,
-              );
-              setMedicationDialogOpen(true);
-            }}
-          >
-            <IconPill size={16} aria-hidden="true" />
-            {pl ? "Zaplanuj lek / wlew" : "Schedule med / fluid"}
-          </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setEditingMedicationSchedule(null);
+                setMedicationDefaultDate(
+                  displayLayout !== "agenda" ? selectedDayIso : undefined,
+                );
+                setMedicationDialogOpen(true);
+              }}
+            >
+              <IconPill size={16} aria-hidden="true" />
+              {pl ? "Zaplanuj lek / wlew" : "Schedule med / fluid"}
+            </Button>
 
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() =>
-              openNewDialogForDate(
-                displayLayout !== "agenda" ? selectedDayIso : undefined,
-              )
-            }
-          >
-            <IconPlus size={16} aria-hidden="true" />
-            {pl ? "Zaplanuj termin" : "Schedule item"}
-          </Button>
-        </div>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() =>
+                openNewDialogForDate(
+                  displayLayout !== "agenda" ? selectedDayIso : undefined,
+                )
+              }
+            >
+              <IconPlus size={16} aria-hidden="true" />
+              {pl ? "Zaplanuj termin" : "Schedule item"}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {notificationsOpen && (
+      {!readOnly && notificationsOpen && (
         <div className="schedule-notifications-panel">
           {/* Sekcja 1: Powiadomienia Web Push (telefon i komputer) */}
           <div className="schedule-push-card">
@@ -2822,6 +2827,7 @@ export function HouseholdSchedule({
           }}
           formatDate={formatDate}
           renderCompactRow={renderCompactRow}
+          readOnly={readOnly}
         />
       )}
       {displayLayout === "week" && (
@@ -2839,10 +2845,12 @@ export function HouseholdSchedule({
           openNewDialogForDate={openNewDialogForDate}
           onCompleteTarget={setCompletingTarget}
           onEditItem={(item) => {
+            if (readOnly) return;
             setEditingItem(item);
             setDialogDefaultDate(undefined);
             setDialogOpen(true);
           }}
+          readOnly={readOnly}
         />
       )}
       {displayLayout === "day" && (
@@ -2855,6 +2863,7 @@ export function HouseholdSchedule({
           selectedDayEntries={selectedDayEntries}
           setDisplayLayout={setDisplayLayout}
           onAddMedication={(iso) => {
+            if (readOnly) return;
             setEditingMedicationSchedule(null);
             setMedicationDefaultDate(iso);
             setMedicationDialogOpen(true);
@@ -2862,6 +2871,7 @@ export function HouseholdSchedule({
           openNewDialogForDate={openNewDialogForDate}
           formatDate={formatDate}
           renderDayDetailCard={renderDayDetailCard}
+          readOnly={readOnly}
         />
       )}
       {displayLayout === "agenda" && (
@@ -2876,7 +2886,7 @@ export function HouseholdSchedule({
         />
       )}
 
-      {dialogOpen && (
+      {!readOnly && dialogOpen && (
         <ScheduleDialog
           pets={pets}
           defaultPetId={
@@ -2919,7 +2929,7 @@ export function HouseholdSchedule({
         />
       )}
 
-      {completingTarget && (
+      {!readOnly && completingTarget && (
         <ScheduleCompleteDialog
           target={completingTarget}
           onClose={() => setCompletingTarget(null)}
@@ -2951,7 +2961,7 @@ export function HouseholdSchedule({
         />
       )}
 
-      {medicationDialogOpen && (
+      {!readOnly && medicationDialogOpen && (
         <MedicationDialog
           pets={pets}
           defaultPetId={fixedPetId}

@@ -31,10 +31,12 @@ export function GlucoseView({
   petId,
   petName,
   initialRows,
+  readOnly = false,
 }: {
   petId: string;
   petName: string;
   initialRows: VitalMeasurement[];
+  readOnly?: boolean;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
@@ -127,14 +129,16 @@ export function GlucoseView({
                 : "Blood glucose monitoring and glycemic profile."}
             </p>
           </div>
-          <button
-            type="button"
-            className="weight-primary"
-            onClick={() => setEditing(null)}
-          >
-            <IconPlus size={16} />
-            {pl ? "Dodaj pomiar glukozy" : "Add glucose reading"}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="weight-primary"
+              onClick={() => setEditing(null)}
+            >
+              <IconPlus size={16} />
+              {pl ? "Dodaj pomiar glukozy" : "Add glucose reading"}
+            </button>
+          )}
         </header>
 
         {latest ? (
@@ -192,9 +196,11 @@ export function GlucoseView({
                 ? "Dodaj pierwszy pomiar cukru, aby rozpocząć monitorowanie glikemii i profilaktyki cukrzycy."
                 : "Add the first glucose reading to track diabetes care or glycemic control."}
             </p>
-            <button type="button" onClick={() => setEditing(null)}>
-              {pl ? "Dodaj pierwszy pomiar" : "Add first measurement"}
-            </button>
+            {!readOnly && (
+              <button type="button" onClick={() => setEditing(null)}>
+                {pl ? "Dodaj pierwszy pomiar" : "Add first measurement"}
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -257,7 +263,7 @@ export function GlucoseView({
                     pl ? "Status" : "Status",
                     pl ? "Okoliczności" : "Context",
                     pl ? "Notatka" : "Note",
-                    pl ? "Akcje" : "Actions",
+                    ...(readOnly ? [] : [pl ? "Akcje" : "Actions"]),
                   ].map((s) => (
                     <th key={s} scope="col">
                       {s}
@@ -294,32 +300,34 @@ export function GlucoseView({
                         )}
                       </td>
                       <td>{row.note || "—"}</td>
-                      <td>
-                        <div className="weight-row-actions">
-                          <button
-                            type="button"
-                            className="weight-edit"
-                            onClick={() => setEditing(row)}
-                            aria-label={`${pl ? "Edytuj pomiar" : "Edit"} ${formatDate(row.measured_on)}`}
-                          >
-                            <IconPencil size={15} aria-hidden="true" />
-                            {pl ? "Edytuj" : "Edit"}
-                          </button>
-                          <button
-                            type="button"
-                            className="weight-edit weight-delete"
-                            disabled={deleting}
-                            onClick={() => {
-                              setDeleteError("");
-                              setDeleteTarget(row);
-                            }}
-                            aria-label={`${pl ? "Usuń pomiar" : "Delete"} ${formatDate(row.measured_on)}`}
-                          >
-                            <IconTrash size={15} aria-hidden="true" />
-                            {pl ? "Usuń" : "Delete"}
-                          </button>
-                        </div>
-                      </td>
+                      {!readOnly && (
+                        <td>
+                          <div className="weight-row-actions">
+                            <button
+                              type="button"
+                              className="weight-edit"
+                              onClick={() => setEditing(row)}
+                              aria-label={`${pl ? "Edytuj pomiar" : "Edit"} ${formatDate(row.measured_on)}`}
+                            >
+                              <IconPencil size={15} aria-hidden="true" />
+                              {pl ? "Edytuj" : "Edit"}
+                            </button>
+                            <button
+                              type="button"
+                              className="weight-edit weight-delete"
+                              disabled={deleting}
+                              onClick={() => {
+                                setDeleteError("");
+                                setDeleteTarget(row);
+                              }}
+                              aria-label={`${pl ? "Usuń pomiar" : "Delete"} ${formatDate(row.measured_on)}`}
+                            >
+                              <IconTrash size={15} aria-hidden="true" />
+                              {pl ? "Usuń" : "Delete"}
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

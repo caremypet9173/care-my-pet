@@ -30,6 +30,24 @@ export async function isHouseholdOwner(): Promise<boolean> {
   return !!data;
 }
 
+export async function isPetHouseholdOwner(householdId: string): Promise<boolean> {
+  const client = await createClient();
+  if (!client) return false;
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return false;
+
+  const { data } = await client
+    .from("gospodarstwo")
+    .select("id")
+    .eq("id", householdId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  return !!data;
+}
+
 export async function getActiveHouseholdContext(): Promise<{
   activeHousehold: HouseholdInfo | null;
   isOwner: boolean;

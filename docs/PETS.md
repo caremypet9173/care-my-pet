@@ -139,3 +139,67 @@ zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
   po zmianach; `supabase db push` i `deploy` funkcji `pets` / `pet-assistant` wykonane
   na projekcie `lrlnqmciarjvngvquchu`. Testy E2E Playwright (`tests/e2e/pets-live.spec.ts`)
   zaktualizowano pod nowe etykiety i wymagają uruchomienia z poświadczeniami testowymi.
+
+## Aktualizacja 2026-11-17 — Odwracalne zamknięcie (archiwizacja) i przywracanie kartoteki
+
+- **Schemat i ochrona DB (`20261117210000_pet_archiving.sql`):**
+  - Tabela `public.zwierze` rozszerzona o kolumny `archived_at`, `archived_by`,
+    `archive_reason` (`'deceased' | 'rehomed' | 'other'`), `closed_on` (opcjonalna data
+    pożegnania wyłącznie dla `'deceased'`, walidowana w przedziale od `1900-01-01`
+    oraz `>= data_urodzenia` do bieżącej daty) i `archive_note` (maks. 1000 znaków)
+    oraz częściowy indeks `zwierze_active_idx` (`where archived_at is null`).
+  - Funkcje RPC `public.archive_pet` i `public.restore_pet` (`SECURITY INVOKER`)
+    dostępne wyłącznie dla właściciela gospodarstwa (`gospodarstwo.owner_id = auth.uid()`).
+    `archive_pet` wycisza aktywne harmonogramy (`medication_schedules.is_active = false`),
+    anuluje zaplanowane wizyty (`pet_schedule_item.status = 'cancelled'`) i unieważnia
+    aktywne linki udostępniania (`pet_share_link.revoked_at = now()`).
+  - Triggery `guard_archived_pet_update` (na `zwierze`) i `a_reject_archived_pet_mutation`
+    (na `wynik_badania`, `pomiar_parametru`, `measurement_correction`, `pet_weight`,
+    `pet_vital_measurement`, `pet_fluid_therapy`, `pet_health_event`, `medication_schedules`,
+    `medication_logs`, `pet_schedule_item`, `pet_knowledge_chunk`) blokują mutacje z kodem `PT423`.
+- **Edge Functions (`lrlnqmciarjvngvquchu`):**
+  - `pets`: akcje `archive` i `restore` oraz walidacja `validateArchivePet`
+    w `supabase/functions/pets/validation.mjs`.
+  - `schedule-notifications`: filtrowanie aktywnych pupili (`.is("archived_at", null)`)
+    w `test_digest` i cronie (e-mail i Web Push).
+  - `pet-assistant`: przekazuje status archiwalny oraz ewentualną datę i notatkę
+    do instrukcji systemowej, odpowiadając wyłącznie retrospektywnie.
+  - `medical-reports`, `pet-history`, `pet-medications`, `pet-schedule`, `pet-weight`:
+    blokują mutacje zarchiwizowanych kartotek odpowiedzią HTTP `423` (`pet_archived`).
+- **Interfejs (`src/features/pets/`, `src/app/[locale]/(private)/app/`):**
+  - Na `/app/zwierzeta/[id]/edytuj` właściciel ma sekcję „Zamknięcie kartoteki”
+    (`PetArchiveSection` z wyborem powodu, opcjonalną datą pożegnania przy `deceased`
+    i notatką); po zamknięciu wszystkie podstrony edycji/dodawania pokazują blokadę
+    `PetArchivedBlockedCard`.
+  - `HouseholdDashboard` przenosi zarchiwizowane profile do zwijanej sekcji
+    „Zamknięte kartoteki” i filtruje po aktywnych pupilach statystyki oraz kalendarz.
+  - `PetHeroCover` wyświetla stonowany tryb pamięci (`W pamięci` + lata/data) lub
+    `Kartoteka zamknięta` (także w `SharedVetRecordView` przy ręcznym udostępnieniu),
+    `PetArchivedBanner` daje właścicielowi akcję „Przywróć kartotekę” (`PetRestoreButton`),
+    a wszystkie panele na `/app/zwierzeta/[id]` otrzymują `readOnly={isArchived}`.
+
+## Aktualizacja 2026-11-18 — Archiwum danych do pobrania (7 dni, kod na e-mail, raport PDF + pliki)
+
+- **Baza danych (`20261118120000_pet_archive_links.sql`):**
+  - Tabela `public.pet_archive_link` (z jawnymi `GRANT` przed RLS) przechowująca
+    7-dniowe linki do pobrania archiwum pupila: `token`, `recipient_email`,
+    `access_code_hash` + `access_code_salt` (PBKDF2 SHA-256), `expires_at`, `revoked_at`,
+    `failed_attempts`, `locked_until` oraz liczniki (`unlocked_count`, `pdf_download_count`,
+    `file_download_count`). Dostęp przez RLS i mutacje w UI wyłącznie dla właściciela
+    gospodarstwa.
+- **Edge Function `pet-archive` (`supabase/functions/pet-archive/`):**
+  - Właściciel (`list`, `create`, `revoke`): tworzy 7-dniowy link, generuje 8-znakowy kod
+    dostępu (`XXXX-XXXX`), zapisuje solony hash i wysyła link wraz z kodem przez SMTP
+    (`nodemailer`) na wskazany adres e-mail.
+  - Odbiorca (`get_meta`, `unlock`, `get_document_url`, `track_pdf_download`):
+    weryfikuje kod z blokadą na 15 min po każdych 5 błędnych próbach, zwraca podpisany
+    30-minutowy token sesji HMAC oraz dane kliniczne i listę załączników (bez czatów
+    Asystenta AI, logów domowników i prywatnej notatki zamykającej); pliki z
+    `medical-documents` pobierane są bezpośrednio na żądanie przez `signedUrl`.
+- **Interfejs i raport PDF (`src/features/archive/`, `/archiwum/[token]`):**
+  - Przycisk `ArchiveLinkButton` na widoku kartoteki (zarówno aktywnej, jak i zamkniętej)
+    obok `ShareRecordButton`, widoczny wyłącznie dla właściciela (`isOwner`).
+  - Publiczna strona `src/app/[locale]/(public)/archiwum/[token]/page.tsx` +
+    `ArchivePortalView`: bramka z kodem dostępu, statystyki kartoteki, generator
+    wielostronicowego raportu A4 PDF po stronie przeglądarki (`buildPetArchivePdf` w `pdf-lib`
+    z osadzoną czcionką `Inter`) oraz pobieranie oryginalnych załączników badań.

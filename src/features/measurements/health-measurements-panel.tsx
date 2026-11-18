@@ -25,12 +25,14 @@ export function HealthMeasurementsPanel({
   weights,
   vitalMeasurements = [],
   initialMetric = "weight",
+  readOnly = false,
 }: {
   petId: string;
   petName: string;
   weights: WeightMeasurement[];
   vitalMeasurements?: VitalMeasurement[];
   initialMetric?: MetricType;
+  readOnly?: boolean;
 }) {
   const pl = useLocale() === "pl";
   const quickAdd = usePetQuickAddOptional();
@@ -116,6 +118,7 @@ export function HealthMeasurementsPanel({
               petId={petId}
               petName={petName}
               measurements={weights}
+              readOnly={readOnly}
             />
           )}
 
@@ -124,6 +127,7 @@ export function HealthMeasurementsPanel({
               petId={petId}
               petName={petName}
               initialRows={bpRows}
+              readOnly={readOnly}
             />
           )}
 
@@ -132,6 +136,7 @@ export function HealthMeasurementsPanel({
               petId={petId}
               petName={petName}
               initialRows={glucoseRows}
+              readOnly={readOnly}
             />
           )}
 
@@ -140,6 +145,7 @@ export function HealthMeasurementsPanel({
               petId={petId}
               petName={petName}
               initialRows={tempRows}
+              readOnly={readOnly}
             />
           )}
         </div>

@@ -89,12 +89,13 @@ Deno.serve(async (req) => {
 
     const { data: pet, error: petError } = await client
       .from("zwierze")
-      .select("id,gospodarstwo_id")
+      .select("id,gospodarstwo_id,archived_at")
       .eq("id", petId)
       .maybeSingle();
 
     if (petError) return reply({ error: "load_failed" }, 500);
     if (!pet) return reply({ error: "not_found" }, 404);
+    if (pet.archived_at) return reply({ error: "pet_archived" }, 423);
 
     if (body.action === "delete") {
       if (

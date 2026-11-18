@@ -10,6 +10,7 @@ import {listPetMedicationLogs, listPetMedicationSchedules} from "@/features/medi
 import {listAssistantThreads, listAssistantMessages, getAssistantQuotaUsed} from "@/features/assistant/data";
 import {AssistantPanel} from "@/features/assistant/assistant-panel";
 import {ShareRecordButton} from "@/features/share/share-record-dialog";
+import {ArchiveLinkButton} from "@/features/archive/archive-link-dialog";
 import { getLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/container";
@@ -20,7 +21,10 @@ import { PetHeroCover } from "@/features/pets/pet-hero-cover";
 import { PetSwitcher } from "@/features/pets/pet-switcher";
 import { petMessages } from "@/features/pets/messages";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
+import { petArchiveMessages } from "@/features/pets/archive-messages";
+import { PetArchivedBanner } from "@/features/pets/pet-archived-notice";
 import { RecordSections } from "@/features/pets/record-sections";
+import type { Locale } from "@/i18n/types";
 import { IconCalendar, IconScale, IconFlask, IconHeart, IconHistory, IconStethoscope, IconVaccine, IconPill } from "@tabler/icons-react";
 import "@/styles/pets.css";
 import "@/styles/medical.css";
@@ -97,13 +101,22 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     getHouseholdDetails(pet.gospodarstwo_id),
     listPets(pet.gospodarstwo_id)
   ]);
-  const switcherPets = (householdPets ?? [pet]).map(({ id, imie, gatunek, avatar_url, tagi }) => ({
-    id,
-    imie,
-    gatunek,
-    avatar_url,
-    tagi,
-  }));
+  const isArchived = Boolean(pet.archived_at);
+  const isOwner = Boolean(
+    householdDetails?.household?.is_owner ?? householdDetails?.owner?.is_self,
+  );
+  const archiveMsgs = petArchiveMessages[locale as Locale] ?? petArchiveMessages.pl;
+  const switcherPets = isArchived
+    ? []
+    : (householdPets ?? [pet])
+        .filter((p) => !p.archived_at)
+        .map(({ id, imie, gatunek, avatar_url, tagi }) => ({
+          id,
+          imie,
+          gatunek,
+          avatar_url,
+          tagi,
+        }));
   const memberNames: Record<string, string> = {};
   if (householdDetails?.owner?.user_id) {
     memberNames[householdDetails.owner.user_id] = householdDetails.owner.email?.split("@")[0] || (locale === "pl" ? "Właściciel" : "Owner");
@@ -129,18 +142,25 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   const facts = [
     [t.rasa, pet.rasa ?? t.missing],
     [t.data_urodzenia, pet.data_urodzenia ? new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(pet.data_urodzenia)) + (pet.data_urodzenia_przyblizona ? (locale === "pl" ? " (data przybliżona)" : " (approximate date)") : "") : t.unknown],
+    ...(pet.archived_at && pet.archive_reason === "deceased" && pet.closed_on
+      ? [[archiveMsgs.closedOnFact, new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(pet.closed_on))]]
+      : []),
+    ...(pet.archived_at && pet.archive_reason && pet.archive_reason !== "deceased"
+      ? [[archiveMsgs.reasonFact, archiveMsgs.reasons[pet.archive_reason].label]]
+      : []),
     [t.plec, t[pet.plec]], [t.kastracja, pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no],
     [t.identyfikacja, t[pet.identyfikacja]], ...(pet.numer_id ? [[t.numer_id, pet.numer_id]] : []),
   ];
-  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions"><PetQuickAddToolbarButton /><ShareRecordButton petId={pet.id} petName={pet.imie} /><ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink></div></div>
+  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions">{!isArchived && <PetQuickAddToolbarButton />}<ShareRecordButton petId={pet.id} petName={pet.imie} />{isOwner && <ArchiveLinkButton petId={pet.id} petName={pet.imie} />}{!isArchived && <ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink>}</div></div>
     <PetHeroCover
       pet={pet}
       locale={locale}
       badgeLabel={t.profile}
       updatedLabel={`${locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}${new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(pet.updated_at))}`}
-      editHref={`/app/zwierzeta/${pet.id}/edytuj`}
+      editHref={isArchived ? undefined : `/app/zwierzeta/${pet.id}/edytuj`}
     />
-    <RecordSections key={`${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter}/>} weight={<HealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames}/><div className="household-record-stats">{[
+    <PetArchivedBanner pet={pet} locale={locale as Locale} isOwner={isOwner} />
+    <RecordSections key={`${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isArchived}/>} weight={<HealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isArchived}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report} readOnly={isArchived}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isArchived}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isArchived}/><div className="household-record-stats">{[
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
       { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },
@@ -194,9 +214,9 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Pomiary zdrowia →':'Health measurements →'}</Link></dd></div>
     </dl></section>
-    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} />
+    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} readOnly={isArchived} />
   </aside></div>
-    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} />
+    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} readOnly={isArchived} />
     </RecordSections>
     </PetQuickAddProvider>
   </Container>;

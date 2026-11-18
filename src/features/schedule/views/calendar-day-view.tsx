@@ -22,6 +22,7 @@ interface CalendarDayViewProps {
   openNewDialogForDate: (iso: string) => void;
   formatDate: (iso: string) => string;
   renderDayDetailCard: (entry: UnifiedScheduleEntry) => React.ReactNode;
+  readOnly?: boolean;
 }
 
 export function CalendarDayView({
@@ -36,6 +37,7 @@ export function CalendarDayView({
   openNewDialogForDate,
   formatDate,
   renderDayDetailCard,
+  readOnly = false,
 }: CalendarDayViewProps) {
   return (
     <div className="schedule-day-view-panel">
@@ -73,26 +75,28 @@ export function CalendarDayView({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => onAddMedication(selectedDayIso)}
-          >
-            <IconPill size={16} aria-hidden="true" />
-            {pl ? "Dodaj lek" : "Add medication"}
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => openNewDialogForDate(selectedDayIso)}
-          >
-            <IconPlus size={16} aria-hidden="true" />
-            {pl ? "Dodaj termin" : "Add item on this day"}
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => onAddMedication(selectedDayIso)}
+            >
+              <IconPill size={16} aria-hidden="true" />
+              {pl ? "Dodaj lek" : "Add medication"}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => openNewDialogForDate(selectedDayIso)}
+            >
+              <IconPlus size={16} aria-hidden="true" />
+              {pl ? "Dodaj termin" : "Add item on this day"}
+            </Button>
+          </div>
+        )}
       </div>
 
       {selectedDayEntries.length === 0 ? (
@@ -110,17 +114,19 @@ export function CalendarDayView({
               ? "Nie masz zaplanowanych wizyt u weterynarza, szczepień ani przypomnień na ten termin."
               : "You have no vet visits, vaccinations, or reminders scheduled for this date."}
           </p>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => openNewDialogForDate(selectedDayIso)}
-          >
-            <IconPlus size={16} aria-hidden="true" />
-            <span>
-              {pl ? "Zaplanuj wizytę lub badanie" : "Schedule visit or test"}
-            </span>
-          </Button>
+          {!readOnly && (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => openNewDialogForDate(selectedDayIso)}
+            >
+              <IconPlus size={16} aria-hidden="true" />
+              <span>
+                {pl ? "Zaplanuj wizytę lub badanie" : "Schedule visit or test"}
+              </span>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="schedule-day-entries-timeline">

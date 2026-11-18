@@ -5,6 +5,7 @@ import { PetIcon } from "./pet-icon";
 import { GuardianNoteCard } from "./guardian-note-card";
 import { petMessages } from "./messages";
 import { dashboardMessages } from "./dashboard-messages";
+import { petArchiveMessages } from "./archive-messages";
 import type { Pet } from "./types";
 
 export function PetHeroCover({
@@ -30,7 +31,15 @@ export function PetHeroCover({
       : t[pet.identyfikacja];
 
   return (
-    <section className="household-cover">
+    <section
+      className={`household-cover${
+        pet.archived_at
+          ? pet.archive_reason === "deceased"
+            ? " household-cover--archived household-cover--deceased"
+            : " household-cover--archived"
+          : ""
+      }`}
+    >
       <Image
         src={assets.lunaCover}
         alt=""
@@ -40,7 +49,19 @@ export function PetHeroCover({
         preload
       />
       <div className="household-cover-top">
-        <span>{badgeLabel}</span>
+        <span>
+          {pet.archived_at
+            ? pet.archive_reason === "deceased"
+              ? `${petArchiveMessages[locale].heroBadgeDeceased}${
+                  pet.closed_on
+                    ? pet.data_urodzenia
+                      ? ` · ${pet.data_urodzenia.slice(0, 4)}–${pet.closed_on.slice(0, 4)}`
+                      : ` · ${pet.closed_on}`
+                    : ""
+                }`
+              : petArchiveMessages[locale].heroBadgeClosed
+            : badgeLabel}
+        </span>
         {updatedLabel ? <small>{updatedLabel}</small> : null}
       </div>
       <div className="household-profile-glass">
@@ -92,7 +113,7 @@ export function PetHeroCover({
           buttonLabel={t.aboutMe}
           dialogTitle={t.notatki}
           locale={locale}
-          editHref={editHref}
+          editHref={pet.archived_at ? undefined : editHref}
         />
       </div>
     </section>

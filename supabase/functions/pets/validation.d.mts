@@ -22,3 +22,21 @@ export function validatePet(
     avatar_path: string | null;
   };
 };
+
+export type ArchiveReason = "deceased" | "rehomed" | "other";
+export const ARCHIVE_REASONS: readonly ArchiveReason[];
+export const MAX_ARCHIVE_NOTE_LENGTH: number;
+
+export function validateArchivePet(
+  input: unknown,
+  today?: string,
+  birthDate?: string | null,
+): {
+  ok: boolean;
+  field?: string;
+  value?: {
+    archive_reason: ArchiveReason;
+    closed_on: string | null;
+    archive_note: string | null;
+  };
+};

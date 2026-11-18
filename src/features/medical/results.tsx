@@ -22,12 +22,14 @@ export function MedicalResults({
   petName,
   reports: initialReports,
   initialReportId,
+  readOnly = false,
 }: {
   petId: string;
   householdId?: string;
   petName?: string;
   reports: MedicalReport[];
   initialReportId?: string;
+  readOnly?: boolean;
 }) {
   const router=useRouter();
   const [detail,setDetail]=useState(!!initialReportId);
@@ -126,16 +128,18 @@ export function MedicalResults({
           </Link>
         )}
       </div>
-      <div className="medical-results-actions-buttons">
-        <DischargeImportButton
-          pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
-          householdId={householdId}
-        />
-        <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary" size="sm">
-          <IconPlus size={16} aria-hidden="true"/>
-          {locale==="pl"?"Dodaj badanie":"Add report"}
-        </ButtonLink>
-      </div>
+      {!readOnly && (
+        <div className="medical-results-actions-buttons">
+          <DischargeImportButton
+            pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
+            householdId={householdId}
+          />
+          <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary" size="sm">
+            <IconPlus size={16} aria-hidden="true"/>
+            {locale==="pl"?"Dodaj badanie":"Add report"}
+          </ButtonLink>
+        </div>
+      )}
     </section>
     {labReports.length>0 ? (
       <LabComparisonMatrix reports={reports} onOpenReport={openReportDetail}/>
@@ -148,10 +152,12 @@ export function MedicalResults({
           <ButtonLink href={`/app/zwierzeta/${petId}?tab=history&filter=descriptive`} variant="secondary">
             {locale==="pl"?"Zobacz badania opisowe w Historii →":"View descriptive reports in History →"}
           </ButtonLink>
-          <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`}>
-            <IconPlus size={16} aria-hidden="true"/>
-            {locale==="pl"?"Dodaj badanie":"Add report"}
-          </ButtonLink>
+          {!readOnly && (
+            <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`}>
+              <IconPlus size={16} aria-hidden="true"/>
+              {locale==="pl"?"Dodaj badanie":"Add report"}
+            </ButtonLink>
+          )}
         </div>
       </section>
     ) : (
@@ -173,7 +179,7 @@ export function MedicalResults({
       )}
     </div>
     <h2 ref={detailHeading} tabIndex={-1} className="medical-detail-title">{locale==="pl"?"Szczegóły badania":"Report details"}</h2>
-    <section className="pet-panel medical-results-heading"><div className="medical-results-title"><h2>{t.heading}</h2><p>{t.intro}</p></div><div className="medical-report-controls">{report&&<><label className="medical-report-picker"><IconCalendar size={18} aria-hidden="true"/><span className="sr-only">{t.report}</span><select aria-label={t.report} value={report.id} onChange={event=>{const next=reports.find(r=>r.id===event.target.value);setSelected(event.target.value);setCollapsed({});setParameter(next?.rows.find(row=>["above","below"].includes(rangeStatus(row)))??next?.rows.find(row=>numeric(row.value)!==null)??null);setSource(null);}}>{reports.map(r=><option key={r.id} value={r.id}>{date(r.test_date)} · {r.laboratory||r.title} ({r.rows.length>0?r.rows.length:locale==="pl"?"opisowe":"descriptive"})</option>)}</select>{report.rows.some(row=>["above","below"].includes(rangeStatus(row)))&&<span className="medical-status medical-status--above">{locale==="pl"?"Odchylenia":"Outside range"}</span>}</label><button className="medical-source-link" type="button" onClick={openSource} disabled={loading}><IconFileText size={16}/>{t.source}</button><Link className="medical-ask-assistant-btn" href={`/app/zwierzeta/${petId}?tab=assistant&prompt=${encodeURIComponent(locale==="pl"?`Co wynika z badania "${report.title}" z dnia ${report.test_date}? Zwróć uwagę na odchylenia parametrów i zalecenia.`:`What are the key findings from the report "${report.title}" dated ${report.test_date}? Highlight any abnormal values and recommendations.`)}`}><IconSparkles size={15} aria-hidden="true"/><span>{locale==="pl"?"Zapytaj Asystenta":"Ask Assistant"}</span></Link></>}<ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${petId}/badania/nowe`}><IconPlus size={16}/>{t.add}</ButtonLink></div>
+    <section className="pet-panel medical-results-heading"><div className="medical-results-title"><h2>{t.heading}</h2><p>{t.intro}</p></div><div className="medical-report-controls">{report&&<><label className="medical-report-picker"><IconCalendar size={18} aria-hidden="true"/><span className="sr-only">{t.report}</span><select aria-label={t.report} value={report.id} onChange={event=>{const next=reports.find(r=>r.id===event.target.value);setSelected(event.target.value);setCollapsed({});setParameter(next?.rows.find(row=>["above","below"].includes(rangeStatus(row)))??next?.rows.find(row=>numeric(row.value)!==null)??null);setSource(null);}}>{reports.map(r=><option key={r.id} value={r.id}>{date(r.test_date)} · {r.laboratory||r.title} ({r.rows.length>0?r.rows.length:locale==="pl"?"opisowe":"descriptive"})</option>)}</select>{report.rows.some(row=>["above","below"].includes(rangeStatus(row)))&&<span className="medical-status medical-status--above">{locale==="pl"?"Odchylenia":"Outside range"}</span>}</label><button className="medical-source-link" type="button" onClick={openSource} disabled={loading}><IconFileText size={16}/>{t.source}</button><Link className="medical-ask-assistant-btn" href={`/app/zwierzeta/${petId}?tab=assistant&prompt=${encodeURIComponent(locale==="pl"?`Co wynika z badania "${report.title}" z dnia ${report.test_date}? Zwróć uwagę na odchylenia parametrów i zalecenia.`:`What are the key findings from the report "${report.title}" dated ${report.test_date}? Highlight any abnormal values and recommendations.`)}`}><IconSparkles size={15} aria-hidden="true"/><span>{locale==="pl"?"Zapytaj Asystenta":"Ask Assistant"}</span></Link></>}{!readOnly&&<ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${petId}/badania/nowe`}><IconPlus size={16}/>{t.add}</ButtonLink>}</div>
       {report&&report.rows.length>0&&<div className="medical-filters" aria-label={t.table}>{(["all","renal","blood","liver","other"] as const).map(value=><button type="button" key={value} aria-pressed={filter===value} onClick={()=>{setFilter(value);if(value!=="all")setCollapsed(current=>({...current,[value]:false}));}}>{t[value]} ({value==="all"?report.rows.length:report.rows.filter(row=>row.category===value).length})</button>)}</div>}
     </section>
     {!report?<section className="pet-panel medical-empty"><IconFileText size={36} aria-hidden="true"/><h3>{t.empty}</h3><p>{t.emptyHint}</p></section>:<>
@@ -195,7 +201,7 @@ export function MedicalResults({
           const currentValue=numeric(row.value),previousValue=previous?numeric(previous.row.value):null;
           const delta=currentValue!==null&&previousValue!==null?currentValue-previousValue:null;
           const change=delta===null?null:new Intl.NumberFormat(locale,{maximumSignificantDigits:12,signDisplay:"exceptZero"}).format(delta);
-          return <tr key={index} className={status==="above"||status==="below"?"medical-result-attention":undefined}><th scope="row"><div className="medical-table-identity"><button type="button" className="medical-param-link" onClick={()=>showTrend(row)}>{row.name}{row.is_key&&<IconStar size={13} aria-label={locale==="pl"?"Kluczowy parametr":"Key parameter"}/>}</button><span className={`medical-category medical-category--${row.category}`}>{t[row.category]}</span></div></th><td className="medical-current-result"><strong>{row.value}</strong> <span>{row.unit}</span></td><td>{previous?<><div className="medical-previous-result"><span>{previous.row.value} {previous.row.unit}</span>{change!==null&&<span className="medical-result-delta">{delta!>0?"↑ ":delta!<0?"↓ ":""}({change})</span>}</div><small>{date(previous.date)}</small></>:"—"}</td><td><ReferenceRange row={row}/></td><td><span className={`medical-status medical-status--${status}`}><span aria-hidden="true">{status==="above"?"↑ ":status==="below"?"↓ ":status==="within"?"● ":""}</span>{t[status]}</span>{row.id&&<button type="button" className="medical-row-edit" onClick={()=>setEditing(row)}><IconPencil size={14}/>{locale==="pl"?"Edytuj":"Edit"}</button>}</td></tr>;
+          return <tr key={index} className={status==="above"||status==="below"?"medical-result-attention":undefined}><th scope="row"><div className="medical-table-identity"><button type="button" className="medical-param-link" onClick={()=>showTrend(row)}>{row.name}{row.is_key&&<IconStar size={13} aria-label={locale==="pl"?"Kluczowy parametr":"Key parameter"}/>}</button><span className={`medical-category medical-category--${row.category}`}>{t[row.category]}</span></div></th><td className="medical-current-result"><strong>{row.value}</strong> <span>{row.unit}</span></td><td>{previous?<><div className="medical-previous-result"><span>{previous.row.value} {previous.row.unit}</span>{change!==null&&<span className="medical-result-delta">{delta!>0?"↑ ":delta!<0?"↓ ":""}({change})</span>}</div><small>{date(previous.date)}</small></>:"—"}</td><td><ReferenceRange row={row}/></td><td><span className={`medical-status medical-status--${status}`}><span aria-hidden="true">{status==="above"?"↑ ":status==="below"?"↓ ":status==="within"?"● ":""}</span>{t[status]}</span>{!readOnly&&row.id&&<button type="button" className="medical-row-edit" onClick={()=>setEditing(row)}><IconPencil size={14}/>{locale==="pl"?"Edytuj":"Edit"}</button>}</td></tr>;
         })}</tbody></Fragment>;})}</table></div>}
         {report.notes&&<FormattedMedicalText text={report.notes} className={`medical-notes${report.rows.length===0?" is-descriptive":""}`}/>}
       </section>

@@ -65,6 +65,7 @@ interface CalendarMonthViewProps {
   onAddMedication: (iso: string) => void;
   formatDate: (iso: string) => string;
   renderCompactRow: (entry: UnifiedScheduleEntry) => React.ReactNode;
+  readOnly?: boolean;
 }
 
 export function CalendarMonthView({
@@ -84,6 +85,7 @@ export function CalendarMonthView({
   onAddMedication,
   formatDate,
   renderCompactRow,
+  readOnly = false,
 }: CalendarMonthViewProps) {
   function handleCellSelect(iso: string) {
     if (
@@ -122,7 +124,9 @@ export function CalendarMonthView({
               tabIndex={0}
               aria-selected={isSelected}
               onClick={() => handleCellSelect(cell.iso)}
-              onDoubleClick={() => openNewDialogForDate(cell.iso)}
+              onDoubleClick={() => {
+                if (!readOnly) openNewDialogForDate(cell.iso);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -133,27 +137,29 @@ export function CalendarMonthView({
             >
               <div className="schedule-day-top">
                 <span className="schedule-day-num">{cell.dayNumber}</span>
-                <button
-                  type="button"
-                  className="schedule-day-add"
-                  title={
-                    pl
-                      ? `Zaplanuj termin na ${cell.iso}`
-                      : `Schedule on ${cell.iso}`
-                  }
-                  aria-label={
-                    pl
-                      ? `Zaplanuj termin na ${cell.iso}`
-                      : `Schedule on ${cell.iso}`
-                  }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedDayIso(cell.iso);
-                    openNewDialogForDate(cell.iso);
-                  }}
-                >
-                  +
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="schedule-day-add"
+                    title={
+                      pl
+                        ? `Zaplanuj termin na ${cell.iso}`
+                        : `Schedule on ${cell.iso}`
+                    }
+                    aria-label={
+                      pl
+                        ? `Zaplanuj termin na ${cell.iso}`
+                        : `Schedule on ${cell.iso}`
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDayIso(cell.iso);
+                      openNewDialogForDate(cell.iso);
+                    }}
+                  >
+                    +
+                  </button>
+                )}
               </div>
 
               {dayDots.length > 0 && (
@@ -232,27 +238,31 @@ export function CalendarMonthView({
               <IconCalendarEvent size={15} aria-hidden="true" />
               <span>{pl ? "Widok dnia" : "Day view"}</span>
             </button>
-            <button
-              type="button"
-              className="history-action-btn"
-              onClick={() => onAddMedication(selectedDayIso)}
-              title={
-                pl
-                  ? "Zaplanuj lek w tym dniu"
-                  : "Schedule medication on this day"
-              }
-            >
-              <IconPill size={15} aria-hidden="true" />
-              <span>{pl ? "Dodaj lek" : "Add medication"}</span>
-            </button>
-            <button
-              type="button"
-              className="history-action-btn is-primary"
-              onClick={() => openNewDialogForDate(selectedDayIso)}
-            >
-              <IconPlus size={15} aria-hidden="true" />
-              <span>{pl ? "Dodaj termin" : "Add item"}</span>
-            </button>
+            {!readOnly && (
+              <>
+                <button
+                  type="button"
+                  className="history-action-btn"
+                  onClick={() => onAddMedication(selectedDayIso)}
+                  title={
+                    pl
+                      ? "Zaplanuj lek w tym dniu"
+                      : "Schedule medication on this day"
+                  }
+                >
+                  <IconPill size={15} aria-hidden="true" />
+                  <span>{pl ? "Dodaj lek" : "Add medication"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="history-action-btn is-primary"
+                  onClick={() => openNewDialogForDate(selectedDayIso)}
+                >
+                  <IconPlus size={15} aria-hidden="true" />
+                  <span>{pl ? "Dodaj termin" : "Add item"}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 

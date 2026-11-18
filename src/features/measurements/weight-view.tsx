@@ -18,10 +18,12 @@ export function WeightView({
   petId,
   petName,
   measurements,
+  readOnly = false,
 }: {
   petId: string;
   petName: string;
   measurements: WeightMeasurement[];
+  readOnly?: boolean;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
@@ -90,7 +92,7 @@ export function WeightView({
     }
   }
 
-  const add = (
+  const add = readOnly ? null : (
     <button
       type="button"
       className="weight-primary"
@@ -153,9 +155,11 @@ export function WeightView({
                 ? "Dodaj pierwszy pomiar, aby rozpocząć historię wagi."
                 : "Add the first measurement to start a weight history."}
             </p>
-            <button type="button" onClick={() => setEditing(null)}>
-              {pl ? "Dodaj pierwszy pomiar" : "Add first measurement"}
-            </button>
+            {!readOnly && (
+              <button type="button" onClick={() => setEditing(null)}>
+                {pl ? "Dodaj pierwszy pomiar" : "Add first measurement"}
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -210,7 +214,7 @@ export function WeightView({
                     pl ? "Zarejestrowana masa" : "Weight",
                     pl ? "Różnica" : "Change",
                     pl ? "Okoliczności / wskazówki" : "Notes",
-                    pl ? "Akcje" : "Actions",
+                    ...(readOnly ? [] : [pl ? "Akcje" : "Actions"]),
                   ].map((s) => (
                     <th key={s} scope="col">
                       {s}
@@ -235,32 +239,34 @@ export function WeightView({
                       )}
                     </td>
                     <td>{row.note || "—"}</td>
-                    <td>
-                      <div className="weight-row-actions">
-                        <button
-                          type="button"
-                          className="weight-edit"
-                          onClick={() => setEditing(row)}
-                          aria-label={`${pl ? "Edytuj pomiar" : "Edit measurement"} ${date(row.measured_on)}`}
-                        >
-                          <IconPencil size={15} aria-hidden="true" />
-                          {pl ? "Edytuj" : "Edit"}
-                        </button>
-                        <button
-                          type="button"
-                          className="weight-edit weight-delete"
-                          disabled={deleting}
-                          onClick={() => {
-                            setDeleteError("");
-                            setDeleteTarget(row);
-                          }}
-                          aria-label={`${pl ? "Usuń pomiar" : "Delete measurement"} ${date(row.measured_on)}`}
-                        >
-                          <IconTrash size={15} aria-hidden="true" />
-                          {pl ? "Usuń" : "Delete"}
-                        </button>
-                      </div>
-                    </td>
+                    {!readOnly && (
+                      <td>
+                        <div className="weight-row-actions">
+                          <button
+                            type="button"
+                            className="weight-edit"
+                            onClick={() => setEditing(row)}
+                            aria-label={`${pl ? "Edytuj pomiar" : "Edit measurement"} ${date(row.measured_on)}`}
+                          >
+                            <IconPencil size={15} aria-hidden="true" />
+                            {pl ? "Edytuj" : "Edit"}
+                          </button>
+                          <button
+                            type="button"
+                            className="weight-edit weight-delete"
+                            disabled={deleting}
+                            onClick={() => {
+                              setDeleteError("");
+                              setDeleteTarget(row);
+                            }}
+                            aria-label={`${pl ? "Usuń pomiar" : "Delete measurement"} ${date(row.measured_on)}`}
+                          >
+                            <IconTrash size={15} aria-hidden="true" />
+                            {pl ? "Usuń" : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

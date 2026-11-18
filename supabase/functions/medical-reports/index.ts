@@ -221,10 +221,11 @@ Deno.serve(async req => {
     const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
     let body;try{body=JSON.parse(new TextDecoder().decode(bytes));}catch{return reply({error:'invalid_input'},400);}
     if(!uuid.test(body?.pet_id ?? ''))return reply({error:'invalid_input'},400);
-    const {data:pet,error:petError}=await client.from('zwierze').select('id,gospodarstwo_id').eq('id',body.pet_id).maybeSingle();
+    const {data:pet,error:petError}=await client.from('zwierze').select('id,gospodarstwo_id,archived_at').eq('id',body.pet_id).maybeSingle();
     if(petError)return reply({error:'load_failed'},500);
     if(!pet)return reply({error:'not_found'},404);
     if(body.action==='capabilities')return reply({extraction:!!Deno.env.get('GEMINI_API_KEY')});
+    if(pet.archived_at)return reply({error:'pet_archived'},423);
     if(body.action==='check_duplicate'){
       if(typeof body.sha256!=='string'||!/^[0-9a-f]{64}$/.test(body.sha256))return reply({error:'invalid_input'},400);
       return reply({duplicate:await findDuplicate(client,pet.id,body.sha256)});

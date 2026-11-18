@@ -159,6 +159,7 @@ export function MedicalDocuments({
   reports,
   healthEvents = [],
   initialDocumentId,
+  readOnly = false,
 }: {
   petId: string;
   householdId?: string;
@@ -166,6 +167,7 @@ export function MedicalDocuments({
   reports: MedicalReport[];
   healthEvents?: HealthEvent[];
   initialDocumentId?: string;
+  readOnly?: boolean;
 }) {
   const locale = useLocale();
   const t = copy[locale];
@@ -367,16 +369,18 @@ export function MedicalDocuments({
             <h2>{t.heading}</h2>
             <p>{t.intro}</p>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-            <DischargeImportButton
-              pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
-              householdId={householdId}
-            />
-            <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary">
-              <IconPlus size={18} aria-hidden="true" />
-              {t.add}
-            </ButtonLink>
-          </div>
+          {!readOnly && (
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+              <DischargeImportButton
+                pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
+                householdId={householdId}
+              />
+              <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary">
+                <IconPlus size={18} aria-hidden="true" />
+                {t.add}
+              </ButtonLink>
+            </div>
+          )}
         </header>
         <div className="medical-documents-search">
           <label htmlFor={searchId}>{t.searchLabel}</label>

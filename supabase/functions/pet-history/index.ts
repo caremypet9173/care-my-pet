@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
 
     const { data: pet, error: petError } = await client
       .from("zwierze")
-      .select("id,gospodarstwo_id")
+      .select("id,gospodarstwo_id,archived_at")
       .eq("id", body.pet_id)
       .maybeSingle();
     if (petError) return reply({ error: "load_failed" }, 500);
@@ -116,6 +116,9 @@ Deno.serve(async (req) => {
 
     if (body.action === "capabilities") {
       return reply({ extraction: !!Deno.env.get("GEMINI_API_KEY") });
+    }
+    if (pet.archived_at) {
+      return reply({ error: "pet_archived" }, 423);
     }
 
     if (body.action === "extract") {

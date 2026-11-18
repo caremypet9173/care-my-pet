@@ -65,6 +65,9 @@ verify_jwt = false
 [functions.pet-share]
 verify_jwt = false
 
+[functions.pet-archive]
+verify_jwt = false
+
 [functions.pet-medications]
 verify_jwt = false
 

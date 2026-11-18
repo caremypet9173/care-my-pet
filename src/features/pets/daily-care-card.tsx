@@ -43,6 +43,7 @@ interface DailyCareCardProps {
   vitalMeasurements: VitalMeasurement[];
   weights: WeightMeasurement[];
   memberNames?: Record<string, string>;
+  readOnly?: boolean;
 }
 
 export function DailyCareCard({
@@ -54,6 +55,7 @@ export function DailyCareCard({
   vitalMeasurements,
   weights,
   memberNames = {},
+  readOnly = false,
 }: DailyCareCardProps) {
   const router = useRouter();
   const locale = useLocale();
@@ -363,51 +365,53 @@ export function DailyCareCard({
                     )}
                   </div>
 
-                  <div className="daily-care-dose-actions">
-                    {dose.is_completed ? (
-                      <button
-                        type="button"
-                        className="daily-care-btn-uncheck"
-                        disabled={isBusy}
-                        onClick={() => void handleToggleDose(dose, "taken")}
-                        title={pl ? "Cofnij oznaczenie" : "Uncheck dose"}
-                      >
-                        <IconCheck size={16} aria-hidden="true" />
-                        <span>{pl ? "Podano" : "Done"}</span>
-                      </button>
-                    ) : dose.is_skipped ? (
-                      <button
-                        type="button"
-                        className="daily-care-btn-uncheck is-skipped"
-                        disabled={isBusy}
-                        onClick={() => void handleToggleDose(dose, "skipped")}
-                        title={pl ? "Cofnij pominięcie" : "Unskip dose"}
-                      >
-                        <IconX size={15} aria-hidden="true" />
-                        <span>{pl ? "Pominięto" : "Skipped"}</span>
-                      </button>
-                    ) : (
-                      <>
+                  {!readOnly && (
+                    <div className="daily-care-dose-actions">
+                      {dose.is_completed ? (
                         <button
                           type="button"
-                          className="daily-care-btn-take"
+                          className="daily-care-btn-uncheck"
                           disabled={isBusy}
                           onClick={() => void handleToggleDose(dose, "taken")}
+                          title={pl ? "Cofnij oznaczenie" : "Uncheck dose"}
                         >
                           <IconCheck size={16} aria-hidden="true" />
-                          <span>{pl ? "Podaj" : "Give"}</span>
+                          <span>{pl ? "Podano" : "Done"}</span>
                         </button>
+                      ) : dose.is_skipped ? (
                         <button
                           type="button"
-                          className="daily-care-btn-skip"
+                          className="daily-care-btn-uncheck is-skipped"
                           disabled={isBusy}
-                          onClick={() => setSkippingDose(dose)}
+                          onClick={() => void handleToggleDose(dose, "skipped")}
+                          title={pl ? "Cofnij pominięcie" : "Unskip dose"}
                         >
-                          {pl ? "Pomiń" : "Skip"}
+                          <IconX size={15} aria-hidden="true" />
+                          <span>{pl ? "Pominięto" : "Skipped"}</span>
                         </button>
-                      </>
-                    )}
-                  </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="daily-care-btn-take"
+                            disabled={isBusy}
+                            onClick={() => void handleToggleDose(dose, "taken")}
+                          >
+                            <IconCheck size={16} aria-hidden="true" />
+                            <span>{pl ? "Podaj" : "Give"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="daily-care-btn-skip"
+                            disabled={isBusy}
+                            onClick={() => setSkippingDose(dose)}
+                          >
+                            {pl ? "Pomiń" : "Skip"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}

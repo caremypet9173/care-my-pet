@@ -1,4 +1,5 @@
 import {
+  IconArchive,
   IconArrowRight,
   IconCalendar,
   IconFiles,
@@ -24,6 +25,7 @@ import type { Pet } from "./types";
 import { PetIcon } from "./pet-icon";
 import { petMessages } from "./messages";
 import { dashboardMessages } from "./dashboard-messages";
+import { petArchiveMessages } from "./archive-messages";
 import { EmptyHousehold } from "./empty-household";
 
 export function HouseholdDashboard({
@@ -51,6 +53,15 @@ export function HouseholdDashboard({
   const d = dashboardMessages[locale];
   const pl = locale === "pl";
   if (pets.length === 0) return <EmptyHousehold locale={locale} canAddPet={canAddPet} />;
+  const am = petArchiveMessages[locale];
+  const activePets = pets.filter((pet) => !pet.archived_at);
+  const archivedPets = pets.filter((pet) => !!pet.archived_at);
+  const activePetIds = new Set(activePets.map((pet) => pet.id));
+  const activeHealthEvents = healthEvents.filter((ev) => activePetIds.has(ev.pet_id));
+  const activeScheduleItems = scheduleItems.filter((it) => activePetIds.has(it.pet_id));
+  const activeReportsSummary = reportsSummary.filter((r) => activePetIds.has(r.pet_id));
+  const activeMedicationSchedules = medicationSchedules.filter((s) => activePetIds.has(s.pet_id));
+  const activeMedicationLogs = medicationLogs.filter((l) => activePetIds.has(l.pet_id));
 
   const todayIso = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Warsaw",
@@ -62,21 +73,21 @@ export function HouseholdDashboard({
       timeZone: "UTC",
     }).format(new Date(iso));
 
-  const petMap = new Map(pets.map((p) => [p.id, p]));
+  const petMap = new Map(activePets.map((p) => [p.id, p]));
 
-  const vaccinationEvents = healthEvents.filter(
+  const vaccinationEvents = activeHealthEvents.filter(
     (ev) => ev.category === "vaccination",
   );
 
   const plannedDates: { petId: string; date: string; title: string }[] = [
-    ...scheduleItems
+    ...activeScheduleItems
       .filter((it) => it.status === "planned")
       .map((it) => ({
         petId: it.pet_id,
         date: it.scheduled_date,
         title: it.title,
       })),
-    ...healthEvents
+    ...activeHealthEvents
       .filter((ev) => ev.next_due_date !== null)
       .map((ev) => ({
         petId: ev.pet_id,
@@ -93,13 +104,13 @@ export function HouseholdDashboard({
   const stats = [
     {
       icon: IconFiles,
-      title: `${pets.length} · ${d.records}`,
-      text: pets.map((pet) => pet.imie).join(", ") || t.emptyBody,
+      title: `${activePets.length} · ${d.records}`,
+      text: activePets.map((pet) => pet.imie).join(", ") || t.emptyBody,
     },
     {
       icon: IconFlask,
       title: d.results,
-      text: `${pets.reduce((sum, pet) => sum + (pet.report_count ?? 0), 0)}`,
+      text: `${activePets.reduce((sum, pet) => sum + (pet.report_count ?? 0), 0)}`,
     },
     {
       icon: IconShieldCheck,
@@ -141,14 +152,14 @@ export function HouseholdDashboard({
       <div className="household-section-heading">
         <h2>{d.profiles}</h2>
         <span>
-          {pets.length} · {d.records}
+          {activePets.length} · {d.records}
         </span>
       </div>
 
       <div className="pets-grid">
-        {pets.map((pet) => {
-          const petEvents = healthEvents.filter((ev) => ev.pet_id === pet.id);
-          const petSchedule = scheduleItems.filter(
+        {activePets.map((pet) => {
+          const petEvents = activeHealthEvents.filter((ev) => ev.pet_id === pet.id);
+          const petSchedule = activeScheduleItems.filter(
             (it) => it.pet_id === pet.id && it.status === "planned",
           );
           const lastVisitEv =
@@ -277,7 +288,7 @@ export function HouseholdDashboard({
             <span className="add-pet-icon">
               <IconPlus size={26} aria-hidden="true" />
             </span>
-            <h3>{pets.length ? d.nextPet : t.empty}</h3>
+            <h3>{activePets.length ? d.nextPet : t.empty}</h3>
             <p>{d.addHint}</p>
             <span className="household-add-label">+ {t.add}</span>
           </Link>
@@ -285,14 +296,59 @@ export function HouseholdDashboard({
       </div>
 
       <HouseholdSchedule
-        pets={pets}
-        initialScheduleItems={scheduleItems}
-        initialHealthEvents={healthEvents}
-        initialReports={reportsSummary}
-        initialMedicationSchedules={medicationSchedules}
-        initialMedicationLogs={medicationLogs}
+        pets={activePets}
+        initialScheduleItems={activeScheduleItems}
+        initialHealthEvents={activeHealthEvents}
+        initialReports={activeReportsSummary}
+        initialMedicationSchedules={activeMedicationSchedules}
+        initialMedicationLogs={activeMedicationLogs}
         initialNotificationSettings={notificationSettings}
       />
+
+      {archivedPets.length > 0 && (
+        <details className="household-archived-section">
+          <summary className="household-archived-summary">
+            <span className="household-archived-summary-left">
+              <IconArchive size={17} aria-hidden="true" />
+              <span>{am.dashboardArchivedTitle}</span>
+              <span className="household-archived-count">{archivedPets.length}</span>
+            </span>
+          </summary>
+          <div className="household-archived-list">
+            {archivedPets.map((pet) => {
+              const isDeceased = pet.archive_reason === "deceased";
+              const reasonLabel = pet.archive_reason
+                ? am.reasons[pet.archive_reason]?.label
+                : am.heroBadgeClosed;
+              return (
+                <article className="household-archived-card" key={pet.id}>
+                  <div className="household-archived-card-info">
+                    <PetIcon
+                      species={pet.gatunek}
+                      src={pet.avatar_url}
+                      name={pet.imie}
+                    />
+                    <div className="household-archived-card-meta">
+                      <strong>{pet.imie}</strong>
+                      <span>
+                        {isDeceased
+                          ? `${am.heroBadgeDeceased}${pet.closed_on ? ` · ${formatDate(pet.closed_on)}` : ""}`
+                          : reasonLabel}
+                      </span>
+                    </div>
+                  </div>
+                  <Link
+                    className="button button--secondary button--sm"
+                    href={`/app/zwierzeta/${pet.id}`}
+                  >
+                    {am.dashboardOpenArchived}
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        </details>
+      )}
 
       <p className="household-advisory">
         <IconInfoCircle size={18} aria-hidden="true" />

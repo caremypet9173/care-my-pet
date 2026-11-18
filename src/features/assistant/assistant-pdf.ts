@@ -1,5 +1,10 @@
-import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, rgb, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import {
+  loadBrowserPdfAssets,
+  safeTextForFont,
+  wrapText,
+} from "../../lib/pdf-helpers.mjs";
 import type { AssistantPdfSummary } from "./types";
 
 const PAGE_WIDTH = 595.28; // A4 pt
@@ -17,109 +22,6 @@ const COLOR_MUTED = rgb(0.322, 0.392, 0.384);
 const COLOR_LINE = rgb(0.878, 0.863, 0.831);
 const COLOR_WARN_BG = rgb(0.996, 0.973, 0.922);
 const COLOR_WARN_BORDER = rgb(0.953, 0.831, 0.569);
-
-let cachedAssets: {
-  regular: Uint8Array;
-  bold: Uint8Array;
-  logoPng?: Uint8Array;
-} | null = null;
-
-async function loadBrowserPdfAssets(): Promise<{
-  regular: Uint8Array;
-  bold: Uint8Array;
-  logoPng?: Uint8Array;
-}> {
-  if (cachedAssets) return cachedAssets;
-  const [regRes, boldRes, logoRes] = await Promise.all([
-    fetch("/fonts/Inter-Regular.ttf"),
-    fetch("/fonts/Inter-Bold.ttf"),
-    fetch("/brand/icon-192.png").catch(() => null),
-  ]);
-  if (!regRes.ok || !boldRes.ok) {
-    throw new Error("Nie udało się wczytać czcionek do wygenerowania pliku PDF.");
-  }
-  const [regBuf, boldBuf, logoBuf] = await Promise.all([
-    regRes.arrayBuffer(),
-    boldRes.arrayBuffer(),
-    logoRes?.ok ? logoRes.arrayBuffer() : Promise.resolve(null),
-  ]);
-  cachedAssets = {
-    regular: new Uint8Array(regBuf),
-    bold: new Uint8Array(boldBuf),
-    logoPng: logoBuf ? new Uint8Array(logoBuf) : undefined,
-  };
-  return cachedAssets;
-}
-
-/** Strips characters unsupported by the embedded TTF font so pdf-lib never throws during text encoding. */
-function safeTextForFont(font: PDFFont, raw: string, fontSize: number): string {
-  const cleaned = raw.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
-  if (!cleaned) return "";
-  try {
-    font.widthOfTextAtSize(cleaned, fontSize);
-    return cleaned;
-  } catch {
-    let out = "";
-    for (const ch of cleaned) {
-      try {
-        font.widthOfTextAtSize(ch, fontSize);
-        out += ch;
-      } catch {
-        // Ignore unsupported emoji/symbol glyph
-      }
-    }
-    return out.trim();
-  }
-}
-
-/** Wraps a single paragraph into lines that fit inside maxWidth. */
-function wrapText(
-  font: PDFFont,
-  text: string,
-  fontSize: number,
-  maxWidth: number,
-): string[] {
-  const safe = safeTextForFont(font, text, fontSize);
-  if (!safe) return [];
-
-  const words = safe.split(" ");
-  const lines: string[] = [];
-  let current = "";
-
-  const pushLongWord = (word: string) => {
-    let chunk = "";
-    for (const ch of word) {
-      const candidate = chunk + ch;
-      if (chunk && font.widthOfTextAtSize(candidate, fontSize) > maxWidth) {
-        lines.push(chunk);
-        chunk = ch;
-      } else {
-        chunk = candidate;
-      }
-    }
-    if (chunk) current = chunk;
-  };
-
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
-      current = candidate;
-      continue;
-    }
-    if (current) {
-      lines.push(current);
-      current = "";
-    }
-    if (font.widthOfTextAtSize(word, fontSize) <= maxWidth) {
-      current = word;
-    } else {
-      pushLongWord(word);
-    }
-  }
-
-  if (current) lines.push(current);
-  return lines;
-}
 
 export function buildSummaryPdfFileName(
   petName: string,

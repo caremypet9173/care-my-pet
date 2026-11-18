@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
-import { validatePet } from './validation.mjs';
+import { validatePet, validateArchivePet } from './validation.mjs';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -37,6 +37,57 @@ Deno.serve(async (req) => {
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
     let body;
     try { body = JSON.parse(new TextDecoder().decode(bytes)); } catch { return reply({ error: 'invalid_input' }, 400); }
+    const uuidPattern = /^[0-9a-f-]{36}$/i;
+    if (body?.action === 'archive' && typeof body.id === 'string' && uuidPattern.test(body.id)) {
+      const { data: existingPet, error: lookupError } = await client
+        .from('zwierze')
+        .select('id, data_urodzenia, archived_at')
+        .eq('id', body.id)
+        .maybeSingle();
+      if (lookupError) { console.error('pet_archive_lookup_failed', lookupError.code); return reply({ error: 'save_failed' }, 500); }
+      if (!existingPet) return reply({ error: 'not_found' }, 404);
+      if (existingPet.archived_at) return reply({ error: 'already_archived' }, 409);
+
+      const parsedArchive = validateArchivePet(
+        body.archive ?? {
+          archive_reason: body.archive_reason,
+          closed_on: body.closed_on,
+          archive_note: body.archive_note,
+        },
+        undefined,
+        existingPet.data_urodzenia,
+      );
+      if (!parsedArchive.ok || !parsedArchive.value) {
+        return reply({ error: 'invalid_input', field: parsedArchive.field }, 400);
+      }
+
+      const { data, error } = await client.rpc('archive_pet', {
+        p_pet_id: body.id,
+        p_reason: parsedArchive.value.archive_reason,
+        p_closed_on: parsedArchive.value.closed_on,
+        p_note: parsedArchive.value.archive_note,
+      });
+      if (error) {
+        console.error('pet_archive_failed', error.code, error.message);
+        if (error.code === '42501') return reply({ error: 'forbidden' }, 403);
+        if (error.code === 'PT409') return reply({ error: 'already_archived' }, 409);
+        if (error.code === '22023') return reply({ error: 'invalid_input' }, 400);
+        if (error.code === 'P0002') return reply({ error: 'not_found' }, 404);
+        return reply({ error: 'save_failed' }, 500);
+      }
+      return reply({ pet: data });
+    }
+    if (body?.action === 'restore' && typeof body.id === 'string' && uuidPattern.test(body.id)) {
+      const { data, error } = await client.rpc('restore_pet', { p_pet_id: body.id });
+      if (error) {
+        console.error('pet_restore_failed', error.code, error.message);
+        if (error.code === '42501') return reply({ error: 'forbidden' }, 403);
+        if (error.code === 'PT409') return reply({ error: 'not_archived' }, 409);
+        if (error.code === 'P0002') return reply({ error: 'not_found' }, 404);
+        return reply({ error: 'save_failed' }, 500);
+      }
+      return reply({ pet: data });
+    }
     const parsed = validatePet(body?.pet);
     if (!parsed.ok || !parsed.value) return reply({ error: 'invalid_input', field: parsed.field }, 400);
     if (body.action === 'create') {
@@ -48,11 +99,15 @@ Deno.serve(async (req) => {
       }
       return reply({ pet: data }, 201);
     }
-    if (body.action === 'update' && typeof body.id === 'string' && /^[0-9a-f-]{36}$/i.test(body.id)
+    if (body.action === 'update' && typeof body.id === 'string' && uuidPattern.test(body.id)
         && typeof body.updated_at === 'string') {
       const { data, error } = await client.from('zwierze').update(parsed.value)
         .eq('id', body.id).eq('updated_at', body.updated_at).select().maybeSingle();
-      if (error) { console.error('pet_update_failed', error.code); return reply({ error: 'save_failed' }, 500); }
+      if (error) {
+        console.error('pet_update_failed', error.code);
+        if (error.code === 'PT423') return reply({ error: 'pet_archived' }, 423);
+        return reply({ error: 'save_failed' }, 500);
+      }
       if (!data) return reply({ error: 'conflict_or_not_found' }, 409);
       return reply({ pet: data });
     }

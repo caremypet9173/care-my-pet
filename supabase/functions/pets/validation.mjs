@@ -54,3 +54,59 @@ export function validatePet(input, today = new Date().toISOString().slice(0, 10)
       numer_id, notatki: text('notatki', 4000), tagi, data_urodzenia_przyblizona, avatar_path } };
   } catch (field) { return { ok: false, field }; }
 }
+
+export const ARCHIVE_REASONS = ['deceased', 'rehomed', 'other'];
+export const MAX_ARCHIVE_NOTE_LENGTH = 1000;
+
+function defaultMaxDateToday() {
+  const utc = new Date().toISOString().slice(0, 10);
+  const warsaw = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw' }).format(new Date());
+  return warsaw > utc ? warsaw : utc;
+}
+
+export function validateArchivePet(input, today = defaultMaxDateToday(), birthDate = null) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { ok: false, field: 'archive' };
+  }
+  const reason = typeof input.archive_reason === 'string' ? input.archive_reason.trim() : '';
+  if (!ARCHIVE_REASONS.includes(reason)) {
+    return { ok: false, field: 'archive_reason' };
+  }
+
+  let archive_note = null;
+  if (input.archive_note !== null && input.archive_note !== undefined) {
+    if (typeof input.archive_note !== 'string') {
+      return { ok: false, field: 'archive_note' };
+    }
+    const trimmed = input.archive_note.trim();
+    if (trimmed.length > MAX_ARCHIVE_NOTE_LENGTH) {
+      return { ok: false, field: 'archive_note' };
+    }
+    archive_note = trimmed || null;
+  }
+
+  let closed_on = null;
+  if (reason === 'deceased' && input.closed_on !== null && input.closed_on !== undefined && input.closed_on !== '') {
+    if (typeof input.closed_on !== 'string') {
+      return { ok: false, field: 'closed_on' };
+    }
+    const candidate = input.closed_on.trim();
+    if (candidate) {
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(candidate)
+        || Number.isNaN(Date.parse(candidate))
+        || new Date(candidate).toISOString().slice(0, 10) !== candidate
+        || candidate < '1900-01-01'
+        || candidate > today
+      ) {
+        return { ok: false, field: 'closed_on' };
+      }
+      if (typeof birthDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(birthDate) && candidate < birthDate) {
+        return { ok: false, field: 'closed_on' };
+      }
+      closed_on = candidate;
+    }
+  }
+
+  return { ok: true, value: { archive_reason: reason, closed_on, archive_note } };
+}

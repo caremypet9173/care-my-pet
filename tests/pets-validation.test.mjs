@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePet } from '../supabase/functions/pets/validation.mjs';
+import {
+  validatePet,
+  validateArchivePet,
+  MAX_ARCHIVE_NOTE_LENGTH,
+} from '../supabase/functions/pets/validation.mjs';
 const base = { imie: ' Luna ', gatunek: 'cat', plec: 'unknown', kastracja: null, identyfikacja: 'unknown' };
 test('approximate birthdate requires a date and avatar must be a storage key', () => {
   assert.equal(validatePet({...base,data_urodzenia_przyblizona:true}).ok,false);
@@ -41,4 +45,53 @@ test('normalizes and validates pet tags', () => {
   for (const badTags of ['nerkowiec', [123], ['a'.repeat(41)], Array.from({ length: 9 }, (_, i) => `tag-${i}`)]) {
     assert.deepEqual(validatePet({ ...base, tagi: badTags }), { ok: false, field: 'tagi' });
   }
+});
+test('validates pet archiving reason, departure date, and optional note', () => {
+  assert.deepEqual(
+    validateArchivePet(
+      { archive_reason: 'deceased', closed_on: '2026-11-10', archive_note: '  Żegnaj kochany.  ' },
+      '2026-11-17',
+      '2015-05-01',
+    ),
+    {
+      ok: true,
+      value: { archive_reason: 'deceased', closed_on: '2026-11-10', archive_note: 'Żegnaj kochany.' },
+    },
+  );
+  // Strips closed_on when reason is not deceased and normalizes blank note
+  assert.deepEqual(
+    validateArchivePet(
+      { archive_reason: 'rehomed', closed_on: '2026-11-10', archive_note: '   ' },
+      '2026-11-17',
+      '2015-05-01',
+    ),
+    {
+      ok: true,
+      value: { archive_reason: 'rehomed', closed_on: null, archive_note: null },
+    },
+  );
+  // Deceased without optional date
+  assert.deepEqual(
+    validateArchivePet({ archive_reason: 'deceased', closed_on: '', archive_note: null }, '2026-11-17', '2015-05-01'),
+    {
+      ok: true,
+      value: { archive_reason: 'deceased', closed_on: null, archive_note: null },
+    },
+  );
+  // Invalid closed_on (before birthdate, future, calendar overflow, malformed)
+  for (const badDate of ['2015-04-30', '2026-11-18', '2025-02-29', '1899-12-31', '2026/11/10']) {
+    assert.deepEqual(
+      validateArchivePet(
+        { archive_reason: 'deceased', closed_on: badDate },
+        '2026-11-17',
+        '2015-05-01',
+      ),
+      { ok: false, field: 'closed_on' },
+    );
+  }
+  assert.deepEqual(validateArchivePet({ archive_reason: 'deleted' }), { ok: false, field: 'archive_reason' });
+  assert.deepEqual(
+    validateArchivePet({ archive_reason: 'other', archive_note: 'x'.repeat(MAX_ARCHIVE_NOTE_LENGTH + 1) }),
+    { ok: false, field: 'archive_note' },
+  );
 });

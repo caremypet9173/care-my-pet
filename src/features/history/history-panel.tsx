@@ -88,6 +88,7 @@ export function HistoryPanel({
   reports,
   initialFluids = EMPTY_FLUIDS,
   initialFilter,
+  readOnly = false,
 }: {
   petId: string;
   householdId: string;
@@ -96,6 +97,7 @@ export function HistoryPanel({
   reports: MedicalReport[];
   initialFluids?: PetFluidTherapy[];
   initialFilter?: string;
+  readOnly?: boolean;
 }) {
   const locale = useLocale();
   const pl = locale === 'pl';
@@ -388,24 +390,28 @@ export function HistoryPanel({
                 </button>
               )}
             </div>
-            <ButtonLink
-              size="sm"
-              variant="secondary"
-              href={`/app/zwierzeta/${petId}/plynoterapia/nowa`}
-            >
-              <IconDroplet size={16} aria-hidden="true" />
-              {pl ? 'Dodaj kroplówkę' : 'Add infusion'}
-            </ButtonLink>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditing(null);
-                setDialogOpen(true);
-              }}
-            >
-              <IconPlus size={16} aria-hidden="true" />
-              {pl ? 'Dodaj wpis' : 'Add entry'}
-            </Button>
+            {!readOnly && (
+              <>
+                <ButtonLink
+                  size="sm"
+                  variant="secondary"
+                  href={`/app/zwierzeta/${petId}/plynoterapia/nowa`}
+                >
+                  <IconDroplet size={16} aria-hidden="true" />
+                  {pl ? 'Dodaj kroplówkę' : 'Add infusion'}
+                </ButtonLink>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEditing(null);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <IconPlus size={16} aria-hidden="true" />
+                  {pl ? 'Dodaj wpis' : 'Add entry'}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -444,15 +450,17 @@ export function HistoryPanel({
               ? 'Dodaj pierwszą wizytę kontrolną, szczepienie lub preparat profilaktyczny, aby prowadzić uporządkowaną oś czasu zdrowia zwierzęcia.'
               : 'Add the first check-up visit, vaccination, or preventative treatment to build a complete health timeline.'}
           </p>
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setDialogOpen(true);
-            }}
-          >
-            <IconPlus size={18} aria-hidden="true" />
-            {pl ? 'Dodaj pierwszy wpis' : 'Add first entry'}
-          </Button>
+          {!readOnly && (
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setDialogOpen(true);
+              }}
+            >
+              <IconPlus size={18} aria-hidden="true" />
+              {pl ? 'Dodaj pierwszy wpis' : 'Add first entry'}
+            </Button>
+          )}
         </section>
       ) : filteredItems.length === 0 ? (
         <section className="pet-panel">
@@ -583,28 +591,32 @@ export function HistoryPanel({
                                   {pl ? 'Dokument źródłowy' : 'Source document'}
                                 </Link>
                               )}
-                              <button
-                                type="button"
-                                className="history-action-btn"
-                                onClick={() => {
-                                  setEditing(ev);
-                                  setDialogOpen(true);
-                                }}
-                              >
-                                <IconPencil size={15} aria-hidden="true" />
-                                {pl ? 'Edytuj' : 'Edit'}
-                              </button>
-                              <button
-                                type="button"
-                                className="history-action-btn is-danger"
-                                onClick={() => {
-                                  setDeleteError('');
-                                  setDeleting(ev);
-                                }}
-                              >
-                                <IconTrash size={15} aria-hidden="true" />
-                                {pl ? 'Usuń' : 'Delete'}
-                              </button>
+                              {!readOnly && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="history-action-btn"
+                                    onClick={() => {
+                                      setEditing(ev);
+                                      setDialogOpen(true);
+                                    }}
+                                  >
+                                    <IconPencil size={15} aria-hidden="true" />
+                                    {pl ? 'Edytuj' : 'Edit'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="history-action-btn is-danger"
+                                    onClick={() => {
+                                      setDeleteError('');
+                                      setDeleting(ev);
+                                    }}
+                                  >
+                                    <IconTrash size={15} aria-hidden="true" />
+                                    {pl ? 'Usuń' : 'Delete'}
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </article>
@@ -710,27 +722,29 @@ export function HistoryPanel({
                               </span>
                             </div>
 
-                            <div className="history-card-actions">
-                              <Link
-                                href={`/app/zwierzeta/${petId}/plynoterapia/${fl.id}/edytuj`}
-                                className="history-action-btn"
-                                aria-label={pl ? 'Edytuj wpis płynoterapii' : 'Edit fluid therapy'}
-                              >
-                                <IconPencil size={15} aria-hidden="true" />
-                                <span>{pl ? 'Edytuj' : 'Edit'}</span>
-                              </Link>
-                              <button
-                                type="button"
-                                className="history-action-btn is-danger"
-                                onClick={() => {
-                                  setFluidDeleteError('');
-                                  setDeletingFluid(fl);
-                                }}
-                              >
-                                <IconTrash size={15} aria-hidden="true" />
-                                {pl ? 'Usuń' : 'Delete'}
-                              </button>
-                            </div>
+                            {!readOnly && (
+                              <div className="history-card-actions">
+                                <Link
+                                  href={`/app/zwierzeta/${petId}/plynoterapia/${fl.id}/edytuj`}
+                                  className="history-action-btn"
+                                  aria-label={pl ? 'Edytuj wpis płynoterapii' : 'Edit fluid therapy'}
+                                >
+                                  <IconPencil size={15} aria-hidden="true" />
+                                  <span>{pl ? 'Edytuj' : 'Edit'}</span>
+                                </Link>
+                                <button
+                                  type="button"
+                                  className="history-action-btn is-danger"
+                                  onClick={() => {
+                                    setFluidDeleteError('');
+                                    setDeletingFluid(fl);
+                                  }}
+                                >
+                                  <IconTrash size={15} aria-hidden="true" />
+                                  {pl ? 'Usuń' : 'Delete'}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </article>
                       </li>

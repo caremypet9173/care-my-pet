@@ -77,6 +77,7 @@ interface Props {
     row: { name: string; value: string; unit: string; note?: string };
     date: string;
   }>;
+  readOnly?: boolean;
 }
 
 export function ActiveMedicationsCard({
@@ -91,6 +92,7 @@ export function ActiveMedicationsCard({
   weight = null,
   reports = [],
   keyParameters = [],
+  readOnly = false,
 }: Props) {
   const router = useRouter();
   const locale = useLocale();
@@ -479,18 +481,20 @@ export function ActiveMedicationsCard({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => {
-              setEditingSchedule(null);
-              setDialogOpen(true);
-            }}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-            title={pl ? "Zaplanuj lek, kurację lub kroplówkę" : "Schedule medication or fluid therapy"}
-          >
-            <IconPlus size={14} />
-            <span>{pl ? "Zaplanuj" : "Add"}</span>
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSchedule(null);
+                setDialogOpen(true);
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              title={pl ? "Zaplanuj lek, kurację lub kroplówkę" : "Schedule medication or fluid therapy"}
+            >
+              <IconPlus size={14} />
+              <span>{pl ? "Zaplanuj" : "Add"}</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -601,18 +605,20 @@ export function ActiveMedicationsCard({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingSchedule(s);
-                      setDialogOpen(true);
-                    }}
-                    className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
-                    title={pl ? "Edytuj harmonogram leku" : "Edit medication schedule"}
-                  >
-                    <IconEdit size={14} />
-                    <span>{pl ? "Edytuj" : "Edit"}</span>
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSchedule(s);
+                        setDialogOpen(true);
+                      }}
+                      className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
+                      title={pl ? "Edytuj harmonogram leku" : "Edit medication schedule"}
+                    >
+                      <IconEdit size={14} />
+                      <span>{pl ? "Edytuj" : "Edit"}</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Alert o niskim zapasie w apteczce */}
@@ -628,7 +634,7 @@ export function ActiveMedicationsCard({
                 )}
 
                 {/* Szybkie zatwierdzanie dzisiejszych dawek leku */}
-                {todayDoses.length > 0 && !isFinished && (
+                {!readOnly && todayDoses.length > 0 && !isFinished && (
                   <div className="flex items-center gap-1.5 flex-wrap pl-10 pt-0.5">
                     <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-0.5">
                       <IconClock size={12} />

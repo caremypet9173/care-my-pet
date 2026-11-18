@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
     const { data: pet, error: petError } = await client
       .from("zwierze")
       .select(
-        "id,gospodarstwo_id,imie,gatunek,rasa,data_urodzenia,data_urodzenia_przyblizona,plec,kastracja,notatki,tagi",
+        "id,gospodarstwo_id,imie,gatunek,rasa,data_urodzenia,data_urodzenia_przyblizona,plec,kastracja,notatki,tagi,archived_at,archive_reason,closed_on,archive_note",
       )
       .eq("id", petId)
       .maybeSingle();
@@ -893,6 +893,16 @@ Deno.serve(async (req) => {
               .join("\n\n---\n\n")
           : "Brak zapisanych badań i wpisów historii zdrowia w kartotece.";
 
+      const archiveStatusLine = pet.archived_at
+        ? `\n- Status kartoteki: ZAMKNIĘTA / ARCHIWALNA (powód: ${
+            pet.archive_reason === "deceased"
+              ? `pupil odszedł${pet.closed_on ? ` dnia ${pet.closed_on}` : ""}`
+              : pet.archive_reason === "rehomed"
+                ? "zmiana opiekuna"
+                : "inny powód"
+          }${pet.archive_note ? `; notatka: ${pet.archive_note}` : ""}). Odpowiadaj wyłącznie retrospektywnie na podstawie zgromadzonej dokumentacji i NIE sugeruj planowania przyszłych wizyt, profilaktyki ani modyfikacji aktualnego leczenia.`
+        : "";
+
       const systemInstruction = `Jesteś Asystentem AI w aplikacji Care My Pet. Pomagasz opiekunowi zrozumieć historię zdrowia, wyniki badań, parametry życiowe, leki, wagę i terminy profilaktyki jego pupila na podstawie kartoteki.
 Dzisiejsza data: ${todayIso}.
 Język odpowiedzi: ${locale === "en" ? "angielski (English)" : "polski"}.
@@ -913,7 +923,7 @@ DANE PROFILOWE PUPILA:
 - Data urodzenia: ${pet.data_urodzenia ? `${pet.data_urodzenia}${pet.data_urodzenia_przyblizona ? " (przybliżona)" : ""}` : "Nieznana"}
 - Płeć: ${sexLabel}, Kastracja/sterylizacja: ${neuteredLabel}
 - Tagi / ważne hasła: ${Array.isArray(pet.tagi) && pet.tagi.length > 0 ? pet.tagi.join(", ") : "Brak"}
-- Opis pupila (Parę słów o mnie): ${pet.notatki || "Brak"}
+- Opis pupila (Parę słów o mnie): ${pet.notatki || "Brak"}${archiveStatusLine}
 
 POMIARY WAGI (od najnowszych):
 ${weightLines}

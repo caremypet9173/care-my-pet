@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
 
       const [{ data: pets }, { data: scheduleItems }, { data: healthEvents }] =
         await Promise.all([
-          userClient.from("zwierze").select("id,imie"),
+          userClient.from("zwierze").select("id,imie").is("archived_at", null),
           userClient
             .from("pet_schedule_item")
             .select("*")
@@ -342,7 +342,9 @@ Deno.serve(async (req) => {
       );
 
       const previewItems: DueReminderItem[] = [
-        ...(scheduleItems ?? []).map((it: Record<string, unknown>) => ({
+        ...(scheduleItems ?? [])
+          .filter((it: Record<string, unknown>) => petMap.has(String(it.pet_id)))
+          .map((it: Record<string, unknown>) => ({
           sourceKind: "schedule_item" as const,
           sourceId: String(it.id),
           householdId: household.id,
@@ -357,7 +359,9 @@ Deno.serve(async (req) => {
           notes: String(it.prep_notes ?? ""),
           offsetDays: -1 as const,
         })),
-        ...(healthEvents ?? []).map((ev: Record<string, unknown>) => ({
+        ...(healthEvents ?? [])
+          .filter((ev: Record<string, unknown>) => petMap.has(String(ev.pet_id)))
+          .map((ev: Record<string, unknown>) => ({
           sourceKind: "health_event_due" as const,
           sourceId: String(ev.id),
           householdId: household.id,
@@ -455,7 +459,7 @@ Deno.serve(async (req) => {
       .from("pet_health_event")
       .select("*")
       .in("next_due_date", targetDates),
-    adminClient.from("zwierze").select("id,imie,gospodarstwo_id"),
+    adminClient.from("zwierze").select("id,imie,gospodarstwo_id").is("archived_at", null),
     adminClient.from("household_notification_settings").select("*"),
   ]);
 
@@ -496,6 +500,7 @@ Deno.serve(async (req) => {
     const d = String(row.scheduled_date);
     const offset: 0 | 1 | 7 = d === day0 ? 0 : d === day1 ? 1 : 7;
     const petInfo = petInfoMap.get(String(row.pet_id));
+    if (!petInfo) continue;
     pushCandidate({
       sourceKind: "schedule_item",
       sourceId: String(row.id),
@@ -522,6 +527,7 @@ Deno.serve(async (req) => {
     const d = String(row.next_due_date);
     const offset: 0 | 1 | 7 = d === day0 ? 0 : d === day1 ? 1 : 7;
     const petInfo = petInfoMap.get(String(row.pet_id));
+    if (!petInfo) continue;
     pushCandidate({
       sourceKind: "health_event_due",
       sourceId: String(row.id),

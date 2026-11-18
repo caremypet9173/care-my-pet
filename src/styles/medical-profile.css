@@ -377,3 +377,46 @@
     padding-inline: 1rem;
   }
 }
+
+/* Zarchiwizowana / zamknięta kartoteka (oraz tryb pamięci) */
+.household-record .household-cover.household-cover--archived::after,
+.shared-vet-page .household-cover.household-cover--archived::after {
+  background: linear-gradient(90deg, #f3f1edeb, #f3f1eddc, #f3f1edc2);
+}
+
+.household-record .household-cover.household-cover--archived .household-cover-top > span,
+.shared-vet-page .household-cover.household-cover--archived .household-cover-top > span {
+  background: #ebe7e0;
+  color: #4f4a43;
+}
+
+.household-record .household-cover.household-cover--archived .household-cover-top > span::before,
+.shared-vet-page .household-cover.household-cover--archived .household-cover-top > span::before {
+  background: #8f877b;
+}
+
+.household-record .household-cover.household-cover--deceased .household-cover-top > span,
+.shared-vet-page .household-cover.household-cover--deceased .household-cover-top > span {
+  background: #efeae2;
+  color: #5b4d3f;
+}
+
+.household-record .household-cover.household-cover--deceased .household-cover-top > span::before,
+.shared-vet-page .household-cover.household-cover--deceased .household-cover-top > span::before {
+  background: #a3886c;
+}
+
+.household-record .household-cover.household-cover--archived .household-cover-top small,
+.shared-vet-page .household-cover.household-cover--archived .household-cover-top small {
+  color: #6b645c;
+}
+
+.household-record .household-cover.household-cover--archived .household-profile-glass,
+.shared-vet-page .household-cover.household-cover--archived .household-profile-glass {
+  background: #faf8f4eb;
+}
+
+.household-record .household-cover.household-cover--archived .household-portrait,
+.shared-vet-page .household-cover.household-cover--archived .household-portrait {
+  filter: saturate(0.76);
+}

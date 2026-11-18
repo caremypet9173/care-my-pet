@@ -23,6 +23,8 @@ import {
 import { PetHeroCover } from "@/features/pets/pet-hero-cover";
 import { petMessages } from "@/features/pets/messages";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
+import { petArchiveMessages } from "@/features/pets/archive-messages";
+import type { Locale } from "@/i18n/types";
 import { FormattedMedicalText } from "@/features/medical/formatted-text";
 import { LabComparisonMatrix } from "@/features/medical/lab-comparison-matrix";
 import { PdfPreview } from "@/features/medical/pdf-preview";
@@ -155,6 +157,27 @@ export function SharedVetRecordView({
             : "")
         : t.unknown,
     ],
+    ...(pet.archived_at && pet.archive_reason === "deceased" && pet.closed_on
+      ? [
+          [
+            (petArchiveMessages[locale as Locale] ?? petArchiveMessages.pl).closedOnFact,
+            new Intl.DateTimeFormat(locale, {
+              dateStyle: "long",
+              timeZone: "UTC",
+            }).format(new Date(pet.closed_on)),
+          ],
+        ]
+      : []),
+    ...(pet.archived_at && pet.archive_reason && pet.archive_reason !== "deceased"
+      ? [
+          [
+            (petArchiveMessages[locale as Locale] ?? petArchiveMessages.pl).reasonFact,
+            (petArchiveMessages[locale as Locale] ?? petArchiveMessages.pl).reasons[
+              pet.archive_reason
+            ].label,
+          ],
+        ]
+      : []),
     [t.plec, t[pet.plec]],
     [
       t.kastracja,

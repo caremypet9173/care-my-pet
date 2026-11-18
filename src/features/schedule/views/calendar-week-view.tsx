@@ -26,6 +26,7 @@ interface CalendarWeekViewProps {
   openNewDialogForDate: (iso: string) => void;
   onCompleteTarget: (target: CompleteTarget) => void;
   onEditItem: (item: ScheduleItem) => void;
+  readOnly?: boolean;
 }
 
 export function CalendarWeekView({
@@ -42,6 +43,7 @@ export function CalendarWeekView({
   openNewDialogForDate,
   onCompleteTarget,
   onEditItem,
+  readOnly = false,
 }: CalendarWeekViewProps) {
   return (
     <div className="schedule-week-wrapper">
@@ -79,32 +81,14 @@ export function CalendarWeekView({
                     {day.dayNum}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="schedule-week-quick-add"
-                  title={
-                    pl
-                      ? `Zaplanuj termin na ${day.iso}`
-                      : `Schedule on ${day.iso}`
-                  }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedDayIso(day.iso);
-                    openNewDialogForDate(day.iso);
-                  }}
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="schedule-week-col-body">
-                {dayEntries.length === 0 ? (
-                  <div
-                    className="schedule-week-empty-slot"
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="schedule-week-quick-add"
                     title={
                       pl
-                        ? `Kliknij, aby dodać termin na ${day.iso}`
-                        : `Click to add item on ${day.iso}`
+                        ? `Zaplanuj termin na ${day.iso}`
+                        : `Schedule on ${day.iso}`
                     }
                     onClick={(e) => {
                       e.stopPropagation();
@@ -112,8 +96,34 @@ export function CalendarWeekView({
                       openNewDialogForDate(day.iso);
                     }}
                   >
-                    <span>+</span>
-                  </div>
+                    +
+                  </button>
+                )}
+              </div>
+
+              <div className="schedule-week-col-body">
+                {dayEntries.length === 0 ? (
+                  readOnly ? (
+                    <div className="schedule-week-empty-slot">
+                      <span>—</span>
+                    </div>
+                  ) : (
+                    <div
+                      className="schedule-week-empty-slot"
+                      title={
+                        pl
+                          ? `Kliknij, aby dodać termin na ${day.iso}`
+                          : `Click to add item on ${day.iso}`
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDayIso(day.iso);
+                        openNewDialogForDate(day.iso);
+                      }}
+                    >
+                      <span>+</span>
+                    </div>
+                  )
                 ) : (
                   dayEntries.map((ev) => {
                     const pName = petMap.get(ev.petId);
@@ -180,7 +190,8 @@ export function CalendarWeekView({
                             >
                               <span>{pl ? "Wyniki →" : "Report →"}</span>
                             </Link>
-                          ) : (ev.kind === "schedule_item" ||
+                          ) : !readOnly &&
+                            (ev.kind === "schedule_item" ||
                               ev.kind === "due_event") &&
                             ev.status === "planned" ? (
                             <button
@@ -222,7 +233,8 @@ export function CalendarWeekView({
                             </button>
                           ) : null}
 
-                          {ev.kind === "schedule_item" &&
+                          {!readOnly &&
+                            ev.kind === "schedule_item" &&
                             ev.status === "planned" && (
                               <button
                                 type="button"
