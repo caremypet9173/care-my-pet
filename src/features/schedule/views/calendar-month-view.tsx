@@ -98,20 +98,33 @@ export function CalendarMonthView({
     }
   }
 
+  const monthWeeks: (typeof monthCells)[] = [];
+  for (let i = 0; i < monthCells.length; i += 7) {
+    monthWeeks.push(monthCells.slice(i, i + 7));
+  }
+
   return (
     <div className="schedule-month-wrapper">
-      <div className="schedule-month-grid" role="grid">
-        {weekdayLabels.map((label) => (
-          <div
-            key={label}
-            className="schedule-weekday-header"
-            role="columnheader"
-          >
-            {label}
-          </div>
-        ))}
+      <div
+        className="schedule-month-grid"
+        role="grid"
+        aria-label={pl ? "Kalendarz miesiąca" : "Monthly calendar"}
+      >
+        <div role="row" style={{ display: "contents" }}>
+          {weekdayLabels.map((label) => (
+            <div
+              key={label}
+              className="schedule-weekday-header"
+              role="columnheader"
+            >
+              {label}
+            </div>
+          ))}
+        </div>
 
-        {monthCells.map((cell) => {
+        {monthWeeks.map((week, weekIdx) => (
+          <div key={week[0]?.iso ?? weekIdx} role="row" style={{ display: "contents" }}>
+            {week.map((cell) => {
           const dayItems = entriesByDate.get(cell.iso) ?? [];
           const dayDots = getMobileDotMarkers(dayItems, todayIso);
           const isToday = cell.iso === todayIso;
@@ -213,7 +226,9 @@ export function CalendarMonthView({
               </div>
             </div>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
 
       <div className="schedule-selected-day-panel">

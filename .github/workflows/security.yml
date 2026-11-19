@@ -73,7 +73,7 @@ jobs:
         run: npm run lint
 
       - name: Run Unit Tests
-        run: node --test tests/*.test.mjs
+        run: npm run test:unit
 
   # 4. Statyczna analiza kodu pod kątem luk bezpieczeństwa (SAST - CodeQL)
   codeql-analysis:

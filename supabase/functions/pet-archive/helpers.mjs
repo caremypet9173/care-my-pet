@@ -4,6 +4,10 @@ export const ARCHIVE_MAX_FAILED_ATTEMPTS = 5;
 export const ARCHIVE_LOCK_MS = 15 * 60 * 1000;
 export const ARCHIVE_SESSION_TTL_MS = 30 * 60 * 1000;
 export const ARCHIVE_CODE_LENGTH = 8;
+export const ARCHIVE_PBKDF2_ITERATIONS = 100_000;
+export const ARCHIVE_PBKDF2_ITERATIONS_LEGACY = 10_000;
+
+const HASH_V2_PREFIX = "v2:";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 znaki, bez mylących 0/O/1/I
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -100,8 +104,7 @@ export function generateSaltHex() {
   return bytesToHex(bytes);
 }
 
-export async function hashAccessCode(rawCode, saltHex) {
-  const normalized = normalizeAccessCode(rawCode);
+async function deriveAccessCodeHex(normalized, saltHex, iterations) {
   const key = await crypto.subtle.importKey(
     "raw",
     enc.encode(normalized),
@@ -113,13 +116,23 @@ export async function hashAccessCode(rawCode, saltHex) {
     {
       name: "PBKDF2",
       salt: hexToBytes(saltHex),
-      iterations: 10000,
+      iterations,
       hash: "SHA-256",
     },
     key,
     256,
   );
   return bytesToHex(new Uint8Array(bits));
+}
+
+export async function hashAccessCode(rawCode, saltHex) {
+  const normalized = normalizeAccessCode(rawCode);
+  const hex = await deriveAccessCodeHex(
+    normalized,
+    saltHex,
+    ARCHIVE_PBKDF2_ITERATIONS,
+  );
+  return `${HASH_V2_PREFIX}${hex}`;
 }
 
 export function constantTimeEqualHex(a, b) {
@@ -133,11 +146,27 @@ export function constantTimeEqualHex(a, b) {
   return diff === 0;
 }
 
-export async function verifyAccessCode(rawCode, saltHex, expectedHashHex) {
+export async function verifyAccessCode(rawCode, saltHex, expectedHash) {
   const clean = normalizeAccessCode(rawCode);
-  if (clean.length !== ARCHIVE_CODE_LENGTH) return false;
-  const computed = await hashAccessCode(clean, saltHex);
-  return constantTimeEqualHex(computed, expectedHashHex);
+  if (clean.length !== ARCHIVE_CODE_LENGTH || typeof expectedHash !== "string") {
+    return false;
+  }
+  if (expectedHash.startsWith(HASH_V2_PREFIX)) {
+    const expectedHex = expectedHash.slice(HASH_V2_PREFIX.length);
+    const computedHex = await deriveAccessCodeHex(
+      clean,
+      saltHex,
+      ARCHIVE_PBKDF2_ITERATIONS,
+    );
+    return constantTimeEqualHex(computedHex, expectedHex);
+  }
+  // Legacy v1 hashes (64-char hex, 10k iterations)
+  const computedHex = await deriveAccessCodeHex(
+    clean,
+    saltHex,
+    ARCHIVE_PBKDF2_ITERATIONS_LEGACY,
+  );
+  return constantTimeEqualHex(computedHex, expectedHash);
 }
 
 async function importSessionKey(secret) {

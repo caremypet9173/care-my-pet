@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
 import {
@@ -56,19 +55,21 @@ export function RecoveryKeyDialog({
   const [generated, setGenerated] = useState<GeneratedKeyPayload | null>(null);
   const [copied, setCopied] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !generated && !isGenerating) {
-        onClose();
+    const el = dialogRef.current;
+    if (!el) return;
+    if (open) {
+      if (!el.open) {
+        el.showModal();
       }
+    } else if (el.open) {
+      el.close();
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, generated, isGenerating, onClose]);
+  }, [open]);
 
-  if (!open || typeof document === "undefined") return null;
+  if (!open) return null;
 
   async function handleGenerate() {
     if (isGenerating) return;
@@ -190,14 +191,19 @@ export function RecoveryKeyDialog({
     }
   }
 
-  return createPortal(
-    <div
-      className="recovery-dialog-backdrop"
-      role="dialog"
-      aria-modal="true"
+  return (
+    <dialog
+      ref={dialogRef}
+      className="recovery-dialog-native"
       aria-labelledby="recovery-key-dialog-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!generated && !isGenerating) {
+          handleDismiss();
+        }
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !generated && !isGenerating) {
+        if (e.target === dialogRef.current && !generated && !isGenerating) {
           handleDismiss();
         }
       }}
@@ -420,8 +426,7 @@ export function RecoveryKeyDialog({
           </div>
         )}
       </div>
-    </div>,
-    document.body,
+    </dialog>
   );
 }
 

@@ -3,13 +3,21 @@ import { Status } from "@/components/ui/badge";
 import { useFormatters } from "@/lib/formatters";
 import type { LabReport } from "./types";
 
-export function LabResults({ report }: { report: LabReport }) {
+export function LabResults({
+  report,
+  headingLevel = 4,
+}: {
+  report: LabReport;
+  headingLevel?: 3 | 4;
+}) {
   const t = useTranslations("copy");
   const { formatDate, formatNumber } = useFormatters();
+  const Heading = headingLevel === 3 ? "h3" : "h4";
+  const MobileHeading = headingLevel === 3 ? "h4" : "h5";
   return (
     <div className="lab-results">
       <div className="lab-heading">
-        <h4>{report.title}</h4>
+        <Heading>{report.title}</Heading>
         <p>
           {formatDate(report.date)} · {report.source}
         </p>
@@ -56,7 +64,7 @@ export function LabResults({ report }: { report: LabReport }) {
             key={result.id}
           >
             <div>
-              <h5>{result.name}</h5>
+              <MobileHeading>{result.name}</MobileHeading>
               <strong className="numeric">
                 {formatNumber(result.value)} {result.unit}
               </strong>

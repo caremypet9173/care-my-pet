@@ -47,73 +47,66 @@ export function CalendarWeekView({
 }: CalendarWeekViewProps) {
   return (
     <div className="schedule-week-wrapper">
-      <div className="schedule-week-grid" role="grid">
-        {weekDays.map((day) => {
-          const dayEntries = entriesByDate.get(day.iso) ?? [];
-          const isSelected = day.iso === selectedDayIso;
+      <div
+        className="schedule-week-grid"
+        role="grid"
+        aria-label={pl ? "Kalendarz tygodnia" : "Weekly calendar"}
+      >
+        <div role="row" style={{ display: "contents" }}>
+          {weekDays.map((day) => {
+            const dayEntries = entriesByDate.get(day.iso) ?? [];
+            const isSelected = day.iso === selectedDayIso;
 
-          return (
-            <div
-              key={day.iso}
-              className={`schedule-week-col${day.isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""} cursor-pointer`}
-              role="gridcell"
-              onClick={() => goToDayView(day.iso)}
-            >
+            return (
               <div
-                className="schedule-week-col-header"
-                title={
-                  pl
-                    ? `Kliknij, aby otworzyć widok dnia dla ${day.weekdayFull}`
-                    : `Click to open day view for ${day.weekdayFull}`
-                }
-                onClick={(e) => {
-                  e.stopPropagation();
-                  goToDayView(day.iso);
+                key={day.iso}
+                className={`schedule-week-col${day.isToday ? " is-today" : ""}${isSelected ? " is-selected" : ""} cursor-pointer`}
+                role="gridcell"
+                tabIndex={0}
+                aria-selected={isSelected}
+                onClick={() => goToDayView(day.iso)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    goToDayView(day.iso);
+                  }
                 }}
               >
-                <div className="schedule-week-col-header-info">
-                  <span className="schedule-week-weekday">
-                    {day.weekdayName}
-                  </span>
-                  <span
-                    className={`schedule-week-daynum${day.isToday ? " is-today" : ""}`}
-                  >
-                    {day.dayNum}
-                  </span>
-                </div>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className="schedule-week-quick-add"
-                    title={
-                      pl
-                        ? `Zaplanuj termin na ${day.iso}`
-                        : `Schedule on ${day.iso}`
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedDayIso(day.iso);
-                      openNewDialogForDate(day.iso);
-                    }}
-                  >
-                    +
-                  </button>
-                )}
-              </div>
-
-              <div className="schedule-week-col-body">
-                {dayEntries.length === 0 ? (
-                  readOnly ? (
-                    <div className="schedule-week-empty-slot">
-                      <span>—</span>
-                    </div>
-                  ) : (
-                    <div
-                      className="schedule-week-empty-slot"
+                <div
+                  className="schedule-week-col-header"
+                  title={
+                    pl
+                      ? `Kliknij, aby otworzyć widok dnia dla ${day.weekdayFull}`
+                      : `Click to open day view for ${day.weekdayFull}`
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToDayView(day.iso);
+                  }}
+                >
+                  <div className="schedule-week-col-header-info">
+                    <span className="schedule-week-weekday">
+                      {day.weekdayName}
+                    </span>
+                    <span
+                      className={`schedule-week-daynum${day.isToday ? " is-today" : ""}`}
+                    >
+                      {day.dayNum}
+                    </span>
+                  </div>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="schedule-week-quick-add"
                       title={
                         pl
-                          ? `Kliknij, aby dodać termin na ${day.iso}`
-                          : `Click to add item on ${day.iso}`
+                          ? `Zaplanuj termin na ${day.iso}`
+                          : `Schedule on ${day.iso}`
+                      }
+                      aria-label={
+                        pl
+                          ? `Zaplanuj termin na ${day.iso}`
+                          : `Schedule on ${day.iso}`
                       }
                       onClick={(e) => {
                         e.stopPropagation();
@@ -121,24 +114,64 @@ export function CalendarWeekView({
                         openNewDialogForDate(day.iso);
                       }}
                     >
-                      <span>+</span>
-                    </div>
-                  )
-                ) : (
-                  dayEntries.map((ev) => {
-                    const pName = petMap.get(ev.petId);
-                    const isOverdue =
-                      ev.status === "planned" && ev.date < todayIso;
+                      +
+                    </button>
+                  )}
+                </div>
 
-                    return (
-                      <div
-                        key={ev.key}
-                        className={`schedule-week-card is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""} cursor-pointer`}
+                <div className="schedule-week-col-body">
+                  {dayEntries.length === 0 ? (
+                    readOnly ? (
+                      <div className="schedule-week-empty-slot">
+                        <span>—</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="schedule-week-empty-slot"
+                        title={
+                          pl
+                            ? `Kliknij, aby dodać termin na ${day.iso}`
+                            : `Click to add item on ${day.iso}`
+                        }
+                        aria-label={
+                          pl
+                            ? `Dodaj termin na ${day.iso}`
+                            : `Add schedule item on ${day.iso}`
+                        }
                         onClick={(e) => {
                           e.stopPropagation();
-                          goToDayView(day.iso);
+                          setSelectedDayIso(day.iso);
+                          openNewDialogForDate(day.iso);
                         }}
                       >
+                        <span>+</span>
+                      </button>
+                    )
+                  ) : (
+                    dayEntries.map((ev) => {
+                      const pName = petMap.get(ev.petId);
+                      const isOverdue =
+                        ev.status === "planned" && ev.date < todayIso;
+
+                      return (
+                        <div
+                          key={ev.key}
+                          role="button"
+                          tabIndex={0}
+                          className={`schedule-week-card is-${ev.category}${ev.status === "completed" ? " is-completed" : ""}${isOverdue ? " is-overdue" : ""} cursor-pointer`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goToDayView(day.iso);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              goToDayView(day.iso);
+                            }
+                          }}
+                        >
                         <div className="schedule-week-card-top">
                           {ev.time ? (
                             <span className="schedule-week-time">
@@ -240,6 +273,7 @@ export function CalendarWeekView({
                                 type="button"
                                 className="schedule-week-icon-btn"
                                 title={pl ? "Edytuj termin" : "Edit item"}
+                                aria-label={pl ? "Edytuj termin" : "Edit item"}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onEditItem(ev.item);
@@ -257,6 +291,7 @@ export function CalendarWeekView({
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

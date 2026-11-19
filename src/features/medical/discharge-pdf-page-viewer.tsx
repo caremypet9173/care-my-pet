@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "next-intl";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import {
   IconCheck,
@@ -27,6 +28,7 @@ interface PageItemProps {
   isImported: boolean;
   readOnly?: boolean;
   onToggle?: (pageNumber: number) => void;
+  pl: boolean;
 }
 
 function PageCard({
@@ -37,6 +39,7 @@ function PageCard({
   isImported,
   readOnly = false,
   onToggle,
+  pl,
 }: PageItemProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -131,21 +134,33 @@ function PageCard({
               }
             }
       }
-      aria-label={`Strona ${pageNumber} z ${totalPages}${
-        readOnly
-          ? isImported
-            ? ", zaimportowana"
-            : ""
-          : isSelected
-          ? ", zaznaczona"
-          : ", niezaznaczona"
-      }`}
+      aria-label={
+        pl
+          ? `Strona ${pageNumber} z ${totalPages}${
+              readOnly
+                ? isImported
+                  ? ", zaimportowana"
+                  : ""
+                : isSelected
+                  ? ", zaznaczona"
+                  : ", niezaznaczona"
+            }`
+          : `Page ${pageNumber} of ${totalPages}${
+              readOnly
+                ? isImported
+                  ? ", imported"
+                  : ""
+                : isSelected
+                  ? ", selected"
+                  : ", not selected"
+            }`
+      }
     >
       <div className="discharge-pv-card-header">
         {readOnly ? (
           <div className="discharge-pv-card-title-wrap">
             <span className="discharge-pv-card-title">
-              Strona <strong>{pageNumber}</strong>{" "}
+              {pl ? "Strona" : "Page"} <strong>{pageNumber}</strong>{" "}
               <span className="discharge-pv-card-total">/ {totalPages}</span>
             </span>
           </div>
@@ -158,10 +173,10 @@ function PageCard({
               type="checkbox"
               checked={isSelected}
               onChange={() => onToggle?.(pageNumber)}
-              aria-label={`Zaznacz stronę ${pageNumber}`}
+              aria-label={pl ? `Zaznacz stronę ${pageNumber}` : `Select page ${pageNumber}`}
             />
             <span className="discharge-pv-card-title">
-              Strona <strong>{pageNumber}</strong>{" "}
+              {pl ? "Strona" : "Page"} <strong>{pageNumber}</strong>{" "}
               <span className="discharge-pv-card-total">/ {totalPages}</span>
             </span>
           </label>
@@ -171,18 +186,18 @@ function PageCard({
           {isSelected && (
             <span className="discharge-pv-badge is-selected">
               <IconCheck size={13} aria-hidden="true" />
-              <span>Wybrana</span>
+              <span>{pl ? "Wybrana" : "Selected"}</span>
             </span>
           )}
           {isImported && !isSelected && (
             <span className="discharge-pv-badge is-imported">
               <IconHistory size={13} aria-hidden="true" />
-              <span>Zaimportowana</span>
+              <span>{pl ? "Zaimportowana" : "Imported"}</span>
             </span>
           )}
           {!readOnly && !isSelected && !isImported && (
             <span className="discharge-pv-badge is-unselected">
-              <span>Kliknij, aby zaznaczyć</span>
+              <span>{pl ? "Kliknij, aby zaznaczyć" : "Click to select"}</span>
             </span>
           )}
         </div>
@@ -196,12 +211,18 @@ function PageCard({
         {!rendered && !renderError && (
           <div className="discharge-pv-card-skeleton">
             <IconLoader2 size={24} className="animate-spin text-gray-400" />
-            <span>Wczytywanie strony {pageNumber}...</span>
+            <span>
+              {pl ? `Wczytywanie strony ${pageNumber}...` : `Loading page ${pageNumber}...`}
+            </span>
           </div>
         )}
         {renderError && (
           <div className="discharge-pv-card-skeleton is-error">
-            <span>Nie udało się wyrenderować podglądu strony {pageNumber}.</span>
+            <span>
+              {pl
+                ? `Nie udało się wyrenderować podglądu strony ${pageNumber}.`
+                : `Failed to render preview of page ${pageNumber}.`}
+            </span>
           </div>
         )}
       </div>
@@ -218,6 +239,7 @@ export function DischargePdfPageViewer({
   activeScrollToPage,
   readOnly = false,
 }: DischargePdfPageViewerProps) {
+  const pl = useLocale() !== "en";
   const containerRef = useRef<HTMLDivElement>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [docPages, setDocPages] = useState<number>(totalPages);
@@ -286,13 +308,19 @@ export function DischargePdfPageViewer({
         <div className="discharge-pv-header-info">
           <IconFileText size={16} className="text-gray-500" />
           <span className="discharge-pv-counter">
-            Podgląd dokumentu ({count} {count === 1 ? "strona" : "stron"})
+            {pl
+              ? `Podgląd dokumentu (${count} ${count === 1 ? "strona" : "stron"})`
+              : `Document preview (${count} ${count === 1 ? "page" : "pages"})`}
           </span>
         </div>
         <span className="discharge-pv-subhint">
           {readOnly
-            ? "Przeglądaj zawartość dokumentu"
-            : "Przewijaj w dół i zaznaczaj strony"}
+            ? pl
+              ? "Przeglądaj zawartość dokumentu"
+              : "Browse document contents"
+            : pl
+              ? "Przewijaj w dół i zaznaczaj strony"
+              : "Scroll down and select pages"}
         </span>
       </div>
 
@@ -300,14 +328,19 @@ export function DischargePdfPageViewer({
         {loading && (
           <div className="discharge-pv-loading">
             <IconLoader2 size={24} className="animate-spin text-primary" />
-            <p>Przygotowywanie podglądu stron dokumentu...</p>
+            <p>
+              {pl
+                ? "Przygotowywanie podglądu stron dokumentu..."
+                : "Preparing document page previews..."}
+            </p>
           </div>
         )}
 
         {error && (
           <div className="discharge-pv-error">
-            Nie udało się wczytać podglądu stron PDF. Możesz kontynuować
-            wybierając numery stron po prawej stronie.
+            {pl
+              ? "Nie udało się wczytać podglądu stron PDF. Możesz kontynuować wybierając numery stron po prawej stronie."
+              : "Could not load PDF page previews. You can continue by selecting page numbers on the right."}
           </div>
         )}
 
@@ -324,6 +357,7 @@ export function DischargePdfPageViewer({
               isImported={importedSet.has(pageNum)}
               readOnly={readOnly}
               onToggle={onTogglePage}
+              pl={pl}
             />
           ))}
       </div>

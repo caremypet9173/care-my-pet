@@ -20,10 +20,12 @@ export async function computeFileSha256(file: File): Promise<string> {
 export async function extractClinicalDischarge(
   petId: string,
   file: File,
+  locale: "pl" | "en" = "pl",
 ): Promise<{
   discharge: DischargeParsedState;
   sha256: string;
 }> {
+  const pl = locale === "pl";
   const sha256 = await computeFileSha256(file);
   const client = createClient();
   const {
@@ -102,15 +104,27 @@ export async function extractClinicalDischarge(
     const errCode = details?.error || error.message || "extraction_failed";
     let message = errCode;
     if (errCode === "extraction_failed") {
-      message = "Nie udało się wyodrębnić danych z dokumentu. Upewnij się, że plik PDF jest czytelnym wypisem z lecznicy.";
+      message = pl
+        ? "Nie udało się wyodrębnić danych z dokumentu. Upewnij się, że plik PDF jest czytelnym wypisem z lecznicy."
+        : "Could not extract data from the document. Make sure the PDF is a legible clinical discharge.";
     } else if (errCode === "page_limit_exceeded") {
-      message = details?.message || "Plik ma zbyt wiele stron. Maksymalny dopuszczalny limit pojedynczej analizy to 10 stron. Wybierz zakres stron w oknie importu.";
+      message =
+        details?.message ||
+        (pl
+          ? "Plik ma zbyt wiele stron. Maksymalny dopuszczalny limit pojedynczej analizy to 10 stron. Wybierz zakres stron w oknie importu."
+          : "The file has too many pages. The maximum limit for a single analysis is 10 pages. Select a page range in the import dialog.");
     } else if (errCode === "ai_unavailable") {
-      message = "Usługa analizy AI jest chwilowo niedostępna. Spróbuj ponownie za chwilę.";
+      message = pl
+        ? "Usługa analizy AI jest chwilowo niedostępna. Spróbuj ponownie za chwilę."
+        : "The AI analysis service is temporarily unavailable. Please try again in a moment.";
     } else if (errCode === "daily_limit" || errCode === "provider_limit") {
-      message = "Osiągnięto limit zapytań analizy dokumentów. Spróbuj ponownie później.";
+      message = pl
+        ? "Osiągnięto limit zapytań analizy dokumentów. Spróbuj ponownie później."
+        : "Document analysis request limit reached. Please try again later.";
     } else if (errCode === "too_large" || errCode === "invalid_file") {
-      message = "Plik jest uszkodzony lub przekracza dopuszczalny rozmiar (maks. 12 MB).";
+      message = pl
+        ? "Plik jest uszkodzony lub przekracza dopuszczalny rozmiar (maks. 12 MB)."
+        : "The file is corrupted or exceeds the maximum size (max 12 MB).";
     }
     throw new Error(message);
   }
@@ -124,7 +138,7 @@ export async function extractClinicalDischarge(
       id: crypto.randomUUID(),
       date: r.date || new Date().toISOString().slice(0, 10),
       category: r.category || "blood",
-      title: r.title || "Badanie diagnostyczne",
+      title: r.title || (pl ? "Badanie diagnostyczne" : "Diagnostic test"),
       laboratory: r.laboratory || "",
       doctor: r.doctor || "",
       notes: r.notes || "",
@@ -151,7 +165,7 @@ export async function extractClinicalDischarge(
       e.category === "vaccination" || e.category === "prevention"
         ? e.category
         : "visit",
-    title: e.title || "Wizyta w lecznicy",
+    title: e.title || (pl ? "Wizyta w lecznicy" : "Clinic visit"),
     clinic: e.clinic || "",
     doctor: e.doctor || "",
     description: e.description || "",
@@ -208,6 +222,7 @@ export async function commitDischargeBatchImport(params: {
   file: File;
   sha256: string;
   state: DischargeParsedState;
+  locale?: "pl" | "en";
 }): Promise<{
   success: boolean;
   reports_count: number;
@@ -215,14 +230,16 @@ export async function commitDischargeBatchImport(params: {
   weights_count: number;
   vitals_count: number;
 }> {
-  const { petId, householdId, file, sha256, state } = params;
+  const { petId, householdId, file, sha256, state, locale = "pl" } = params;
+  const pl = locale === "pl";
+  const defaultDischargeLabel = pl ? "Wypis z lecznicy" : "Clinical discharge";
   const client = createClient();
   const {
     data: { user },
   } = await client.auth.getUser();
 
   if (!user) {
-    throw new Error("Wymagane uwierzytelnienie.");
+    throw new Error(pl ? "Wymagane uwierzytelnienie." : "Authentication required.");
   }
 
   let effectiveHouseholdId = householdId;
@@ -236,7 +253,9 @@ export async function commitDischargeBatchImport(params: {
   }
 
   if (!effectiveHouseholdId) {
-    throw new Error("Brak identyfikatora gospodarstwa domowego.");
+    throw new Error(
+      pl ? "Brak identyfikatora gospodarstwa domowego." : "Missing household ID.",
+    );
   }
 
   const dischargeFileId = crypto.randomUUID();
@@ -254,7 +273,11 @@ export async function commitDischargeBatchImport(params: {
     });
 
   if (uploadError) {
-    throw new Error(`Nie udało się zapisać pliku w magazynie: ${uploadError.message}`);
+    throw new Error(
+      pl
+        ? `Nie udało się zapisać pliku w magazynie: ${uploadError.message}`
+        : `Failed to upload file to storage: ${uploadError.message}`,
+    );
   }
 
   // 2. Przygotowanie danych do zapisu
@@ -289,7 +312,7 @@ export async function commitDischargeBatchImport(params: {
         id: m.id,
         date: m.date,
         value: m.value,
-        note: m.note || "Wypis z lecznicy",
+        note: m.note || defaultDischargeLabel,
       })),
     vitals: state.measurements
       .filter((m) => m.selected && m.type !== "weight" && m.value > 0)
@@ -298,8 +321,12 @@ export async function commitDischargeBatchImport(params: {
         date: m.date,
         metric_type: m.type,
         value_primary: m.value,
-        context: "Wypis z lecznicy",
-        note: m.note || (m.raw_value ? `Odczyt: ${m.raw_value}` : "Wypis z lecznicy"),
+        context: defaultDischargeLabel,
+        note:
+          m.note ||
+          (m.raw_value
+            ? `${pl ? "Odczyt" : "Reading"}: ${m.raw_value}`
+            : defaultDischargeLabel),
       })),
   };
 
@@ -319,7 +346,10 @@ export async function commitDischargeBatchImport(params: {
   if (rpcError) {
     // Sprzątanie pliku w przypadku błędu bazy
     await client.storage.from("medical-documents").remove([sourcePath]);
-    throw new Error(rpcError.message || "Błąd zapisu danych do bazy.");
+    throw new Error(
+      rpcError.message ||
+        (pl ? "Błąd zapisu danych do bazy." : "Failed to save records to database."),
+    );
   }
 
   const reportIds = payloadData.lab_reports.map((r) => r.id).filter(Boolean);

@@ -5,6 +5,7 @@ import { useLocale } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeRelativePath } from "@/lib/safe-redirect";
 import { authMessages } from "./messages";
 import { authDesignMessages } from "./design-messages";
 import {
@@ -40,10 +41,11 @@ export function AuthForm({ mode, configured, initialError }: {
           : ""
   );
   const messageRef = useRef<HTMLDivElement>(null);
-  const returnTo = typeof window !== "undefined"
+  const rawReturnTo = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("returnTo")
     : null;
-  const returnToSuffix = returnTo && returnTo.startsWith("/") ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
+  const safeReturnTo = rawReturnTo ? sanitizeRelativePath(rawReturnTo, "") : "";
+  const returnToSuffix = safeReturnTo ? `?returnTo=${encodeURIComponent(safeReturnTo)}` : "";
 
   function showError(message: string) {
     setError(message);
@@ -107,7 +109,7 @@ export function AuthForm({ mode, configured, initialError }: {
         if (result.error) {
           showError(result.error.status === 429 ? t.rateLimit : t.credentials);
         } else if (result.data.session) {
-          router.replace(returnTo && returnTo.startsWith("/") ? returnTo : "/app");
+          router.replace(safeReturnTo || "/app");
           router.refresh();
         }
       }
@@ -123,8 +125,8 @@ export function AuthForm({ mode, configured, initialError }: {
     setBusy(true);
     setError("");
     try {
-      const callbackUrl = returnTo && returnTo.startsWith("/")
-        ? `${window.location.origin}/${locale}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+      const callbackUrl = safeReturnTo
+        ? `${window.location.origin}/${locale}/auth/callback?returnTo=${encodeURIComponent(safeReturnTo)}`
         : `${window.location.origin}/${locale}/auth/callback`;
       const { data, error } = await createClient().auth.signInWithOAuth({
         provider: "google",

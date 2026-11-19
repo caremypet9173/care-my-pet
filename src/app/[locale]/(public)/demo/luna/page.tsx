@@ -117,8 +117,8 @@ export default function DemoPage() {
                 {getLuna(t).report.results.length})
               </Link>
             </div>
-            <h3 className="sr-only">{t("laboratoryTest")}</h3>
             <LabResults
+              headingLevel={3}
               report={{
                 ...getLuna(t).report,
                 results: getLuna(t).report.results.filter((item) =>

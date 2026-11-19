@@ -16,6 +16,15 @@ export interface SaveFluidTherapyParams {
   administeredAt?: string;
   administeredOn: string;
   notes?: string;
+  locale?: "pl" | "en";
+}
+
+function resolveActionLocale(explicit?: "pl" | "en"): "pl" | "en" {
+  if (explicit) return explicit;
+  if (typeof document !== "undefined" && document.documentElement.lang === "en") {
+    return "en";
+  }
+  return "pl";
 }
 
 export async function saveFluidTherapy(params: SaveFluidTherapyParams): Promise<{
@@ -46,11 +55,14 @@ export async function saveFluidTherapy(params: SaveFluidTherapyParams): Promise<
 
   if (error) {
     const isConflict = error.code === "PT409";
+    const en = resolveActionLocale(params.locale) === "en";
     return {
       error:
         error.code === "PT428"
-          ? "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
-          : error.message || "Błąd zapisu płynoterapii",
+          ? en
+            ? "This household requires a recovery key before making changes (read-only mode)."
+            : "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
+          : error.message || (en ? "Failed to save fluid therapy" : "Błąd zapisu płynoterapii"),
       isConflict,
     };
   }
@@ -62,6 +74,7 @@ export async function deleteFluidTherapy(params: {
   id: string;
   petId: string;
   revision: number;
+  locale?: "pl" | "en";
 }): Promise<{
   success: boolean;
   error?: string;
@@ -76,12 +89,15 @@ export async function deleteFluidTherapy(params: {
 
   if (error) {
     const isConflict = error.code === "PT409";
+    const en = resolveActionLocale(params.locale) === "en";
     return {
       success: false,
       error:
         error.code === "PT428"
-          ? "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
-          : error.message || "Nie udało się usunąć wpisu płynoterapii",
+          ? en
+            ? "This household requires a recovery key before making changes (read-only mode)."
+            : "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
+          : error.message || (en ? "Failed to delete fluid therapy entry" : "Nie udało się usunąć wpisu płynoterapii"),
       isConflict,
     };
   }

@@ -14,6 +14,15 @@ export interface SaveVitalParams {
   measuredAt?: string;
   measuredOn: string;
   note?: string;
+  locale?: "pl" | "en";
+}
+
+function resolveActionLocale(explicit?: "pl" | "en"): "pl" | "en" {
+  if (explicit) return explicit;
+  if (typeof document !== "undefined" && document.documentElement.lang === "en") {
+    return "en";
+  }
+  return "pl";
 }
 
 export async function saveVitalMeasurement(params: SaveVitalParams): Promise<{
@@ -42,11 +51,14 @@ export async function saveVitalMeasurement(params: SaveVitalParams): Promise<{
 
   if (error) {
     const isConflict = error.code === "PT409";
+    const en = resolveActionLocale(params.locale) === "en";
     return {
       error:
         error.code === "PT428"
-          ? "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
-          : error.message || "Błąd zapisu pomiaru",
+          ? en
+            ? "This household requires a recovery key before making changes (read-only mode)."
+            : "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
+          : error.message || (en ? "Failed to save measurement" : "Błąd zapisu pomiaru"),
       isConflict,
     };
   }
@@ -58,6 +70,7 @@ export async function deleteVitalMeasurement(params: {
   id: string;
   petId: string;
   revision: number;
+  locale?: "pl" | "en";
 }): Promise<{
   success: boolean;
   error?: string;
@@ -72,12 +85,15 @@ export async function deleteVitalMeasurement(params: {
 
   if (error) {
     const isConflict = error.code === "PT409";
+    const en = resolveActionLocale(params.locale) === "en";
     return {
       success: false,
       error:
         error.code === "PT428"
-          ? "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
-          : error.message || "Nie udało się usunąć pomiaru",
+          ? en
+            ? "This household requires a recovery key before making changes (read-only mode)."
+            : "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
+          : error.message || (en ? "Failed to delete measurement" : "Nie udało się usunąć pomiaru"),
       isConflict,
     };
   }

@@ -67,6 +67,8 @@ const pl = {
     archive_note: "Notatka może mieć maksymalnie 1000 znaków.",
     forbidden: "Tylko właściciel gospodarstwa może zamknąć lub przywrócić kartotekę.",
     pet_archived: "Ta kartoteka jest już zamknięta i zabezpieczona przed edycją.",
+    recovery_key_required:
+      "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu).",
     generic: "Nie udało się zapisać zmiany statusu kartoteki.",
   },
 };
@@ -137,6 +139,8 @@ const en: typeof pl = {
     archive_note: "Note can be at most 1000 characters.",
     forbidden: "Only the household owner can close or restore pet records.",
     pet_archived: "This record is closed and read-only.",
+    recovery_key_required:
+      "This household requires a recovery key before making changes (read-only mode).",
     generic: "Could not update the record status.",
   },
 };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeRelativePath } from "@/lib/safe-redirect";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ locale: string }> }) {
   const { locale: input } = await context.params;
@@ -35,10 +36,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ loc
     }
   }
 
+  const safeNextPath = sanitizeRelativePath(next, "/app");
   const destination = pilotRestricted
     ? "login?error=pilot_restricted"
     : success
-      ? (next && next.startsWith("/") ? next.slice(1) : "app")
+      ? safeNextPath.slice(1)
       : "login?error=confirmation";
 
   const response = new NextResponse(null, {

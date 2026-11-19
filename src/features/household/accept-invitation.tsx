@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
   IconAlertCircle,
@@ -17,7 +16,7 @@ import {
   IconUserPlus,
   IconUsers,
 } from "@tabler/icons-react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type { InvitationDetailsResponse } from "./types";
@@ -568,7 +567,15 @@ export function AcceptInvitation({
                     type="button"
                     className="household-invite-eye-btn"
                     onClick={() => setShowRegPassword(!showRegPassword)}
-                    aria-label={showRegPassword ? "Ukryj hasło" : "Pokaż hasło"}
+                    aria-label={
+                      showRegPassword
+                        ? pl
+                          ? "Ukryj hasło"
+                          : "Hide password"
+                        : pl
+                          ? "Pokaż hasło"
+                          : "Show password"
+                    }
                   >
                     {showRegPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                   </button>
@@ -649,7 +656,15 @@ export function AcceptInvitation({
                     type="button"
                     className="household-invite-eye-btn"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    aria-label={showLoginPassword ? "Ukryj hasło" : "Pokaż hasło"}
+                    aria-label={
+                      showLoginPassword
+                        ? pl
+                          ? "Ukryj hasło"
+                          : "Hide password"
+                        : pl
+                          ? "Pokaż hasło"
+                          : "Show password"
+                    }
                   >
                     {showLoginPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                   </button>

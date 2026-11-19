@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { IconAlertTriangle, IconBan, IconX } from "@tabler/icons-react";
 import type { ProjectedMedicationDose } from "./types";
@@ -22,6 +22,7 @@ export function SkipDoseDialog({
 }: Props) {
   const locale = useLocale();
   const pl = locale === "pl";
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [notes, setNotes] = useState("");
 
@@ -42,14 +43,17 @@ export function SkipDoseDialog({
       ];
 
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !isSaving) {
-        onClose();
-      }
+    const el = dialogRef.current;
+    if (!el) return;
+    const prevFocus = document.activeElement as HTMLElement | null;
+    if (!el.open) {
+      el.showModal();
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, isSaving]);
+    return () => {
+      if (el.open) el.close();
+      prevFocus?.focus();
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,18 +62,19 @@ export function SkipDoseDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="skip-dose-title"
+      className="m-auto w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-amber-200 dark:border-amber-900/40 p-0 text-slate-800 dark:text-slate-100 backdrop:bg-slate-900/60 backdrop:backdrop-blur-xs"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!isSaving) onClose();
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !isSaving) onClose();
+        if (e.target === dialogRef.current && !isSaving) onClose();
       }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="skip-dose-title"
-        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-amber-200 dark:border-amber-900/40 p-6 flex flex-col gap-5 text-slate-800 dark:text-slate-100"
-      >
+      <div className="p-6 flex flex-col gap-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
@@ -90,10 +95,10 @@ export function SkipDoseDialog({
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer"
             aria-label={pl ? "Zamknij" : "Close"}
           >
-            <IconX size={20} />
+            <IconX size={20} aria-hidden="true" />
           </button>
         </div>
 
@@ -150,7 +155,7 @@ export function SkipDoseDialog({
                       prev ? `${prev}, ${reason.toLowerCase()}` : reason,
                     )
                   }
-                  className="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-800 dark:hover:bg-amber-950/50 dark:hover:text-amber-300 transition-colors cursor-pointer"
+                  className="text-[11px] px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-800 dark:hover:bg-amber-950/50 dark:hover:text-amber-300 transition-colors cursor-pointer"
                 >
                   + {reason}
                 </button>
@@ -163,16 +168,16 @@ export function SkipDoseDialog({
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2.5 min-h-[44px] text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {pl ? "Anuluj" : "Cancel"}
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <IconBan size={15} />
+              <IconBan size={15} aria-hidden="true" />
               <span>
                 {isSaving
                   ? pl
@@ -186,6 +191,6 @@ export function SkipDoseDialog({
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
   );
 }

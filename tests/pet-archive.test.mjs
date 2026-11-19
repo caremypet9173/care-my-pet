@@ -44,12 +44,35 @@ test("access code generation, PBKDF2 hashing and verification work case-insensit
 
   const salt = generateSaltHex();
   const hash = await hashAccessCode(code, salt);
-  assert.equal(hash.length, 64);
+  assert.match(hash, /^v2:[0-9a-f]{64}$/);
 
   assert.equal(await verifyAccessCode(formatted.toLowerCase(), salt, hash), true);
   assert.equal(await verifyAccessCode(` ${code.slice(0, 4)} ${code.slice(4)} `, salt, hash), true);
   assert.equal(await verifyAccessCode("WRONG123", salt, hash), false);
   assert.equal(normalizeAccessCode(" ab-12 cd "), "AB12CD");
+
+  // Backwards compatibility with legacy 10k-iteration unprefixed 64-hex hashes
+  const legacyKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(code),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const legacySaltBytes = new Uint8Array(
+    salt.match(/.{2}/g).map((b) => parseInt(b, 16)),
+  );
+  const legacyBits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: legacySaltBytes, iterations: 10_000, hash: "SHA-256" },
+    legacyKey,
+    256,
+  );
+  const legacyHash = Array.from(new Uint8Array(legacyBits), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
+  assert.equal(legacyHash.length, 64);
+  assert.equal(await verifyAccessCode(formatted, salt, legacyHash), true);
+  assert.equal(await verifyAccessCode("WRONG123", salt, legacyHash), false);
 });
 
 test("HMAC archive session tokens validate expiry and tamper resistance", async () => {

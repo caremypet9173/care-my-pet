@@ -314,7 +314,7 @@
 .schedule-day-top { display: flex; align-items: center; justify-content: space-between; gap: .25rem; }
 .schedule-day-num { display: inline-grid; place-items: center; min-width: 1.55rem; height: 1.55rem; padding-inline: .25rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }
 .schedule-day-cell.is-today .schedule-day-num { background: var(--color-primary); color: #fff; }
-.schedule-day-add { width: 1.4rem; height: 1.4rem; border-radius: .35rem; border: 1px solid transparent; background: transparent; color: var(--color-text-muted); font-size: .85rem; font-weight: 700; line-height: 1; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, background-color .15s; }
+.schedule-day-add { min-width: 1.75rem; min-height: 1.75rem; border-radius: .35rem; border: 1px solid transparent; background: transparent; color: var(--color-text-muted); font-size: .9rem; font-weight: 700; line-height: 1; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, background-color .15s; }
 .schedule-day-cell:hover .schedule-day-add, .schedule-day-cell.is-selected .schedule-day-add, .schedule-day-add:focus-visible { opacity: 1; }
 .schedule-day-add:hover { background: #dfeee6; border-color: #b8d4c5; color: #164d34; }
 .schedule-day-dots { display: none; }
@@ -421,7 +421,15 @@
 .schedule-week-card-actions { display: flex; align-items: center; justify-content: flex-end; gap: .25rem; margin-top: .15rem; }
 .schedule-week-action-btn { display: inline-flex; align-items: center; gap: .2rem; padding: .15rem .45rem; border-radius: .35rem; border: 1px solid #b8d4c5; background: #eef7f2; color: #164d34; font-size: .65rem; font-weight: 600; cursor: pointer; transition: background-color .12s; }
 .schedule-week-action-btn:hover { background: #dfeee6; }
-.schedule-week-icon-btn { width: 22px; height: 22px; border-radius: .35rem; border: 1px solid var(--color-border); background: #fff; color: var(--color-text); display: grid; place-items: center; cursor: pointer; transition: background-color .12s; }
+.schedule-week-icon-btn { min-width: 30px; min-height: 30px; border-radius: .35rem; border: 1px solid var(--color-border); background: #fff; color: var(--color-text); display: grid; place-items: center; cursor: pointer; transition: background-color .12s; }
+@media (pointer: coarse) {
+  .schedule-day-add,
+  .schedule-week-quick-add,
+  .schedule-week-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
 .schedule-week-icon-btn:hover { background: var(--color-surface-sand); }
 .schedule-week-action-link { display: inline-flex; align-items: center; gap: .2rem; padding: .15rem .45rem; border-radius: .35rem; border: 1px solid #fbcfe8; background: #fdf2f8; color: #be185d; font-size: .65rem; font-weight: 600; text-decoration: none; }
 .schedule-week-action-link:hover { background: #fce7f3; }
@@ -2933,6 +2941,21 @@
   flex-shrink: 0;
 }
 
+dialog.recovery-dialog-native {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  max-width: min(560px, calc(100vw - 2rem));
+  width: 100%;
+  overflow: visible;
+}
+
+dialog.recovery-dialog-native::backdrop {
+  background: var(--color-dialog-backdrop, rgb(20 34 29 / 0.6));
+  backdrop-filter: blur(4px);
+}
+
 .recovery-dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -3334,6 +3357,14 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: 0.04em;
   font-weight: 600;
+}
+
+@media (max-width: 28rem) {
+  .recovery-key-input {
+    font-size: 0.75rem;
+    letter-spacing: 0.01em;
+    padding-inline: 0.6rem;
+  }
 }
 
 .recovery-field small {

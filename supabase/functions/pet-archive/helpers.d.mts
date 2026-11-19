@@ -4,6 +4,8 @@ export const ARCHIVE_MAX_FAILED_ATTEMPTS: number;
 export const ARCHIVE_LOCK_MS: number;
 export const ARCHIVE_SESSION_TTL_MS: number;
 export const ARCHIVE_CODE_LENGTH: number;
+export const ARCHIVE_PBKDF2_ITERATIONS: number;
+export const ARCHIVE_PBKDF2_ITERATIONS_LEGACY: number;
 
 export function normalizeArchiveEmail(raw: unknown): string;
 export function isValidArchiveEmail(raw: unknown): boolean;

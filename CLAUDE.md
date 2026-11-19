@@ -16,44 +16,52 @@ poza MVP.
 
 ## Źródło prawdy
 
-**Aktualny etap (2026-11-17):** zaawansowane przygotowanie cichego pilotażu —
-cztery koty Wojtka i ich rzeczywista dokumentacja, przed szerszym udostępnieniem
-zaproszonym znajomym. W projekcie Supabase `lrlnqmciarjvngvquchu` wdrożono
-**50 migracji SQL** i **10 Edge Functions** (`household`, `medical-reports`,
-`pet-assistant`, `pet-history`, `pet-medications`, `pet-schedule`, `pet-share`,
-`pet-weight`, `pets`, `schedule-notifications` + `_shared/rag.ts`).
+**Aktualny etap (2026-11-19):** zaawansowane przygotowanie cichego pilotażu (po pełnym
+audycie bezpieczeństwa, wydajności, AI/RAG i UX/A11y — Pakiety 1–4) — cztery koty
+Wojtka i ich rzeczywista dokumentacja, przed szerszym udostępnieniem zaproszonym
+znajomym. W projekcie Supabase `lrlnqmciarjvngvquchu` wdrożono **57 migracji SQL**
+i **12 Edge Functions** (`household`, `household-recovery`, `medical-reports`,
+`pet-archive`, `pet-assistant`, `pet-history`, `pet-medications`, `pet-schedule`,
+`pet-share`, `pet-weight`, `pets`, `schedule-notifications` + `_shared/{rag,recovery-crypto,recovery-email,safe-origin}`).
 
 Wdrożone obszary aplikacji:
 - **Warstwa publiczna i demo:** strona główna „06 — Care My Pet Signature”
   (projekt Stitch `1963478756572071889`), pełne demo `/demo/luna`, podstrony
   informacyjne/prawne oraz waitlista (`waitlist`).
-- **Auth i gospodarstwa:** rejestracja/logowanie (e-mail/hasło z Gmail SMTP i
-  Google OAuth), przełącznik aktywnego gospodarstwa, role właściciela i
-  współopiekuna, zaproszenia oraz bramka pilotażu (`pilot_whitelist`).
-- **Profile i kartoteki pupili (`pets`):** dodawanie/edycja z kadrowaniem
-  prywatnego awatara i przybliżoną datą urodzenia, kolumna `tagi` (krótkie
-  hasła opiekuńczo-zdrowotne ze słownikiem podpowiedzi), opis „Parę słów o mnie”
-  otwierany przyciskiem/modalem **„O mnie”** w kompaktowym `PetHeroCover`,
-  pasek szybkiego przełączania kartotek `PetSwitcher` (pigułki do 5 pupili na
-  desktopie, dropdown powyżej 5 i na mobile) oraz **Dzienny plan opieki**.
-- **Wyniki badań i dokumenty (`medical-reports`):** odczyt PDF/JPG/PNG przez
+- **Auth, gospodarstwa i odzyskiwanie (`household`, `household-recovery`):**
+  rejestracja/logowanie (e-mail/hasło z Gmail SMTP i Google OAuth), przełącznik
+  aktywnego gospodarstwa, 3 role (`owner`, `admin`, `member` ze ścisłym rozdziałem
+  uprawnień właściciela), zaproszenia, bramka pilotażu (`pilot_whitelist`) oraz
+  **Klucz Odzyskiwania** (`/odzyskaj`, wzorzec Apple Legacy Contact).
+- **Profile, kartoteki i archiwizacja pupili (`pets`, `pet-archive`):**
+  dodawanie/edycja z kadrowaniem prywatnego awatara i przybliżoną datą urodzenia,
+  kolumna `tagi` (krótkie hasła opiekuńczo-zdrowotne ze słownikiem podpowiedzi),
+  opis „Parę słów o mnie” otwierany przyciskiem/modalem **„O mnie”** w kompaktowym
+  `PetHeroCover`, pasek szybkiego przełączania kartotek `PetSwitcher` (pigułki do
+  5 pupili na desktopie, dropdown powyżej 5 i na mobile), **Dzienny plan opieki**
+  oraz archiwizacja pupila z zabezpieczonymi linkami archiwalnymi (`/archiwum/[token]`,
+  kod jednorazowy PBKDF2 100k + PDF i oryginały badań).
+- **Wyniki badań i dokumenty (`medical-reports`):** odczyt PDF/JPG/PNG (limit 12 MB,
+  transfer przez Storage + limit 10 stron po stronie serwera przez `pdf-lib`) przez
   Gemini (`gemini-3.5-flash-lite`) z obowiązkowym ekranem potwierdzenia
   Split-Screen 2, kontrolą duplikatów SHA-256, normalizacją parametrów i
   jednostek, macierzą porównawczą trendów, obsługą badań opisowych (USG/TK/RTG)
-  oraz batchowym importem kart wypisowych.
+  oraz batchowym importem kart wypisowych (`pl`/`en`).
 - **Historia, pomiary życiowe i płynoterapia (`pet-history`, `pet-weight`, `fluid-therapy`):**
   wizyty, szczepienia i profilaktyka (z ekstrakcją AI), historia masy ciała,
   ciśnienia krwi (ACVIM/IRIS), glukozy i temperatury, dedykowane widoki
   płynoterapii z cyklicznymi harmonogramami wlewów.
 - **Leki i terminarz (`pet-medications`, `pet-schedule`, `schedule-notifications`):**
   harmonogramy leków z wieloma porami podania, logowaniem podań/pominięć,
-  śledzeniem zapasu, Supabase Realtime i kartą leczenia do druku; kalendarz
-  (dzień/tydzień/miesiąc/agenda) z powiadomieniami Web Push (VAPID) i SMTP
-  (Nodemailer, w tym dodatkowi odbiorcy e-mail).
+  śledzeniem zapasu, współdzielonym Supabase Realtime i kartą leczenia do druku;
+  kalendarz (dzień/tydzień/miesiąc/agenda) z powiadomieniami Web Push (VAPID,
+  deduplikacja i czyszczenie wygasłych 404/410) oraz SMTP (Nodemailer z pulą połączeń
+  i dodatkowymi odbiorcami e-mail).
 - **Asystent AI (`pet-assistant`) i udostępnianie (`pet-share`):** wielowątkowy
-  czat z RAG (`pgvector`, `gemini-embedding-2`/`001`), pełnym kontekstem
-  kartoteki (w tym tagów, pomiarów, leków i płynoterapii), eksportem podsumowań
-  do PDF oraz tymczasowymi linkami/QR read-only dla weterynarza (`/udostepnione/[token]`).
+  czat z RAG (`pgvector 0.8.2` z `hnsw.iterative_scan`, `gemini-embedding-001` z
+  `taskType` i pomijaniem re-embeddingu po SHA-256), pełnym kontekstem kartoteki
+  (w tym tagów, pomiarów, leków i płynoterapii), eksportem podsumowań do PDF oraz
+  tymczasowymi linkami/QR read-only dla weterynarza (`/udostepnione/[token]`).
 
 Projekt Stitch: https://stitch.withgoogle.com/projects/1963478756572071889.
 Nie wybieraj innego projektu na podstawie domyślnej konfiguracji gcloud.
@@ -81,9 +89,9 @@ zamiast działać na nieaktualnym założeniu.
 - Backend: Supabase — PostgreSQL + RLS + `pgvector`, Auth, Storage, Edge Functions (Deno), Realtime
 - Hosting pilotażu: Vercel Hobby (Next.js) + Supabase Cloud Free; własny serwer dopiero w planach
 - Treść publiczna: Signature, demo `/demo/luna`, waitlista w bazie (`waitlist`); blog i Sanity odłożone
-- PWA: natywny manifest (`src/app/manifest.ts`) + własny Service Worker (`public/sw.js`, z bypass na `localhost`/`127.0.0.1`)
-- Powiadomienia: Web Push (VAPID, `web-push`) + e-mail SMTP (`nodemailer`)
-- AI: Gemini (`gemini-3.5-flash-lite`, konfigurowalne przez `GEMINI_MODEL`) do ekstrakcji, opisów i asystenta + embeddingi `gemini-embedding-2` / `gemini-embedding-001` (`pgvector`)
+- PWA: natywny manifest (`src/app/manifest.ts`) + własny Service Worker (`public/sw.js` v3: prywatne trasy Network-Only, bypass na `localhost`/`127.0.0.1`) + nagłówki bezpieczeństwa / CSP (`next.config.ts`)
+- Powiadomienia: Web Push (VAPID, `npm:web-push` w Deno Edge Function) + e-mail SMTP (`nodemailer`)
+- AI: Gemini (`gemini-3.5-flash-lite`, konfigurowalne przez `GEMINI_MODEL`) do ekstrakcji, opisów i asystenta + embeddingi `gemini-embedding-001` (`pgvector 0.8.2`, `hnsw.iterative_scan`)
 
 ## Reguły architektoniczne
 
@@ -136,5 +144,6 @@ npm run dev
 npm run build
 npm run lint
 npm run typecheck
+npm run test:unit
 npm run test:e2e
 ```

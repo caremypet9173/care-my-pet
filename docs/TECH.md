@@ -1,7 +1,7 @@
 # TECH — Stack i architektura
 
-**Wersja:** 0.4 (MVP / cichy pilotaż — aktualizacja do stanu repo)
-**Data:** 2026-11-17
+**Wersja:** 0.5 (MVP / cichy pilotaż — stan po audycie Pakiety 1–4)
+**Data:** 2026-11-19
 **Status:** Aktywny
 **Powiązane:** PRD.md, ROADMAP.md, MONETIZATION.md, DESIGN.md
 
@@ -14,14 +14,14 @@ hosting i warstwa publiczna.
 
 | Warstwa | Technologia |
 |---|---|
-| Frontend | Next.js 16 (`16.4.5`, App Router, Turbopack), React 19 (`19.3.0`), TypeScript, Tailwind CSS 4, Tabler Icons, `next-intl` (`pl`/`en`); komponenty Signature |
-| Backend / BaaS | Supabase — PostgreSQL + RLS + `pgvector`, Auth, Storage, Edge Functions (Deno), Realtime |
+| Frontend | Next.js 16 (`16.4.5`, App Router, Turbopack), React 19 (`19.3.0`, `React.cache()`), TypeScript, Tailwind CSS 4 (wyłącznie panel prywatny), Tabler Icons, `next-intl` (`pl`/`en`); komponenty Signature |
+| Backend / BaaS | Supabase — PostgreSQL + RLS (InitPlan) + `pgvector 0.8.2`, Auth, Storage, Edge Functions (Deno), Realtime |
 | Hosting | Vercel (Next.js) + Supabase managed (backend i pliki) — patrz `HOSTING.md` |
-| PWA | Natywny manifest (`src/app/manifest.ts`) + własny Service Worker (`public/sw.js`, cache `caremypet-v2`, bypass w trybie lokalnym) |
-| Powiadomienia | Web Push VAPID (`web-push`) + e-mail SMTP (`nodemailer`) |
+| PWA i bezpieczeństwo | Natywny manifest (`src/app/manifest.ts`) + własny Service Worker (`public/sw.js` v3: prywatne trasy Network-Only, bypass w trybie lokalnym) + nagłówki CSP / security headers (`next.config.ts`) |
+| Powiadomienia | Web Push VAPID (`npm:web-push` w Edge Function) + e-mail SMTP (`nodemailer` z pulą połączeń) |
 | AI (ekstrakcja i asystent) | Gemini (`GEMINI_MODEL`, domyślnie `gemini-3.5-flash-lite`) |
-| RAG / embeddingi | `gemini-embedding-2` / `gemini-embedding-001` (768D) + `pgvector` (`pet_knowledge_chunk`) |
-| PDF po stronie klienta | `pdfjs-dist` (podgląd oryginałów) + `pdf-lib` / `@pdf-lib/fontkit` (dzielenie stron wypisów i eksport podsumowań AI) |
+| RAG / embeddingi | `gemini-embedding-001` (768D, `taskType` + SHA-256 skip) + `pgvector 0.8.2` (`pet_knowledge_chunk`, `hnsw.iterative_scan`) |
+| PDF po stronie klienta | `pdfjs-dist` (podgląd oryginałów) + leniwie ładowane `pdf-lib` / `@pdf-lib/fontkit` (dzielenie stron wypisów, eksport podsumowań AI i archiwum pupila) |
 
 *(Uwaga historyczna: wcześniejsze szkice przewidywały użycie Claude Sonnet/Haiku,
 Resend oraz `@ducanh2912/next-pwa` + Workbox. W bieżącej implementacji całość AI
@@ -37,17 +37,21 @@ semantycznych (`--color-primary` itd.), nie na wartościach hex w kodzie.
 
 - **Cała logika biznesowa w Supabase Edge Functions.** Warstwa hostingu
   (Vercel lub własny Next.js) obsługuje wyłącznie UI, SSR oraz wyzwalacze Cron —
-  nie trzyma logiki domenowej. Wdrożone funkcje (`supabase/functions/`):
-  `household`, `medical-reports`, `pet-assistant`, `pet-history`,
-  `pet-medications`, `pet-schedule`, `pet-share`, `pet-weight`, `pets`,
-  `schedule-notifications` (oraz współdzielony moduł `_shared/rag.ts`).
+  nie trzyma logiki domenowej. Wdrożone funkcje (`supabase/functions/`, 12 szt.):
+  `household`, `household-recovery`, `medical-reports`, `pet-archive`,
+  `pet-assistant`, `pet-history`, `pet-medications`, `pet-schedule`, `pet-share`,
+  `pet-weight`, `pets`, `schedule-notifications` (oraz współdzielone moduły
+  `_shared/{rag,recovery-crypto,recovery-email,safe-origin}`).
 - **Auth przez Supabase** (`@supabase/ssr`), `src/proxy.ts` jako bramka UI i
   odświeżania sesji dla tras `/{locale}/app`, `/login`, `/register`, `/auth`.
-  Dostęp kontrolowany przez tabelę `pilot_whitelist` (`check_pilot_access`).
-- **Izolacja danych przez RLS.** Właściciele współdzielą jedną bazę; każdy wiersz
-  ma `gospodarstwo_id` (lub `household_id`), a polityki RLS odcinają dostęp do
-  cudzych danych na poziomie silnika bazy. Nowe tabele `public.*` mają jawne
-  uprawnienia `GRANT` przed włączeniem RLS (`AGENTS.md`).
+  Dostęp kontrolowany przez tabelę `pilot_whitelist` (`check_pilot_access`), a
+  przekierowania po logowaniu walidowane przez `sanitizeRelativePath`.
+- **Izolacja danych przez RLS i role.** Właściciele współdzielą jedną bazę; każdy
+  wiersz ma `gospodarstwo_id` (lub `household_id`), a polityki RLS (zoptymalizowane
+  do InitPlan `(select auth.uid())`) odcinają dostęp do cudzych danych na poziomie
+  silnika bazy. Role gospodarstwa: `owner` (pełna kontrola, zaproszenia, klucz
+  odzyskiwania, archiwizacja), `admin`, `member`. Nowe tabele `public.*` mają
+  jawne uprawnienia `GRANT` przed włączeniem RLS (`AGENTS.md`).
 - **Storage:** prywatne buckety `pet-avatars` i `medical-documents` z politykami
   RLS na ścieżkach gospodarstwa/użytkownika i czasowymi podpisanymi URL-ami
   generowanymi po stronie serwera.
@@ -62,9 +66,9 @@ semantycznych (`--color-primary` itd.), nie na wartościach hex w kodzie.
 ### 3.1 Odczyt wyników badań, opisów (USG/TK/RTG) i kart wypisowych
 
 ```
-plik (PDF/JPG/PNG)
+plik (PDF/JPG/PNG, maks. 12 MB, transfer przez Storage + limit 10 stron PDF)
    │
-   ├─▶ SHA-256 + walidacja rozmiaru i sygnatury pliku
+   ├─▶ SHA-256 + walidacja rozmiaru, sygnatury pliku i liczby stron (`pdf-lib`)
    │
    ├─▶ Gemini (gemini-3.5-flash-lite, JSON Schema)
    │      ├─ badania lab: parametry, wartości, jednostki, zakresy, wstępna interpretacja
@@ -75,7 +79,7 @@ plik (PDF/JPG/PNG)
 ekran weryfikacji Split-Screen 2 — do ZATWIERDZENIA przez użytkownika
    │
    ▼
-zapis atomowy w bazie (RPC) + indeksacja RAG (`pet_knowledge_chunk`) + log kosztu (`private.ai_usage_log`)
+zapis atomowy w bazie (RPC) + indeksacja RAG (`pet_knowledge_chunk`, SHA-256 skip) + log kosztu (`private.ai_usage_log`)
 ```
 
 **Twarde zasady:**
@@ -103,12 +107,14 @@ Edge Function `pet-assistant`:
 
 ---
 
-## 4. Model danych (stan z 50 migracji SQL)
+## 4. Model danych (stan z 57 migracji SQL)
 
-- **Gospodarstwa i dostęp:** `gospodarstwo`, `czlonek_gospodarstwa`,
-  `zaproszenie_gospodarstwa`, `pilot_whitelist`, `waitlist`
-- **Pupile:** `zwierze` (m.in. gatunek, rasa, płeć, przybliżona data urodzenia,
-  kastracja, identyfikacja/chip, `tagi text[]`, `notatki`, `avatar_path`)
+- **Gospodarstwa, dostęp i odzyskiwanie:** `gospodarstwo`, `czlonek_gospodarstwa`,
+  `zaproszenie_gospodarstwa`, `household_recovery_key`, `household_recovery_request`,
+  `pilot_whitelist`, `waitlist`
+- **Pupile i archiwum:** `zwierze` (m.in. gatunek, rasa, płeć, przybliżona data
+  urodzenia, kastracja, identyfikacja/chip, `tagi text[]`, `notatki`, `avatar_path`,
+  `archived_at`, `archive_reason`, `closed_on`), `pet_archive_link`
 - **Wyniki badań (znormalizowane):** `wynik_badania`, `pomiar_parametru`,
   `measurement_correction`
 - **Pomiary zdrowia i terapia:** `pet_weight`, `pet_vital_measurement`
@@ -118,7 +124,7 @@ Edge Function `pet-assistant`:
   `pet_schedule_item`, `household_notification_settings`,
   `schedule_notification_log`, `pet_push_subscription`
 - **Udostępnianie weterynarzowi:** `pet_share_link`, `pet_share_open_log`
-- **AI / RAG:** `pet_knowledge_chunk` (`vector(768)` + indeks HNSW),
+- **AI / RAG:** `pet_knowledge_chunk` (`vector(768)` + indeks HNSW z `hnsw.iterative_scan`),
   `pet_assistant_thread`, `pet_assistant_message`
 - **Schemat prywatny (`private.*`):** `medical_read_quota`,
   `ai_assistant_quota`, `ai_usage_log`

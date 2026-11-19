@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
 import {
   IconAlertCircle,
   IconArrowRight,
@@ -15,7 +14,7 @@ import {
   IconUserCheck,
   IconUserPlus,
 } from "@tabler/icons-react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { switchActiveHousehold } from "./actions";
