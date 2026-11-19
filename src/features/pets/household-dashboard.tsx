@@ -38,6 +38,7 @@ export function HouseholdDashboard({
   notificationSettings,
   locale,
   canAddPet = true,
+  readOnly = false,
 }: {
   pets: Pet[];
   healthEvents?: HealthEvent[];
@@ -48,6 +49,7 @@ export function HouseholdDashboard({
   notificationSettings?: HouseholdNotificationSettings;
   locale: Locale;
   canAddPet?: boolean;
+  readOnly?: boolean;
 }) {
   const t = petMessages[locale];
   const d = dashboardMessages[locale];
@@ -303,6 +305,7 @@ export function HouseholdDashboard({
         initialMedicationSchedules={activeMedicationSchedules}
         initialMedicationLogs={activeMedicationLogs}
         initialNotificationSettings={notificationSettings}
+        readOnly={readOnly}
       />
 
       {archivedPets.length > 0 && (

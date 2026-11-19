@@ -34,6 +34,9 @@ function mapArchiveError(
   field: string | undefined,
   m: (typeof petArchiveMessages)[Locale],
 ): string {
+  if (errorCode === "recovery_key_required") {
+    return "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu).";
+  }
   if (field && field in m.errors) {
     return m.errors[field as keyof typeof m.errors];
   }

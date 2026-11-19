@@ -47,7 +47,10 @@ export async function saveFluidTherapy(params: SaveFluidTherapyParams): Promise<
   if (error) {
     const isConflict = error.code === "PT409";
     return {
-      error: error.message || "Błąd zapisu płynoterapii",
+      error:
+        error.code === "PT428"
+          ? "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
+          : error.message || "Błąd zapisu płynoterapii",
       isConflict,
     };
   }
@@ -75,7 +78,10 @@ export async function deleteFluidTherapy(params: {
     const isConflict = error.code === "PT409";
     return {
       success: false,
-      error: error.message || "Nie udało się usunąć wpisu płynoterapii",
+      error:
+        error.code === "PT428"
+          ? "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
+          : error.message || "Nie udało się usunąć wpisu płynoterapii",
       isConflict,
     };
   }

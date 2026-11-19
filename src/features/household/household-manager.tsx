@@ -8,10 +8,14 @@ import {
   IconClock,
   IconCopy,
   IconHome,
+  IconKey,
+  IconLock,
   IconMail,
+  IconMailForward,
   IconPencil,
   IconPlus,
   IconShieldCheck,
+  IconShieldLock,
   IconTrash,
   IconUser,
   IconUserCheck,
@@ -23,12 +27,23 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type {
+  HouseholdAdminRequest,
   HouseholdDetailsResponse,
   HouseholdInvitation,
   HouseholdMember,
 } from "./types";
 import { switchActiveHousehold } from "./actions";
 import { notifyHouseholdChange } from "./active-household-events";
+import {
+  HouseholdRecoveryBanner,
+  RecoveryKeyDialog,
+} from "./recovery-key-controls";
+
+function getRoleTagLabel(rola: string, pl: boolean): string {
+  if (rola === "owner") return pl ? "Właściciel" : "Owner";
+  if (rola === "admin") return pl ? "Współadministrator" : "Co-admin";
+  return pl ? "Współopiekun" : "Member";
+}
 
 export function HouseholdManager({
   initialData,
@@ -47,6 +62,7 @@ export function HouseholdManager({
     initialData.invitations,
   );
   const isOwner = household.is_owner;
+  const canManage = household.can_manage;
 
   // Edycja nazwy
   const [isEditingName, setIsEditingName] = useState(false);
@@ -55,6 +71,7 @@ export function HouseholdManager({
 
   // Formularz zaproszenia
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
   const [isInviting, setIsInviting] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState<{
     type: "ok" | "error";
@@ -62,11 +79,26 @@ export function HouseholdManager({
     inviteUrl?: string;
   } | null>(null);
 
+  // Bezpieczeństwo: klucz odzyskania, e-mail pomocniczy, wnioski o współadministrację
+  const [recoveryKeyDialogOpen, setRecoveryKeyDialogOpen] = useState(false);
+  const [backupEmailInput, setBackupEmailInput] = useState(
+    household.recovery_email ?? "",
+  );
+  const [isSavingBackupEmail, setIsSavingBackupEmail] = useState(false);
+  const [backupEmailMsg, setBackupEmailMsg] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
+  const [adminRequest, setAdminRequest] =
+    useState<HouseholdAdminRequest | null>(initialData.admin_request ?? null);
+  const [takeoverMsg, setTakeoverMsg] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
+
   // Stany akcji
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
-
-
 
   // Synchronizacja aktywnego gospodarstwa po stronie klienta (np. przy wejściu przez link ?id=...)
   useEffect(() => {
@@ -74,6 +106,33 @@ export function HouseholdManager({
       notifyHouseholdChange(household.id);
     }
   }, [household?.id]);
+
+  // Automatyczna synchronizacja po stronie serwera, jeśli upłynął 14-dniowy termin wniosku o współadministrację
+  const pendingReqResolvesAt =
+    adminRequest?.status === "pending" ? adminRequest.resolves_at : null;
+  useEffect(() => {
+    if (!pendingReqResolvesAt) return;
+    if (new Date(pendingReqResolvesAt).getTime() > Date.now()) return;
+
+    let cancelled = false;
+    async function syncExpiredRequest() {
+      const client = createClient();
+      const { data } = await client.functions.invoke("household", {
+        body: { action: "get", household_id: household.id },
+      });
+      if (!cancelled && data?.household) {
+        setHousehold(data.household);
+        setMembers(data.members ?? []);
+        setInvitations(data.invitations ?? []);
+        setAdminRequest(data.admin_request ?? null);
+        router.refresh();
+      }
+    }
+    void syncExpiredRequest();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingReqResolvesAt, household.id, router]);
 
   // Założenie własnego gospodarstwa (dla osób będących tylko współopiekunem)
   const hasOwnedHousehold =
@@ -177,6 +236,8 @@ export function HouseholdManager({
           action: "invite",
           household_id: household.id,
           email: trimmed,
+          rola: isOwner ? inviteRole : "member",
+          locale,
         },
       });
 
@@ -313,6 +374,178 @@ export function HouseholdManager({
     }
   }
 
+  async function handleSaveBackupEmail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canManage || isSavingBackupEmail) return;
+    setIsSavingBackupEmail(true);
+    setBackupEmailMsg(null);
+    try {
+      const client = createClient();
+      const trimmed = backupEmailInput.trim();
+      const { data, error } = await client.functions.invoke("household", {
+        body: {
+          action: "update_recovery_email",
+          household_id: household.id,
+          recovery_email: trimmed,
+          locale,
+        },
+      });
+
+      if (error || !data?.success) {
+        setBackupEmailMsg({
+          type: "error",
+          text:
+            data?.error === "invalid_email"
+              ? pl
+                ? "Podaj poprawny adres e-mail."
+                : "Enter a valid email address."
+              : pl
+                ? "Nie udało się zapisać pomocniczego adresu e-mail."
+                : "Failed to save backup email.",
+        });
+        return;
+      }
+
+      const nextEmail = (data.recovery_email as string | null) ?? null;
+      setHousehold((prev) => ({ ...prev, recovery_email: nextEmail }));
+      setBackupEmailInput(nextEmail ?? "");
+      setBackupEmailMsg({
+        type: "ok",
+        text: nextEmail
+          ? pl
+            ? `Zapisano adres pomocniczy: ${nextEmail}`
+            : `Backup email saved: ${nextEmail}`
+          : pl
+            ? "Usunięto pomocniczy adres e-mail."
+            : "Backup email cleared.",
+      });
+      router.refresh();
+    } finally {
+      setIsSavingBackupEmail(false);
+    }
+  }
+
+  async function handleSetMemberRole(
+    member: HouseholdMember,
+    nextRole: "admin" | "member",
+  ) {
+    if (!isOwner) return;
+    const key = `role-${member.user_id}`;
+    setBusyActionKey(key);
+    try {
+      const client = createClient();
+      const { data, error } = await client.functions.invoke("household", {
+        body: {
+          action: "set_member_role",
+          household_id: household.id,
+          user_id: member.user_id,
+          rola: nextRole,
+          locale,
+        },
+      });
+      if (!error && data?.success) {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.user_id === member.user_id ? { ...m, rola: nextRole } : m,
+          ),
+        );
+        router.refresh();
+      }
+    } finally {
+      setBusyActionKey(null);
+    }
+  }
+
+  async function handleRequestAdminTakeover() {
+    if (isOwner || household.my_role !== "member") return;
+    const confirmed = confirm(
+      pl
+        ? "Złożyć wniosek o rolę współadministratora? Właściciel otrzyma wiadomość e-mail i ma 14 dni na zatwierdzenie lub sprzeciw. Po tym czasie uprawnienia zostaną nadane automatycznie."
+        : "Request co-admin rights? The owner will receive an email alert and has 14 days to veto before automatic activation.",
+    );
+    if (!confirmed) return;
+
+    setBusyActionKey("takeover-request");
+    setTakeoverMsg(null);
+    try {
+      const client = createClient();
+      const { data, error } = await client.functions.invoke("household", {
+        body: {
+          action: "request_admin_takeover",
+          household_id: household.id,
+          locale,
+        },
+      });
+      if (error || !data?.admin_request) {
+        setTakeoverMsg({
+          type: "error",
+          text:
+            data?.error === "request_already_pending"
+              ? pl
+                ? "Wniosek o współadministrację już oczekuje na rozpatrzenie."
+                : "A co-admin request is already pending."
+              : pl
+                ? "Nie udało się złożyć wniosku."
+                : "Failed to submit co-admin request.",
+        });
+        return;
+      }
+      setAdminRequest(data.admin_request as HouseholdAdminRequest);
+      setTakeoverMsg({
+        type: "ok",
+        text: pl
+          ? "Wysłano wniosek o współadministrację. Powiadomienie trafiło do właściciela."
+          : "Co-admin request submitted. Owner has been notified.",
+      });
+      router.refresh();
+    } finally {
+      setBusyActionKey(null);
+    }
+  }
+
+  async function handleRespondAdminRequest(
+    decision: "approve" | "reject" | "cancel",
+  ) {
+    if (!adminRequest) return;
+    setBusyActionKey(`req-${decision}`);
+    setTakeoverMsg(null);
+    try {
+      const client = createClient();
+      const { data, error } = await client.functions.invoke("household", {
+        body: {
+          action: "respond_admin_request",
+          household_id: household.id,
+          request_id: adminRequest.id,
+          decision,
+          locale,
+        },
+      });
+      if (!error && data?.admin_request) {
+        const updatedReq = data.admin_request as HouseholdAdminRequest;
+        setAdminRequest(updatedReq);
+        if (decision === "approve") {
+          setMembers((prev) =>
+            prev.map((m) =>
+              m.user_id === adminRequest.requester_user_id
+                ? { ...m, rola: "admin" }
+                : m,
+            ),
+          );
+        }
+        router.refresh();
+      }
+    } finally {
+      setBusyActionKey(null);
+    }
+  }
+
+  const selfMember = members.find((m) => m.is_self) ?? null;
+  const isRequesterSelf = Boolean(
+    adminRequest && selfMember && adminRequest.requester_user_id === selfMember.user_id,
+  );
+  const canRotateOrSetKey =
+    isOwner || (!household.has_recovery_key && canManage);
+
   return (
     <div className="household-manager-layout">
       {/* Przełącznik wielu gospodarstw (jeśli użytkownik ma własne i jest też zaproszony do innego) */}
@@ -331,20 +564,23 @@ export function HouseholdManager({
               >
                 <IconHome size={16} aria-hidden="true" />
                 <strong>{h.nazwa}</strong>
-                <span className={`household-role-tag ${h.rola === "owner" ? "is-owner" : ""}`}>
-                  {h.rola === "owner"
-                    ? pl
-                      ? "Właściciel"
-                      : "Owner"
-                    : pl
-                      ? "Współopiekun"
-                      : "Member"}
+                <span className={`household-role-tag ${h.rola === "owner" ? "is-owner" : h.rola === "admin" ? "is-admin" : ""}`}>
+                  {getRoleTagLabel(h.rola, pl)}
                 </span>
               </button>
             ))}
           </div>
         </section>
       )}
+
+      <HouseholdRecoveryBanner
+        householdId={household.id}
+        householdName={household.nazwa}
+        ownerEmail={initialData.owner?.email ?? ""}
+        recoveryEmail={household.recovery_email}
+        canManage={canManage}
+        hasRecoveryKey={household.has_recovery_key}
+      />
 
       {/* Karta główna gospodarstwa */}
       <section className="household-manager-card">
@@ -390,7 +626,7 @@ export function HouseholdManager({
               ) : (
                 <div className="household-name-display">
                   <h2>{household.nazwa}</h2>
-                  {isOwner && (
+                  {canManage && (
                     <button
                       type="button"
                       className="household-edit-name-btn"
@@ -413,16 +649,22 @@ export function HouseholdManager({
 
           <div className="household-manager-badge-col">
             <span
-              className={`household-role-badge ${isOwner ? "is-owner" : "is-member"}`}
+              className={`household-role-badge ${
+                isOwner ? "is-owner" : household.my_role === "admin" ? "is-admin" : "is-member"
+              }`}
             >
               <IconShieldCheck size={14} aria-hidden="true" />
               {isOwner
                 ? pl
                   ? "Właściciel gospodarstwa"
                   : "Household owner"
-                : pl
-                  ? "Współopiekun (Członek)"
-                  : "Co-guardian (Member)"}
+                : household.my_role === "admin"
+                  ? pl
+                    ? "Współadministrator"
+                    : "Co-admin"
+                  : pl
+                    ? "Współopiekun (Członek)"
+                    : "Co-guardian (Member)"}
             </span>
           </div>
         </div>
@@ -531,53 +773,88 @@ export function HouseholdManager({
           </li>
 
           {/* Członkowie */}
-          {members.map((member) => (
-            <li key={member.user_id} className="household-member-item">
-              <div className="household-member-avatar">
-                <IconUser size={20} aria-hidden="true" />
-              </div>
-              <div className="household-member-info">
-                <div className="household-member-title-line">
-                  <strong>
-                    {member.email || (pl ? "Współopiekun" : "Co-guardian")}
-                  </strong>
-                  {member.is_self && (
-                    <span className="household-tag">{pl ? "Ty" : "You"}</span>
-                  )}
-                  <span className="household-role-tag">
-                    {pl ? "Współopiekun" : "Co-guardian"}
-                  </span>
+          {members.map((member) => {
+            const isAdminMember = member.rola === "admin";
+            const canRemoveMember =
+              member.is_self || isOwner || (canManage && !isAdminMember);
+            return (
+              <li key={member.user_id} className="household-member-item">
+                <div className="household-member-avatar">
+                  <IconUser size={20} aria-hidden="true" />
                 </div>
-                <small>
-                  {pl
-                    ? `Dołączył(a): ${formatDate(member.created_at)}`
-                    : `Joined: ${formatDate(member.created_at)}`}
-                </small>
-              </div>
-
-              {(isOwner || member.is_self) && (
-                <div className="household-member-actions">
-                  <button
-                    type="button"
-                    className="history-action-btn is-danger"
-                    disabled={busyActionKey === `remove-${member.user_id}`}
-                    onClick={() => void handleRemoveMember(member)}
-                  >
-                    <IconUserX size={15} aria-hidden="true" />
-                    <span>
-                      {member.is_self
-                        ? pl
-                          ? "Opuść gospodarstwo"
-                          : "Leave household"
-                        : pl
-                          ? "Usuń dostęp"
-                          : "Remove access"}
+                <div className="household-member-info">
+                  <div className="household-member-title-line">
+                    <strong>
+                      {member.email || (pl ? "Współopiekun" : "Co-guardian")}
+                    </strong>
+                    {member.is_self && (
+                      <span className="household-tag">{pl ? "Ty" : "You"}</span>
+                    )}
+                    <span
+                      className={`household-role-tag ${
+                        isAdminMember ? "is-admin" : ""
+                      }`}
+                    >
+                      {getRoleTagLabel(member.rola, pl)}
                     </span>
-                  </button>
+                  </div>
+                  <small>
+                    {pl
+                      ? `Dołączył(a): ${formatDate(member.created_at)}`
+                      : `Joined: ${formatDate(member.created_at)}`}
+                  </small>
                 </div>
-              )}
-            </li>
-          ))}
+
+                {(isOwner || canRemoveMember) && (
+                  <div className="household-member-actions">
+                    {isOwner && (
+                      <button
+                        type="button"
+                        className="history-action-btn"
+                        disabled={busyActionKey === `role-${member.user_id}`}
+                        onClick={() =>
+                          void handleSetMemberRole(
+                            member,
+                            isAdminMember ? "member" : "admin",
+                          )
+                        }
+                      >
+                        <IconShieldCheck size={15} aria-hidden="true" />
+                        <span>
+                          {isAdminMember
+                            ? pl
+                              ? "Cofnij współadministratora"
+                              : "Demote to member"
+                            : pl
+                              ? "Nadaj współadministratora"
+                              : "Promote to co-admin"}
+                        </span>
+                      </button>
+                    )}
+                    {canRemoveMember && (
+                      <button
+                        type="button"
+                        className="history-action-btn is-danger"
+                        disabled={busyActionKey === `remove-${member.user_id}`}
+                        onClick={() => void handleRemoveMember(member)}
+                      >
+                        <IconUserX size={15} aria-hidden="true" />
+                        <span>
+                          {member.is_self
+                            ? pl
+                              ? "Opuść gospodarstwo"
+                              : "Leave household"
+                            : pl
+                              ? "Usuń dostęp"
+                              : "Remove access"}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         {members.length === 0 && (
@@ -592,8 +869,8 @@ export function HouseholdManager({
         )}
       </section>
 
-      {/* Sekcja: Zaproś współopiekuna (dla właściciela) */}
-      {isOwner && (
+      {/* Sekcja: Zaproś współopiekuna (dla właściciela i współadministratora) */}
+      {canManage && (
         <section className="household-manager-card">
           <div className="household-manager-section-header">
             <div>
@@ -625,6 +902,24 @@ export function HouseholdManager({
                   }
                 />
               </div>
+
+              {isOwner && (
+                <select
+                  value={inviteRole}
+                  onChange={(e) =>
+                    setInviteRole(e.target.value === "admin" ? "admin" : "member")
+                  }
+                  aria-label={pl ? "Rola zapraszanej osoby" : "Invitee role"}
+                  className="household-invite-role-select"
+                >
+                  <option value="member">
+                    {pl ? "Współopiekun" : "Member"}
+                  </option>
+                  <option value="admin">
+                    {pl ? "Współadministrator" : "Co-admin"}
+                  </option>
+                </select>
+              )}
 
               <Button
                 type="submit"
@@ -695,8 +990,253 @@ export function HouseholdManager({
         </section>
       )}
 
+      {/* Sekcja: Bezpieczeństwo i klucz odzyskania dostępu */}
+      <section className="household-manager-card recovery-settings-card">
+        <div className="household-manager-section-header">
+          <div>
+            <h3>
+              <IconShieldLock size={18} aria-hidden="true" />{" "}
+              {pl
+                ? "Bezpieczeństwo i klucz odzyskania dostępu"
+                : "Security & emergency recovery key"}
+            </h3>
+            <p>
+              {pl
+                ? "Jednorazowy klucz odzyskania zabezpiecza kartoteki na wypadek utraty dostępu do konta lub skrzynki właściciela. Domostwo bez aktywnego klucza działa wyłącznie w trybie odczytu."
+                : "A one-time recovery key protects this household if the owner loses account or email access. Without an active key, records are strictly read-only."}
+            </p>
+          </div>
+          <span
+            className={`recovery-status-badge ${
+              household.has_recovery_key ? "is-active" : "is-missing"
+            }`}
+          >
+            {household.has_recovery_key ? (
+              <>
+                <IconCheck size={14} aria-hidden="true" />
+                {pl ? "Aktywny klucz" : "Key active"}
+                {household.recovery_key_hint ? ` (${household.recovery_key_hint})` : ""}
+              </>
+            ) : (
+              <>
+                <IconLock size={14} aria-hidden="true" />
+                {pl ? "Brak klucza (tylko odczyt)" : "No key (read-only)"}
+              </>
+            )}
+          </span>
+        </div>
+
+        <div className="recovery-settings-grid">
+          <div className="recovery-setting-box">
+            <div className="recovery-setting-meta">
+              <strong>
+                {pl ? "Jednorazowy klucz odzyskania (Legacy)" : "One-time recovery key"}
+              </strong>
+              <span>
+                {household.recovery_key_set_at
+                  ? pl
+                    ? `Ustawiony: ${formatDate(household.recovery_key_set_at)} · Końcówka: ${household.recovery_key_hint ?? "—"}`
+                    : `Set on: ${formatDate(household.recovery_key_set_at)} · Hint: ${household.recovery_key_hint ?? "—"}`
+                  : pl
+                    ? "Nie wygenerowano jeszcze klucza. Zapis nowych danych i edycja są zablokowane."
+                    : "Not generated yet. Creating or editing records is currently blocked."}
+              </span>
+            </div>
+            <div className="recovery-setting-actions">
+              {canRotateOrSetKey ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={household.has_recovery_key ? "secondary" : "primary"}
+                  onClick={() => setRecoveryKeyDialogOpen(true)}
+                >
+                  <IconKey size={15} aria-hidden="true" />
+                  {household.has_recovery_key
+                    ? pl
+                      ? "Rotuj / wygeneruj nowy klucz"
+                      : "Rotate / generate new key"
+                    : pl
+                      ? "Wygeneruj klucz odzyskania"
+                      : "Generate recovery key"}
+                </Button>
+              ) : (
+                <small className="recovery-owner-only-note">
+                  {pl
+                    ? "Rotację istniejącego klucza może wykonać tylko właściciel domostwa."
+                    : "Only the household owner can rotate an active recovery key."}
+                </small>
+              )}
+              <Link href="/odzyskaj" className="history-action-link">
+                {pl ? "Publiczny formularz odzyskania →" : "Public recovery portal →"}
+              </Link>
+            </div>
+          </div>
+
+          {canManage && (
+            <form onSubmit={handleSaveBackupEmail} className="recovery-setting-box">
+              <div className="recovery-setting-meta">
+                <label htmlFor="household-backup-email">
+                  <strong>
+                    {pl ? "Pomocniczy e-mail odzyskania (opcjonalnie)" : "Backup recovery email (optional)"}
+                  </strong>
+                </label>
+                <span>
+                  {pl
+                    ? "Możesz wysłać na ten adres kopię klucza odzyskania oraz otrzymywać alerty bezpieczeństwa."
+                    : "Receive a copy of new recovery keys and urgent security alerts here."}
+                </span>
+              </div>
+              <div className="recovery-backup-email-row">
+                <input
+                  id="household-backup-email"
+                  type="email"
+                  placeholder={pl ? "np. zaufana.osoba@domena.pl" : "backup@example.com"}
+                  value={backupEmailInput}
+                  onChange={(e) => setBackupEmailInput(e.target.value)}
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="secondary"
+                  disabled={isSavingBackupEmail}
+                >
+                  <IconMailForward size={15} aria-hidden="true" />
+                  {isSavingBackupEmail
+                    ? pl
+                      ? "Zapisywanie..."
+                      : "Saving..."
+                    : pl
+                      ? "Zapisz adres"
+                      : "Save email"}
+                </Button>
+              </div>
+              {backupEmailMsg && (
+                <p
+                  className={`household-invite-feedback is-${backupEmailMsg.type}`}
+                  role="status"
+                >
+                  {backupEmailMsg.text}
+                </p>
+              )}
+            </form>
+          )}
+        </div>
+      </section>
+
+      {/* Sekcja: Ciągłość administracji (14-dniowy wniosek o współadministratora) */}
+      {(adminRequest || (!isOwner && household.my_role === "member")) && (
+        <section
+          className={`household-manager-card recovery-takeover-card ${
+            adminRequest?.status === "pending" ? "is-pending" : ""
+          }`}
+        >
+          <div className="household-manager-section-header">
+            <div>
+              <h3>
+                <IconClock size={18} aria-hidden="true" />{" "}
+                {pl
+                  ? "Przekazanie / ciągłość administracji domostwem"
+                  : "Household continuity & co-admin request"}
+              </h3>
+              {adminRequest?.status === "pending" ? (
+                <p>
+                  {isOwner
+                    ? pl
+                      ? `Opiekun ${adminRequest.requester_email} złożył wniosek o rolę współadministratora. Jeśli nie odrzucisz go do ${formatDate(adminRequest.resolves_at)}, uprawnienia zostaną nadane automatycznie.`
+                      : `Member ${adminRequest.requester_email} requested co-admin access. Unless rejected by ${formatDate(adminRequest.resolves_at)}, access is granted automatically.`
+                    : pl
+                      ? `Oczekuje wniosek opiekuna ${adminRequest.requester_email} o nadanie roli współadministratora. Automatyczna aktywacja bez sprzeciwu właściciela nastąpi: ${formatDate(adminRequest.resolves_at)}.`
+                      : `Co-admin request by ${adminRequest.requester_email} is pending until ${formatDate(adminRequest.resolves_at)}.`}
+                </p>
+              ) : adminRequest ? (
+                <p>
+                  {adminRequest.status === "approved"
+                    ? pl
+                      ? `Ostatni wniosek (${adminRequest.requester_email}) został zatwierdzony.`
+                      : `Latest request (${adminRequest.requester_email}) was approved.`
+                    : adminRequest.status === "rejected"
+                      ? pl
+                        ? `Ostatni wniosek (${adminRequest.requester_email}) został odrzucony przez właściciela.`
+                        : `Latest request (${adminRequest.requester_email}) was rejected by the owner.`
+                      : pl
+                        ? `Ostatni wniosek (${adminRequest.requester_email}) został wycofany.`
+                        : `Latest request (${adminRequest.requester_email}) was cancelled.`}
+                </p>
+              ) : (
+                <p>
+                  {pl
+                    ? "Jeśli obecny właściciel nie odpowiada, jako opiekun możesz wnioskować o rolę współadministratora. Właściciel otrzyma alert i ma 14 dni na zgłoszenie weta."
+                    : "If the owner is unresponsive, you may request co-admin permissions. The owner is alerted and has 14 days to veto."}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="recovery-takeover-actions">
+            {adminRequest?.status === "pending" && isOwner && (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busyActionKey !== null}
+                  onClick={() => void handleRespondAdminRequest("approve")}
+                >
+                  <IconCheck size={15} aria-hidden="true" />
+                  {pl ? "Zatwierdź teraz" : "Approve now"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={busyActionKey !== null}
+                  onClick={() => void handleRespondAdminRequest("reject")}
+                >
+                  <IconUserX size={15} aria-hidden="true" />
+                  {pl ? "Odrzuć wniosek (weto)" : "Reject request (veto)"}
+                </Button>
+              </>
+            )}
+
+            {adminRequest?.status === "pending" && isRequesterSelf && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={busyActionKey !== null}
+                onClick={() => void handleRespondAdminRequest("cancel")}
+              >
+                {pl ? "Wycofaj swój wniosek" : "Cancel request"}
+              </Button>
+            )}
+
+            {(!adminRequest || adminRequest.status !== "pending") &&
+              !isOwner &&
+              household.my_role === "member" && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={busyActionKey === "takeover-request"}
+                  onClick={() => void handleRequestAdminTakeover()}
+                >
+                  <IconShieldCheck size={15} aria-hidden="true" />
+                  {pl
+                    ? "Wnioskuj o współadministrację (14 dni)"
+                    : "Request co-admin rights (14 days)"}
+                </Button>
+              )}
+          </div>
+
+          {takeoverMsg && (
+            <p className={`household-invite-feedback is-${takeoverMsg.type}`} role="status">
+              {takeoverMsg.text}
+            </p>
+          )}
+        </section>
+      )}
+
       {/* Sekcja: Oczekujące zaproszenia */}
-      {isOwner && invitations.length > 0 && (
+      {canManage && invitations.length > 0 && (
         <section className="household-manager-card">
           <div className="household-manager-section-header">
             <div>
@@ -840,6 +1380,24 @@ export function HouseholdManager({
           )}
         </div>
       </section>
+
+      <RecoveryKeyDialog
+        open={recoveryKeyDialogOpen}
+        onClose={() => setRecoveryKeyDialogOpen(false)}
+        householdId={household.id}
+        householdName={household.nazwa}
+        ownerEmail={initialData.owner?.email ?? ""}
+        recoveryEmail={household.recovery_email}
+        hasExistingKey={household.has_recovery_key}
+        onGenerated={(payload) => {
+          setHousehold((prev) => ({
+            ...prev,
+            has_recovery_key: true,
+            recovery_key_hint: payload.recovery_key_hint,
+            recovery_key_set_at: payload.recovery_key_set_at,
+          }));
+        }}
+      />
     </div>
   );
 }

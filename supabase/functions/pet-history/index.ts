@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
 
     const { data: pet, error: petError } = await client
       .from("zwierze")
-      .select("id,gospodarstwo_id,archived_at")
+      .select("id,gospodarstwo_id,archived_at,gospodarstwo(recovery_key_set_at)")
       .eq("id", body.pet_id)
       .maybeSingle();
     if (petError) return reply({ error: "load_failed" }, 500);
@@ -119,6 +119,19 @@ Deno.serve(async (req) => {
     }
     if (pet.archived_at) {
       return reply({ error: "pet_archived" }, 423);
+    }
+    const hhMeta = (
+      pet as unknown as {
+        gospodarstwo?:
+          | { recovery_key_set_at?: string | null }
+          | Array<{ recovery_key_set_at?: string | null }>;
+      }
+    ).gospodarstwo;
+    const hasRecoveryKey = Boolean(
+      Array.isArray(hhMeta) ? hhMeta[0]?.recovery_key_set_at : hhMeta?.recovery_key_set_at,
+    );
+    if (!hasRecoveryKey) {
+      return reply({ error: "recovery_key_required" }, 428);
     }
 
     if (body.action === "extract") {
@@ -306,8 +319,8 @@ Deno.serve(async (req) => {
       });
       if (error) {
         return reply(
-          { error: error.code === "PT409" ? "conflict" : "delete_failed" },
-          error.code === "PT409" ? 409 : 400,
+          { error: error.code === "PT409" ? "conflict" : error.code === "PT428" ? "recovery_key_required" : "delete_failed" },
+          error.code === "PT409" ? 409 : error.code === "PT428" ? 428 : 400,
         );
       }
       return reply({ deleted: true });
@@ -375,12 +388,14 @@ Deno.serve(async (req) => {
 
     if (error) {
       return reply(
-        { error: error.code === "PT409" ? "conflict" : "save_failed" },
+        { error: error.code === "PT409" ? "conflict" : error.code === "PT428" ? "recovery_key_required" : "save_failed" },
         error.code === "PT409"
           ? 409
-          : error.code === "42501" || error.code === "P0002"
-            ? 404
-            : 400,
+          : error.code === "PT428"
+            ? 428
+            : error.code === "42501" || error.code === "P0002"
+              ? 404
+              : 400,
       );
     }
 

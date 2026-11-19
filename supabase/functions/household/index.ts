@@ -1,5 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
 import nodemailer from "npm:nodemailer@6.9.16";
+import {
+  formatRecoveryKeyHint,
+  generateRecoveryKey,
+  generateSaltHex,
+  hashRecoveryKey,
+  isValidEmail,
+  normalizeEmail,
+} from "../_shared/recovery-crypto.mjs";
+import { renderEmailCard } from "../_shared/recovery-email.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -360,18 +369,25 @@ Deno.serve(async (req) => {
   // 2b. Utworzenie własnego gospodarstwa (create_household)
   // -------------------------------------------------------------------------
   if (action === "create_household") {
-    const { data: existingOwned } = await adminClient
-      .from("gospodarstwo")
-      .select("id, nazwa, owner_id, created_at")
-      .eq("owner_id", user.id)
-      .maybeSingle();
+    const allowMultiple = body.allow_multiple === true;
+    if (!allowMultiple) {
+      const { data: existingOwnedRows } = await adminClient
+        .from("gospodarstwo")
+        .select(
+          "id, nazwa, owner_id, created_at, recovery_email, recovery_key_hint, recovery_key_set_at, recovery_key_set_by",
+        )
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1);
 
-    if (existingOwned) {
-      return reply({
-        success: true,
-        household: existingOwned,
-        already_existed: true,
-      });
+      const existingOwned = (existingOwnedRows ?? [])[0] ?? null;
+      if (existingOwned) {
+        return reply({
+          success: true,
+          household: existingOwned,
+          already_existed: true,
+        });
+      }
     }
 
     const rawName = typeof body.nazwa === "string" ? body.nazwa.trim() : "";
@@ -383,7 +399,9 @@ Deno.serve(async (req) => {
         owner_id: user.id,
         nazwa: name.slice(0, 100),
       })
-      .select()
+      .select(
+        "id, nazwa, owner_id, created_at, recovery_email, recovery_key_hint, recovery_key_set_at, recovery_key_set_by",
+      )
       .single();
 
     if (createErr || !newHome) {
@@ -400,7 +418,21 @@ Deno.serve(async (req) => {
   // -------------------------------------------------------------------------
   // Ustal bieżące gospodarstwo użytkownika (najpierw własne, potem członkostwo)
   // -------------------------------------------------------------------------
-  let requestedHouseholdId =
+  type ActiveHouseholdRow = {
+    id: string;
+    nazwa: string;
+    owner_id: string;
+    created_at: string;
+    recovery_email: string | null;
+    recovery_key_hint: string | null;
+    recovery_key_set_at: string | null;
+    recovery_key_set_by: string | null;
+  };
+
+  const householdSelect =
+    "id, nazwa, owner_id, created_at, recovery_email, recovery_key_hint, recovery_key_set_at, recovery_key_set_by";
+
+  const requestedHouseholdId =
     typeof body.household_id === "string" && uuidPattern.test(body.household_id)
       ? body.household_id
       : null;
@@ -409,34 +441,35 @@ Deno.serve(async (req) => {
   const [{ data: ownedHouseholds }, { data: memberHouseholds }] = await Promise.all([
     adminClient
       .from("gospodarstwo")
-      .select("id, nazwa, owner_id, created_at")
-      .eq("owner_id", user.id),
+      .select(householdSelect)
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: true }),
     adminClient
       .from("czlonek_gospodarstwa")
-      .select("gospodarstwo_id, rola, created_at, gospodarstwo(id, nazwa, owner_id, created_at)")
-      .eq("user_id", user.id),
+      .select(
+        `gospodarstwo_id, rola, created_at, gospodarstwo(${householdSelect})`,
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true }),
   ]);
 
-  let activeHousehold = null;
+  let activeHousehold: ActiveHouseholdRow | null = null;
   let isOwner = false;
+  let memberRole: "admin" | "member" | null = null;
 
   if (requestedHouseholdId) {
     const owned = (ownedHouseholds ?? []).find((h) => h.id === requestedHouseholdId);
     if (owned) {
-      activeHousehold = owned;
+      activeHousehold = owned as ActiveHouseholdRow;
       isOwner = true;
     } else {
       const member = (memberHouseholds ?? []).find(
         (m) => m.gospodarstwo_id === requestedHouseholdId,
       );
       if (member && member.gospodarstwo) {
-        activeHousehold = member.gospodarstwo as unknown as {
-          id: string;
-          nazwa: string;
-          owner_id: string;
-          created_at: string;
-        };
+        activeHousehold = member.gospodarstwo as unknown as ActiveHouseholdRow;
         isOwner = false;
+        memberRole = member.rola === "admin" ? "admin" : "member";
       }
     }
   }
@@ -444,16 +477,12 @@ Deno.serve(async (req) => {
   // Domyślnie bierzemy własne gospodarstwo, lub pierwsze członkostwo
   if (!activeHousehold) {
     if (ownedHouseholds && ownedHouseholds.length > 0) {
-      activeHousehold = ownedHouseholds[0];
+      activeHousehold = ownedHouseholds[0] as ActiveHouseholdRow;
       isOwner = true;
     } else if (memberHouseholds && memberHouseholds.length > 0 && memberHouseholds[0].gospodarstwo) {
-      activeHousehold = memberHouseholds[0].gospodarstwo as unknown as {
-        id: string;
-        nazwa: string;
-        owner_id: string;
-        created_at: string;
-      };
+      activeHousehold = memberHouseholds[0].gospodarstwo as unknown as ActiveHouseholdRow;
       isOwner = false;
+      memberRole = memberHouseholds[0].rola === "admin" ? "admin" : "member";
     }
   }
 
@@ -462,43 +491,87 @@ Deno.serve(async (req) => {
     const { data: newHome, error: homeErr } = await adminClient
       .from("gospodarstwo")
       .insert({ owner_id: user.id, nazwa: "Mój dom" })
-      .select()
+      .select(householdSelect)
       .single();
     if (!homeErr && newHome) {
-      activeHousehold = newHome;
+      activeHousehold = newHome as ActiveHouseholdRow;
       isOwner = true;
     } else {
       return reply({ error: "no_household" }, 404);
     }
   }
 
+  // Automatycznie zatwierdź przeterminowane 14-dniowe wnioski o współadministrację
+  const { data: autoApprovedRows } = await adminClient.rpc(
+    "auto_approve_expired_admin_requests",
+    { p_household_id: activeHousehold.id },
+  );
+  if (Array.isArray(autoApprovedRows) && autoApprovedRows.length > 0) {
+    for (const row of autoApprovedRows) {
+      if (row.requester_user_id === user.id && !isOwner) {
+        memberRole = "admin";
+      }
+    }
+  }
+
+  const myRole: "owner" | "admin" | "member" = isOwner
+    ? "owner"
+    : memberRole === "admin"
+      ? "admin"
+      : "member";
+  const canManage = myRole === "owner" || myRole === "admin";
+  const origin =
+    req.headers.get("origin") ||
+    Deno.env.get("SITE_URL") ||
+    Deno.env.get("APP_URL") ||
+    "https://caremypet.app";
+
   // -------------------------------------------------------------------------
   // 2b. Pobranie danych gospodarstwa (get)
   // -------------------------------------------------------------------------
   if (action === "get") {
-    const [ownerRes, membersRes, invitesRes, petsRes] = await Promise.all([
-      adminClient.auth.admin.getUserById(activeHousehold.owner_id),
-      adminClient
-        .from("czlonek_gospodarstwa")
-        .select("user_id, email, rola, created_at")
-        .eq("gospodarstwo_id", activeHousehold.id)
-        .order("created_at"),
-      isOwner
-        ? adminClient
-            .from("zaproszenie_gospodarstwa")
-            .select("id, email, token, rola, status, invited_at, expires_at")
-            .eq("gospodarstwo_id", activeHousehold.id)
-            .eq("status", "pending")
-            .order("invited_at", { ascending: false })
-        : Promise.resolve({ data: [] }),
-      adminClient
-        .from("zwierze")
-        .select("id, imie, gatunek, rasa, avatar_path")
-        .eq("gospodarstwo_id", activeHousehold.id)
-        .order("created_at"),
-    ]);
+    const [ownerRes, membersRes, invitesRes, petsRes, adminReqRes] =
+      await Promise.all([
+        adminClient.auth.admin.getUserById(activeHousehold.owner_id),
+        adminClient
+          .from("czlonek_gospodarstwa")
+          .select("user_id, email, rola, created_at")
+          .eq("gospodarstwo_id", activeHousehold.id)
+          .order("created_at"),
+        canManage
+          ? adminClient
+              .from("zaproszenie_gospodarstwa")
+              .select("id, email, token, rola, status, invited_at, expires_at")
+              .eq("gospodarstwo_id", activeHousehold.id)
+              .eq("status", "pending")
+              .order("invited_at", { ascending: false })
+          : Promise.resolve({ data: [] }),
+        adminClient
+          .from("zwierze")
+          .select("id, imie, gatunek, rasa, avatar_path")
+          .eq("gospodarstwo_id", activeHousehold.id)
+          .order("created_at"),
+        adminClient
+          .from("household_admin_request")
+          .select(
+            "id, household_id, requester_user_id, requester_email, status, requested_at, resolves_at, resolved_at, resolved_by",
+          )
+          .eq("household_id", activeHousehold.id)
+          .order("requested_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
     const ownerEmail = ownerRes.data?.user?.email || "Właściciel";
+    const latestReq = adminReqRes.data ?? null;
+    const recentCutoffMs = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    const adminRequest =
+      latestReq &&
+      (latestReq.status === "pending" ||
+        (latestReq.resolved_at &&
+          new Date(latestReq.resolved_at).getTime() >= recentCutoffMs))
+        ? latestReq
+        : null;
 
     return reply({
       household: {
@@ -506,6 +579,12 @@ Deno.serve(async (req) => {
         nazwa: activeHousehold.nazwa,
         created_at: activeHousehold.created_at,
         is_owner: isOwner,
+        can_manage: canManage,
+        my_role: myRole,
+        has_recovery_key: Boolean(activeHousehold.recovery_key_set_at),
+        recovery_key_hint: canManage ? activeHousehold.recovery_key_hint ?? null : null,
+        recovery_key_set_at: activeHousehold.recovery_key_set_at ?? null,
+        recovery_email: canManage ? activeHousehold.recovery_email ?? null : null,
       },
       owner: {
         user_id: activeHousehold.owner_id,
@@ -519,6 +598,7 @@ Deno.serve(async (req) => {
       })),
       invitations: invitesRes.data ?? [],
       pets: petsRes.data ?? [],
+      admin_request: adminRequest,
     });
   }
 
@@ -526,7 +606,7 @@ Deno.serve(async (req) => {
   // 2c. Zmiana nazwy gospodarstwa (rename)
   // -------------------------------------------------------------------------
   if (action === "rename") {
-    if (!isOwner) {
+    if (!canManage) {
       return reply({ error: "forbidden" }, 403);
     }
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -538,7 +618,7 @@ Deno.serve(async (req) => {
       .from("gospodarstwo")
       .update({ nazwa: name })
       .eq("id", activeHousehold.id)
-      .select()
+      .select(householdSelect)
       .single();
 
     if (updateErr) {
@@ -552,7 +632,7 @@ Deno.serve(async (req) => {
   // 2d. Wysłanie zaproszenia (invite)
   // -------------------------------------------------------------------------
   if (action === "invite") {
-    if (!isOwner) {
+    if (!canManage) {
       return reply({ error: "forbidden" }, 403);
     }
     const emailRaw = typeof body.email === "string" ? body.email.trim() : "";
@@ -590,13 +670,14 @@ Deno.serve(async (req) => {
     const token = generateSecureToken();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
+    const inviteRole = isOwner && body.rola === "admin" ? "admin" : "member";
     const { data: newInvite, error: insertErr } = await adminClient
       .from("zaproszenie_gospodarstwa")
       .insert({
         gospodarstwo_id: activeHousehold.id,
         email,
         token,
-        rola: "member",
+        rola: inviteRole,
         status: "pending",
         created_by: user.id,
         expires_at: expiresAt,
@@ -610,11 +691,9 @@ Deno.serve(async (req) => {
     }
 
     // Budowanie URL zaproszenia
-    const origin =
-      req.headers.get("origin") ||
-      Deno.env.get("APP_URL") ||
-      "https://caremypet.app";
-    const inviteUrl = `${origin}/pl/zaproszenie/${token}`;
+    const inviteOrigin = origin.replace(/\/$/, "");
+    const locale = body.locale === "en" ? "en" : "pl";
+    const inviteUrl = `${inviteOrigin}/${locale}/zaproszenie/${token}`;
 
     // Wysłanie wiadomości e-mail z zaproszeniem
     const inviterName = user.email || "Właściciel gospodarstwa";
@@ -662,7 +741,7 @@ Deno.serve(async (req) => {
   // 2e. Anulowanie zaproszenia (cancel_invite)
   // -------------------------------------------------------------------------
   if (action === "cancel_invite") {
-    if (!isOwner) {
+    if (!canManage) {
       return reply({ error: "forbidden" }, 403);
     }
     const inviteId = typeof body.invite_id === "string" ? body.invite_id : "";
@@ -698,9 +777,22 @@ Deno.serve(async (req) => {
       return reply({ error: "cannot_remove_owner" }, 400);
     }
 
-    // Dozwolone jeśli caller jest właścicielem LUB sam opuszcza gospodarstwo
-    if (!isOwner && targetUserId !== user.id) {
+    // Dozwolone jeśli caller ma prawo zarządzania LUB sam opuszcza gospodarstwo
+    if (!canManage && targetUserId !== user.id) {
       return reply({ error: "forbidden" }, 403);
+    }
+
+    // Współadministrator nie może usunąć innego współadministratora — tylko właściciel
+    if (!isOwner && targetUserId !== user.id) {
+      const { data: targetMember } = await adminClient
+        .from("czlonek_gospodarstwa")
+        .select("rola")
+        .eq("gospodarstwo_id", activeHousehold.id)
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+      if (targetMember?.rola === "admin") {
+        return reply({ error: "owner_required" }, 403);
+      }
     }
 
     const { error: deleteErr } = await adminClient
@@ -713,7 +805,488 @@ Deno.serve(async (req) => {
       return reply({ error: "remove_failed" }, 500);
     }
 
+    // Anuluj ewentualny wniosek o przejęcie złożony przez tego członka
+    await adminClient
+      .from("household_admin_request")
+      .update({
+        status: "cancelled",
+        resolved_at: new Date().toISOString(),
+        resolved_by: user.id,
+      })
+      .eq("household_id", activeHousehold.id)
+      .eq("requester_user_id", targetUserId)
+      .eq("status", "pending");
+
     return reply({ success: true, removed_user_id: targetUserId });
+  }
+
+  // -------------------------------------------------------------------------
+  // 2g. Wygenerowanie lub rotacja jednorazowego klucza odzyskania (generate_recovery_key)
+  // -------------------------------------------------------------------------
+  if (action === "generate_recovery_key") {
+    const hasExistingKey = Boolean(activeHousehold.recovery_key_set_at);
+    if (!isOwner && (hasExistingKey || !canManage)) {
+      return reply(
+        {
+          error: hasExistingKey ? "owner_required_to_rotate" : "forbidden",
+        },
+        403,
+      );
+    }
+
+    const rawKey = generateRecoveryKey();
+    const saltHex = generateSaltHex();
+    const keyHash = await hashRecoveryKey(rawKey, saltHex);
+    const keyHint = formatRecoveryKeyHint(rawKey);
+
+    const { data: setAt, error: setErr } = await adminClient.rpc(
+      "recovery_set_household_secret",
+      {
+        p_household_id: activeHousehold.id,
+        p_key_hash: keyHash,
+        p_key_salt: saltHex,
+        p_key_hint: keyHint,
+        p_set_by: user.id,
+      },
+    );
+
+    if (setErr) {
+      console.error("recovery_set_household_secret failed:", setErr);
+      return reply({ error: "recovery_key_failed" }, 500);
+    }
+
+    const locale = body.locale === "en" ? "en" : "pl";
+    const sendToBackup =
+      body.send_to_recovery_email === true &&
+      Boolean(activeHousehold.recovery_email);
+    let sentToRecoveryEmail = false;
+
+    if (sendToBackup && activeHousehold.recovery_email) {
+      const subject =
+        locale === "pl"
+          ? `Jednorazowy klucz odzyskania dla domostwa "${activeHousehold.nazwa}"`
+          : `One-time recovery key for household "${activeHousehold.nazwa}"`;
+      const html = renderEmailCard({
+        locale,
+        badge: locale === "pl" ? "Klucz odzyskania" : "Recovery key",
+        heading:
+          locale === "pl"
+            ? `Klucz odzyskania dla „${activeHousehold.nazwa}”`
+            : `Recovery key for "${activeHousehold.nazwa}"`,
+        paragraphs:
+          locale === "pl"
+            ? [
+                `Na prośbę opiekuna przesyłamy kopię nowego jednorazowego klucza odzyskania dostępu do domostwa <strong>${escapeHtml(activeHousehold.nazwa)}</strong>.`,
+                `Przechowuj ten klucz w bezpiecznym miejscu (wydruk lub zaufana osoba). Po jednorazowym użyciu klucz przestaje działać.`,
+              ]
+            : [
+                `As requested, here is a copy of the new one-time recovery key for <strong>${escapeHtml(activeHousehold.nazwa)}</strong>.`,
+                `Store it safely. Once used, this key becomes invalid immediately.`,
+              ],
+        highlightBox: {
+          label: locale === "pl" ? "Jednorazowy klucz odzyskania" : "One-time recovery key",
+          value: rawKey,
+          monospace: true,
+        },
+        cta: {
+          label: locale === "pl" ? "Formularz odzyskania dostępu" : "Recovery portal",
+          url: `${origin.replace(/\/$/, "")}/${locale}/odzyskaj`,
+        },
+        footerNote:
+          locale === "pl"
+            ? "Ostatnie znaki klucza to: " + keyHint
+            : "Key ends with: " + keyHint,
+      });
+
+      sentToRecoveryEmail = await sendEmailViaSmtp(
+        activeHousehold.recovery_email,
+        subject,
+        html,
+      );
+    }
+
+    // Powiadomienie bezpieczeństwa na adres właściciela (bez samego klucza!)
+    const ownerRes = await adminClient.auth.admin.getUserById(
+      activeHousehold.owner_id,
+    );
+    const ownerEmail = ownerRes.data?.user?.email;
+    if (ownerEmail) {
+      const subject =
+        locale === "pl"
+          ? `Ustawiono nowy klucz odzyskania (${keyHint}) dla „${activeHousehold.nazwa}”`
+          : `New recovery key generated (${keyHint}) for "${activeHousehold.nazwa}"`;
+      const html = renderEmailCard({
+        locale,
+        badge: locale === "pl" ? "Bezpieczeństwo konta" : "Account security",
+        heading:
+          locale === "pl"
+            ? `Wygenerowano nowy klucz odzyskania dla „${activeHousehold.nazwa}”`
+            : `New recovery key generated for "${activeHousehold.nazwa}"`,
+        paragraphs:
+          locale === "pl"
+            ? [
+                `Konto <strong>${escapeHtml(user.email || "Właściciel")}</strong> wygenerowało nowy jednorazowy klucz odzyskania dla domostwa <strong>${escapeHtml(activeHousehold.nazwa)}</strong>. Poprzedni klucz oraz ewentualne oczekujące linki przejęcia zostały unieważnione.`,
+                `Domostwo ma teraz aktywny pełny tryb zapisu i edycji kartotek pupili.`,
+              ]
+            : [
+                `Account <strong>${escapeHtml(user.email || "Owner")}</strong> generated a new one-time recovery key for <strong>${escapeHtml(activeHousehold.nazwa)}</strong>. Any previous key or pending claim was invalidated.`,
+                `Full write and edit mode is now active for this household.`,
+              ],
+        highlightBox: {
+          label:
+            locale === "pl"
+              ? "Identyfikator końcowy aktywnego klucza"
+              : "Active recovery key hint",
+          value: keyHint,
+          monospace: true,
+        },
+        cta: {
+          label:
+            locale === "pl"
+              ? "Zarządzaj bezpieczeństwem domostwa →"
+              : "Manage household security →",
+          url: `${origin.replace(/\/$/, "")}/${locale}/app/gospodarstwo`,
+        },
+        footerNote:
+          locale === "pl"
+            ? "Jeśli to nie Ty wygenerowałeś(-aś) ten klucz, zaloguj się natychmiast, zmień hasło i wygeneruj nowy klucz odzyskania."
+            : "If you did not generate this key, sign in immediately, change your password, and rotate your recovery key.",
+      });
+      await sendEmailViaSmtp(ownerEmail, subject, html);
+    }
+
+    return reply({
+      recovery_key: rawKey,
+      recovery_key_hint: keyHint,
+      recovery_key_set_at: setAt,
+      sent_to_recovery_email: sentToRecoveryEmail,
+      owner_email: ownerEmail ?? null,
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // 2h. Ustawienie pomocniczego e-maila odzyskania (update_recovery_email)
+  // -------------------------------------------------------------------------
+  if (action === "update_recovery_email") {
+    if (!canManage) {
+      return reply({ error: "forbidden" }, 403);
+    }
+
+    const rawEmail =
+      typeof body.recovery_email === "string" ? body.recovery_email : "";
+    const normalized = rawEmail.trim() === "" ? null : normalizeEmail(rawEmail);
+
+    if (normalized !== null && !isValidEmail(normalized)) {
+      return reply({ error: "invalid_email" }, 400);
+    }
+
+    const { error: updateErr } = await adminClient
+      .from("gospodarstwo")
+      .update({ recovery_email: normalized })
+      .eq("id", activeHousehold.id);
+
+    if (updateErr) {
+      console.error("update_recovery_email failed:", updateErr);
+      return reply({ error: "update_failed" }, 500);
+    }
+
+    const locale = body.locale === "en" ? "en" : "pl";
+    if (normalized) {
+      const subject =
+        locale === "pl"
+          ? `Ustawiono adres pomocniczy dla domostwa "${activeHousehold.nazwa}"`
+          : `Backup email set for household "${activeHousehold.nazwa}"`;
+      const html = renderEmailCard({
+        locale,
+        badge: locale === "pl" ? "E-mail pomocniczy" : "Backup email",
+        heading:
+          locale === "pl"
+            ? `Ten adres został zapisany jako pomocniczy dla „${activeHousehold.nazwa}”`
+            : `This address is now the backup email for "${activeHousehold.nazwa}"`,
+        paragraphs:
+          locale === "pl"
+            ? [
+                `Adres <strong>${escapeHtml(normalized)}</strong> został przypisany jako pomocniczy e-mail bezpieczeństwa domostwa <strong>${escapeHtml(activeHousehold.nazwa)}</strong>.`,
+                `Otrzyma powiadomienia bezpieczeństwa przy użyciu klucza odzyskania lub złożeniu wniosku o współadministrację, a także opcjonalną kopię klucza odzyskania.`,
+              ]
+            : [
+                `<strong>${escapeHtml(normalized)}</strong> is now configured as the backup security email for <strong>${escapeHtml(activeHousehold.nazwa)}</strong>.`,
+              ],
+      });
+      await sendEmailViaSmtp(normalized, subject, html);
+    }
+
+    return reply({ success: true, recovery_email: normalized });
+  }
+
+  // -------------------------------------------------------------------------
+  // 2i. Zmiana roli członka gospodarstwa (set_member_role)
+  // -------------------------------------------------------------------------
+  if (action === "set_member_role") {
+    if (!isOwner) {
+      return reply({ error: "forbidden" }, 403);
+    }
+
+    const targetUserId = typeof body.user_id === "string" ? body.user_id : "";
+    const newRole = body.rola === "admin" ? "admin" : body.rola === "member" ? "member" : "";
+    if (!uuidPattern.test(targetUserId) || !newRole) {
+      return reply({ error: "invalid_input" }, 400);
+    }
+
+    if (targetUserId === activeHousehold.owner_id) {
+      return reply({ error: "cannot_modify_owner" }, 400);
+    }
+
+    const { data: updatedMember, error: roleErr } = await adminClient
+      .from("czlonek_gospodarstwa")
+      .update({ rola: newRole })
+      .eq("gospodarstwo_id", activeHousehold.id)
+      .eq("user_id", targetUserId)
+      .select("user_id, email, rola")
+      .maybeSingle();
+
+    if (roleErr || !updatedMember) {
+      return reply({ error: "member_not_found" }, 404);
+    }
+
+    if (newRole === "admin") {
+      await adminClient
+        .from("household_admin_request")
+        .update({
+          status: "approved",
+          resolved_at: new Date().toISOString(),
+          resolved_by: user.id,
+        })
+        .eq("household_id", activeHousehold.id)
+        .eq("requester_user_id", targetUserId)
+        .eq("status", "pending");
+    }
+
+    return reply({ success: true, member: updatedMember });
+  }
+
+  // -------------------------------------------------------------------------
+  // 2j. Wniosek o przejęcie współadministracji po 14 dniach (request_admin_takeover)
+  // -------------------------------------------------------------------------
+  if (action === "request_admin_takeover") {
+    if (isOwner || myRole !== "member") {
+      return reply({ error: "forbidden" }, 403);
+    }
+
+    const { data: existingPending } = await adminClient
+      .from("household_admin_request")
+      .select("id, status, resolves_at")
+      .eq("household_id", activeHousehold.id)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (existingPending) {
+      return reply(
+        { error: "request_already_pending", admin_request: existingPending },
+        409,
+      );
+    }
+
+    const resolvesAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: createdReq, error: insertErr } = await adminClient
+      .from("household_admin_request")
+      .insert({
+        household_id: activeHousehold.id,
+        requester_user_id: user.id,
+        requester_email: user.email || "",
+        status: "pending",
+        resolves_at: resolvesAt,
+      })
+      .select(
+        "id, household_id, requester_user_id, requester_email, status, requested_at, resolves_at, resolved_at, resolved_by",
+      )
+      .single();
+
+    if (insertErr || !createdReq) {
+      console.error("request_admin_takeover failed:", insertErr);
+      return reply({ error: "request_failed" }, 500);
+    }
+
+    const locale = body.locale === "en" ? "en" : "pl";
+    const ownerRes = await adminClient.auth.admin.getUserById(
+      activeHousehold.owner_id,
+    );
+    const alertRecipients = Array.from(
+      new Set(
+        [
+          ownerRes.data?.user?.email ? normalizeEmail(ownerRes.data.user.email) : "",
+          activeHousehold.recovery_email
+            ? normalizeEmail(activeHousehold.recovery_email)
+            : "",
+        ].filter(Boolean),
+      ),
+    );
+
+    const formattedDeadline = new Intl.DateTimeFormat(
+      locale === "pl" ? "pl-PL" : "en-GB",
+      { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Warsaw" },
+    ).format(new Date(resolvesAt));
+
+    if (alertRecipients.length > 0) {
+      const subject =
+        locale === "pl"
+          ? `Wniosek o rolę współadministratora w „${activeHousehold.nazwa}” (14 dni na reakcję)`
+          : `Co-admin request in "${activeHousehold.nazwa}" (14 days to respond)`;
+      const html = renderEmailCard({
+        locale,
+        tone: "warning",
+        badge: locale === "pl" ? "Wniosek o współadministrację" : "Co-admin request",
+        heading:
+          locale === "pl"
+            ? `${escapeHtml(user.email || "Opiekun")} wnioskuje o uprawnienia administratora`
+            : `${escapeHtml(user.email || "Caregiver")} requested co-admin rights`,
+        paragraphs:
+          locale === "pl"
+            ? [
+                `Członek domostwa <strong>${escapeHtml(activeHousehold.nazwa)}</strong> (<strong>${escapeHtml(user.email || "opiekun")}</strong>) złożył wniosek o nadanie roli współadministratora.`,
+                `Jeśli nie odrzucisz wniosku do <strong>${escapeHtml(formattedDeadline)}</strong> (14 dni), uprawnienia współadministratora zostaną nadane automatycznie, aby domostwo zachowało ciągłość zarządzania.`,
+                `Możesz w każdej chwili zatwierdzić lub odrzucić wniosek w ustawieniach domostwa.`,
+              ]
+            : [
+                `Member <strong>${escapeHtml(user.email || "caregiver")}</strong> of <strong>${escapeHtml(activeHousehold.nazwa)}</strong> requested co-admin permissions.`,
+                `Unless rejected by <strong>${escapeHtml(formattedDeadline)}</strong> (14 days), co-admin access will be granted automatically.`,
+              ],
+        cta: {
+          label: locale === "pl" ? "Zatwierdź lub odrzuć wniosek" : "Review request",
+          url: `${origin.replace(/\/$/, "")}/${locale}/app/gospodarstwo`,
+        },
+      });
+      await Promise.all(
+        alertRecipients.map((to) => sendEmailViaSmtp(to, subject, html)),
+      );
+    }
+
+    return reply({ success: true, admin_request: createdReq }, 201);
+  }
+
+  // -------------------------------------------------------------------------
+  // 2k. Rozpatrzenie lub wycofanie wniosku (respond_admin_request)
+  // -------------------------------------------------------------------------
+  if (action === "respond_admin_request") {
+    const requestId = typeof body.request_id === "string" ? body.request_id : "";
+    const decision =
+      body.decision === "approve" ||
+      body.decision === "reject" ||
+      body.decision === "cancel"
+        ? body.decision
+        : "";
+
+    if (!uuidPattern.test(requestId) || !decision) {
+      return reply({ error: "invalid_input" }, 400);
+    }
+
+    const { data: reqRow, error: reqErr } = await adminClient
+      .from("household_admin_request")
+      .select("*")
+      .eq("id", requestId)
+      .eq("household_id", activeHousehold.id)
+      .maybeSingle();
+
+    if (reqErr || !reqRow) {
+      return reply({ error: "not_found" }, 404);
+    }
+    if (reqRow.status !== "pending") {
+      return reply({ error: "already_resolved" }, 409);
+    }
+
+    if (decision === "cancel") {
+      if (reqRow.requester_user_id !== user.id && !isOwner) {
+        return reply({ error: "forbidden" }, 403);
+      }
+      const { data: cancelled, error: updErr } = await adminClient
+        .from("household_admin_request")
+        .update({
+          status: "cancelled",
+          resolved_at: new Date().toISOString(),
+          resolved_by: user.id,
+        })
+        .eq("id", reqRow.id)
+        .select()
+        .single();
+
+      if (updErr) return reply({ error: "update_failed" }, 500);
+      return reply({ success: true, admin_request: cancelled });
+    }
+
+    if (!isOwner) {
+      return reply({ error: "forbidden" }, 403);
+    }
+
+    if (decision === "approve") {
+      const { error: memberErr } = await adminClient
+        .from("czlonek_gospodarstwa")
+        .update({ rola: "admin" })
+        .eq("gospodarstwo_id", activeHousehold.id)
+        .eq("user_id", reqRow.requester_user_id);
+
+      if (memberErr) {
+        return reply({ error: "member_update_failed" }, 500);
+      }
+    }
+
+    const nextStatus = decision === "approve" ? "approved" : "rejected";
+    const { data: updatedReq, error: updErr } = await adminClient
+      .from("household_admin_request")
+      .update({
+        status: nextStatus,
+        resolved_at: new Date().toISOString(),
+        resolved_by: user.id,
+      })
+      .eq("id", reqRow.id)
+      .select()
+      .single();
+
+    if (updErr) return reply({ error: "update_failed" }, 500);
+
+    const locale = body.locale === "en" ? "en" : "pl";
+    if (reqRow.requester_email) {
+      const approved = decision === "approve";
+      const subject =
+        locale === "pl"
+          ? approved
+            ? `Wniosek o współadministrację w „${activeHousehold.nazwa}” został zatwierdzony`
+            : `Wniosek o współadministrację w „${activeHousehold.nazwa}” został odrzucony`
+          : approved
+            ? `Co-admin request approved in "${activeHousehold.nazwa}"`
+            : `Co-admin request rejected in "${activeHousehold.nazwa}"`;
+      const html = renderEmailCard({
+        locale,
+        tone: approved ? "default" : "warning",
+        badge:
+          locale === "pl"
+            ? approved
+              ? "Współadministracja aktywna"
+              : "Wniosek odrzucony"
+            : approved
+              ? "Co-admin granted"
+              : "Request rejected",
+        heading: subject,
+        paragraphs: [
+          locale === "pl"
+            ? approved
+              ? `Właściciel domostwa <strong>${escapeHtml(activeHousehold.nazwa)}</strong> nadał Ci uprawnienia współadministratora.`
+              : `Właściciel domostwa <strong>${escapeHtml(activeHousehold.nazwa)}</strong> odrzucił Twój wniosek o uprawnienia współadministratora.`
+            : approved
+              ? `The owner of <strong>${escapeHtml(activeHousehold.nazwa)}</strong> approved your co-admin request.`
+              : `The owner of <strong>${escapeHtml(activeHousehold.nazwa)}</strong> rejected your co-admin request.`,
+        ],
+        cta: {
+          label:
+            locale === "pl"
+              ? "Przejdź do ustawień domostwa →"
+              : "Open household settings →",
+          url: `${origin.replace(/\/$/, "")}/${locale}/app/gospodarstwo`,
+        },
+      });
+      await sendEmailViaSmtp(reqRow.requester_email, subject, html);
+    }
+
+    return reply({ success: true, admin_request: updatedReq });
   }
 
   return reply({ error: "invalid_action" }, 400);

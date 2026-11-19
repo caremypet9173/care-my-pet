@@ -68,6 +68,9 @@ verify_jwt = false
 [functions.pet-archive]
 verify_jwt = false
 
+[functions.household-recovery]
+verify_jwt = false
+
 [functions.pet-medications]
 verify_jwt = false
 

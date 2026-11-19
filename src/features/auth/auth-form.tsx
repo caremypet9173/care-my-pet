@@ -311,6 +311,15 @@ export function AuthForm({ mode, configured, initialError }: {
           {register ? t.login : t.register}
         </Link>
       </p>
+      {!register && (
+        <p className="auth-recovery-link">
+          <Link href="/odzyskaj">
+            {locale === "pl"
+              ? "Utracono dostęp do konta lub e-maila? Odzyskaj domostwo kluczem →"
+              : "Lost access to account or email? Recover household with key →"}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

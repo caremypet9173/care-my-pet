@@ -22,6 +22,12 @@ interface HouseholdHeaderSwitcherProps {
   locale: string;
 }
 
+function getRoleLabel(rola: string, pl: boolean): string {
+  if (rola === "owner") return pl ? "Właściciel" : "Owner";
+  if (rola === "admin") return pl ? "Współadministrator" : "Co-admin";
+  return pl ? "Współopiekun" : "Member";
+}
+
 export function HouseholdHeaderSwitcher({
   availableHouseholds,
   activeHouseholdId,
@@ -108,7 +114,7 @@ export function HouseholdHeaderSwitcher({
         {!isOwner && (
           <span className="household-header-switcher-role is-co-guardian">
             <IconUsers size={12} aria-hidden="true" />
-            {pl ? "Współopiekun" : "Co-guardian"}
+            {getRoleLabel(activeHousehold.rola, pl)}
           </span>
         )}
       </div>
@@ -152,13 +158,7 @@ export function HouseholdHeaderSwitcher({
           }`}
         >
           {isCoGuardian ? <IconUsers size={12} aria-hidden="true" /> : null}
-          {activeHousehold?.rola === "owner"
-            ? pl
-              ? "Właściciel"
-              : "Owner"
-            : pl
-              ? "Współopiekun"
-              : "Member"}
+          {getRoleLabel(activeHousehold?.rola ?? "member", pl)}
         </span>
         <IconChevronDown
           size={14}
@@ -200,13 +200,7 @@ export function HouseholdHeaderSwitcher({
                           {itemIsCoGuardian ? (
                             <IconUsers size={11} aria-hidden="true" />
                           ) : null}
-                          {h.rola === "owner"
-                            ? pl
-                              ? "Właściciel"
-                              : "Owner"
-                            : pl
-                              ? "Współopiekun"
-                              : "Member"}
+                          {getRoleLabel(h.rola, pl)}
                         </span>
                       </div>
                     </div>

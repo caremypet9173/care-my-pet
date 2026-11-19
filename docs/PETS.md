@@ -203,3 +203,40 @@ zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
     `ArchivePortalView`: bramka z kodem dostępu, statystyki kartoteki, generator
     wielostronicowego raportu A4 PDF po stronie przeglądarki (`buildPetArchivePdf` w `pdf-lib`
     z osadzoną czcionką `Inter`) oraz pobieranie oryginalnych załączników badań.
+
+## Aktualizacja 2026-11-18 — Klucz odzyskania dostępu, blokada read-only i współadministratorzy
+
+- **Baza danych (`20261118150000_recovery_key_and_household_admin.sql`, `20261118153000_recovery_private_rpc.sql`):**
+  - Usunięcie `UNIQUE(owner_id)` z `public.gospodarstwo` (jeden użytkownik może być właścicielem
+    wielu domostw jednocześnie) oraz aktywacja roli współadministratora `czlonek_gospodarstwa.rola = 'admin'`
+    w `is_household_admin()`, RLS, `create_pet(..., p_household_id)`, `archive_pet` i `restore_pet`.
+  - Kolumny `recovery_email`, `recovery_key_hint`, `recovery_key_set_at`, `recovery_key_set_by` na
+    `public.gospodarstwo` chronione triggerem `guard_household_recovery_fields`, prywatne tabele
+    `private.household_recovery_secret`, `private.household_recovery_claim` i `private.recovery_rate_limit`
+    obsługiwane atomowymi funkcjami RPC dla `service_role`.
+  - Obowiązkowa blokada **tylko do odczytu (`PT428`)**: triggery `b_enforce_household_recovery_key`
+    na `zwierze` oraz tabelach klinicznych i RPC blokują zapis/edycję/archiwizację, dopóki
+    domostwo nie ma aktywnego klucza odzyskania (`recovery_key_set_at is not null`). Po zużyciu
+    klucza w procesie odzyskania klucz wygasa, a nowe domostwo znów wchodzi w tryb `read-only`
+    aż do wygenerowania kolejnego klucza.
+  - Tabela `public.household_admin_request` (z jawnymi `GRANT` przed RLS) obsługująca 14-dniowy
+    wniosek opiekuna (`member`) o rolę współadministratora z oknem weta dla właściciela i automatycznym
+    zatwierdzeniem po upływie terminu (`auto_approve_expired_admin_requests`).
+- **Edge Functions (`household`, `household-recovery`, `schedule-notifications`, funkcje kliniczne):**
+  - `household`: akcje `generate_recovery_key`, `update_recovery_email`, `set_member_role`,
+    `request_admin_takeover`, `respond_admin_request` oraz wsparcie `canManage` (`owner` lub `admin`).
+  - `household-recovery`: publiczne akcje `initiate` (weryfikacja PBKDF2 SHA-256 + limit 5 prób / 15 min
+    + 24h link na `target_email` + alert bezpieczeństwa na `owner_email` i `recovery_email`),
+    `get_claim`, `register_and_confirm` oraz `confirm_claim` (atomowe przekazanie własności,
+    odłączenie poprzedniego właściciela i skonsumowanie klucza).
+  - `pets`, `pet-archive`, `pet-weight`, `medical-reports`, `pet-history`, `pet-medications`, `pet-schedule`:
+    obsługa kodu `PT428` (`HTTP 428 recovery_key_required`) oraz dostęp współadministratorów w `pet-archive`.
+  - `schedule-notifications`: automatyczne zatwierdzanie przeterminowanych wniosków `household_admin_request`
+    w cronie z powiadomieniem e-mail.
+- **Interfejs (`src/features/household/`, `/odzyskaj`, `/odzyskaj/potwierdz/[token]`):**
+  - `HouseholdRecoveryBanner` + `RecoveryKeyDialog` + generator karty A4 PDF (`buildRecoveryKeyPdf`
+    w `recovery-key-pdf.ts`) na pulpicie `/app`, kartotekach i formularzach.
+  - Publiczny portal odzyskania `/odzyskaj` oraz potwierdzenia przejęcia `/odzyskaj/potwierdz/[token]`
+    z bezpośrednią rejestracją lub logowaniem docelowego adresu e-mail.
+  - Sekcja bezpieczeństwa, zarządzania e-mailem pomocniczym, awansowania na `Współadministratora`
+    oraz obsługi 14-dniowych wniosków ciągłości w `/app/gospodarstwo`.

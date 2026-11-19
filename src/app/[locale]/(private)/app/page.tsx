@@ -14,6 +14,7 @@ import {
   listHouseholdMedicationSchedules,
 } from "@/features/medications/data";
 import { getActiveHouseholdContext } from "@/features/household/data";
+import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
 import { petMessages } from "@/features/pets/messages";
 import { HouseholdDashboard } from "@/features/pets/household-dashboard";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
@@ -36,7 +37,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AppPage() {
   const locale = await getLocale();
   const t = petMessages[locale];
-  const { activeHousehold, isOwner } = await getActiveHouseholdContext();
+  const {
+    activeHousehold,
+    isOwner,
+    canManage,
+    hasRecoveryKey,
+  } = await getActiveHouseholdContext();
   const householdId = activeHousehold?.id ?? null;
 
   const [
@@ -68,12 +74,16 @@ export default async function AppPage() {
         <div>
           <div className="pets-eyebrows-row">
             <span className="pets-eyebrow">{d.dashboard}</span>
-            {!isOwner && (
+            {!isOwner && activeHousehold && (
               <span className="household-co-guardian-pill">
                 <IconUsers size={13} aria-hidden="true" />
-                {locale === "pl"
-                  ? "Gospodarstwo współdzielone (Współopiekun)"
-                  : "Shared household (Co-guardian)"}
+                {canManage
+                  ? locale === "pl"
+                    ? "Gospodarstwo współdzielone (Współadministrator)"
+                    : "Shared household (Co-admin)"
+                  : locale === "pl"
+                    ? "Gospodarstwo współdzielone (Współopiekun)"
+                    : "Shared household (Co-guardian)"}
               </span>
             )}
           </div>
@@ -85,7 +95,7 @@ export default async function AppPage() {
           <p>{t.intro}</p>
         </div>
         <div className="household-heading-actions">
-          {isOwner && (
+          {canManage && hasRecoveryKey && (
             <ButtonLink
               variant={empty ? "primary" : "secondary"}
               size="sm"
@@ -95,7 +105,7 @@ export default async function AppPage() {
               {empty ? firstPet : t.add}
             </ButtonLink>
           )}
-          {primaryPet && (
+          {primaryPet && hasRecoveryKey && (
             <ButtonLink
               variant="secondary"
               size="sm"
@@ -111,7 +121,17 @@ export default async function AppPage() {
           </ButtonLink>
         </div>
       </div>
-      {!isOwner && activeHousehold && (
+      {activeHousehold && !hasRecoveryKey && (
+        <HouseholdRecoveryBanner
+          householdId={activeHousehold.id}
+          householdName={activeHousehold.nazwa}
+          ownerEmail=""
+          recoveryEmail={activeHousehold.recovery_email}
+          canManage={canManage}
+          hasRecoveryKey={hasRecoveryKey}
+        />
+      )}
+      {!canManage && activeHousehold && (
         <div className="household-co-guardian-banner">
           <div className="household-co-guardian-banner-icon" aria-hidden="true">
             <IconUsers size={22} />
@@ -124,8 +144,8 @@ export default async function AppPage() {
             </strong>
             <p>
               {locale === "pl"
-                ? "Działasz w trybie współdzielonym. Masz pełny wgląd w zdrowie i dokumentację pupili oraz wspólny terminarz. Dodawanie nowych zwierząt oraz zarządzanie członkami wykonuje właściciel gospodarstwa."
-                : "You are acting in shared mode. You have full access to health records and shared calendar. Adding new pets and managing members is handled by the household owner."}
+                ? "Działasz w trybie współdzielonym. Masz pełny wgląd w zdrowie i dokumentację pupili oraz wspólny terminarz. Dodawanie nowych zwierząt oraz zarządzanie członkami wykonuje właściciel lub współadministrator gospodarstwa."
+                : "You are acting in shared mode. You have full access to health records and shared calendar. Adding new pets and managing members is handled by the household owner or co-admin."}
             </p>
           </div>
         </div>
@@ -142,7 +162,8 @@ export default async function AppPage() {
           medicationLogs={medicationLogs}
           notificationSettings={notificationSettings}
           locale={locale}
-          canAddPet={isOwner}
+          canAddPet={canManage && hasRecoveryKey}
+          readOnly={!hasRecoveryKey}
         />
       )}
     </Container>

@@ -1,6 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
 import nodemailer from "npm:nodemailer@6.9.16";
 import webpush from "npm:web-push@3.6.7";
+import { escapeHtml } from "../_shared/recovery-crypto.mjs";
+import { renderEmailCard, sendSmtpEmail } from "../_shared/recovery-email.ts";
 
 const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "";
@@ -439,6 +441,36 @@ Deno.serve(async (req) => {
   }
 
   // Przypadek 2: Automatyczna wysyłka z pg_cron (lub ręczny dispatch)
+  // Najpierw zatwierdź wnioski o współadministrację po upływie 14 dni bez weta
+  try {
+    const { data: approvedRequests } = await adminClient.rpc(
+      "auto_approve_expired_admin_requests",
+    );
+    const appOrigin = (Deno.env.get("SITE_URL") || Deno.env.get("APP_URL") || "https://caremypet.app").replace(/\/$/, "");
+    for (const reqRow of Array.isArray(approvedRequests) ? approvedRequests : []) {
+      if (reqRow?.requester_email) {
+        await sendSmtpEmail({
+          to: String(reqRow.requester_email),
+          subject: `Automatycznie nadano uprawnienia współadministratora w „${reqRow.household_name}”`,
+          html: renderEmailCard({
+            badge: "Współadministracja aktywna",
+            heading: `Masz już prawa współadministratora w „${String(reqRow.household_name)}”`,
+            paragraphs: [
+              `Minęło 14 dni od złożenia wniosku w domostwie <strong>${escapeHtml(String(reqRow.household_name))}</strong> i właściciel nie zgłosił sprzeciwu.`,
+              `Możesz teraz zarządzać pupilami i ustawieniami tego domostwa.`,
+            ],
+            cta: {
+              label: "Otwórz Care My Pet",
+              url: `${appOrigin}/pl/app/gospodarstwo`,
+            },
+          }),
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("[AutoApproveAdminRequests Warning]", err);
+  }
+
   const day0 = warsawDatePlusDays(0);
   const day1 = warsawDatePlusDays(1);
   const day7 = warsawDatePlusDays(7);

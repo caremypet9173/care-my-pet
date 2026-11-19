@@ -650,15 +650,24 @@ Deno.serve(async (req) => {
     return reply({ error: "not_found" }, 404);
   }
 
-  // Tylko właściciel gospodarstwa może zarządzać linkami archiwum
-  const { data: ownerHousehold } = await userClient
-    .from("gospodarstwo")
-    .select("id")
-    .eq("id", pet.gospodarstwo_id)
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  // Tylko właściciel lub współadministrator gospodarstwa może zarządzać linkami archiwum
+  const [{ data: ownerHousehold }, { data: adminMember }] = await Promise.all([
+    userClient
+      .from("gospodarstwo")
+      .select("id")
+      .eq("id", pet.gospodarstwo_id)
+      .eq("owner_id", user.id)
+      .maybeSingle(),
+    userClient
+      .from("czlonek_gospodarstwa")
+      .select("user_id")
+      .eq("gospodarstwo_id", pet.gospodarstwo_id)
+      .eq("user_id", user.id)
+      .eq("rola", "admin")
+      .maybeSingle(),
+  ]);
 
-  if (!ownerHousehold) {
+  if (!ownerHousehold && !adminMember) {
     return reply({ error: "forbidden" }, 403);
   }
 

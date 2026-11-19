@@ -6,7 +6,8 @@ import { Link } from "@/i18n/navigation";
 import { PetForm } from "@/features/pets/pet-form";
 import { petMessages } from "@/features/pets/messages";
 import { petFormMessages } from "@/features/pets/form-messages";
-import { isHouseholdOwner } from "@/features/household/data";
+import { getActiveHouseholdContext } from "@/features/household/data";
+import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
 import "@/styles/pets.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,8 +23,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function NewPetPage() {
   const locale = await getLocale();
-  const isOwner = await isHouseholdOwner();
-  if (!isOwner) {
+  const { activeHousehold, canManage, hasRecoveryKey } =
+    await getActiveHouseholdContext();
+  if (!canManage) {
     return redirect({ href: "/app", locale });
   }
 
@@ -37,7 +39,18 @@ export default async function NewPetPage() {
         <h1>{d.title}</h1>
         <p>{d.intro}</p>
       </div>
-      <PetForm />
+      {!hasRecoveryKey && activeHousehold ? (
+        <HouseholdRecoveryBanner
+          householdId={activeHousehold.id}
+          householdName={activeHousehold.nazwa}
+          ownerEmail=""
+          recoveryEmail={activeHousehold.recovery_email}
+          canManage={canManage}
+          hasRecoveryKey={hasRecoveryKey}
+        />
+      ) : (
+        <PetForm householdId={activeHousehold?.id} />
+      )}
     </Container>
   );
 }

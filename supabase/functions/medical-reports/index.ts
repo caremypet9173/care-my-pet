@@ -221,11 +221,14 @@ Deno.serve(async req => {
     const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
     let body;try{body=JSON.parse(new TextDecoder().decode(bytes));}catch{return reply({error:'invalid_input'},400);}
     if(!uuid.test(body?.pet_id ?? ''))return reply({error:'invalid_input'},400);
-    const {data:pet,error:petError}=await client.from('zwierze').select('id,gospodarstwo_id,archived_at').eq('id',body.pet_id).maybeSingle();
+    const {data:pet,error:petError}=await client.from('zwierze').select('id,gospodarstwo_id,archived_at,gospodarstwo(recovery_key_set_at)').eq('id',body.pet_id).maybeSingle();
     if(petError)return reply({error:'load_failed'},500);
     if(!pet)return reply({error:'not_found'},404);
     if(body.action==='capabilities')return reply({extraction:!!Deno.env.get('GEMINI_API_KEY')});
     if(pet.archived_at)return reply({error:'pet_archived'},423);
+    const hhMeta=(pet as unknown as {gospodarstwo?:{recovery_key_set_at?:string|null}|Array<{recovery_key_set_at?:string|null}>}).gospodarstwo;
+    const hasRecoveryKey=Boolean(Array.isArray(hhMeta)?hhMeta[0]?.recovery_key_set_at:hhMeta?.recovery_key_set_at);
+    if(!hasRecoveryKey)return reply({error:'recovery_key_required'},428);
     if(body.action==='check_duplicate'){
       if(typeof body.sha256!=='string'||!/^[0-9a-f]{64}$/.test(body.sha256))return reply({error:'invalid_input'},400);
       return reply({duplicate:await findDuplicate(client,pet.id,body.sha256)});
@@ -240,7 +243,7 @@ Deno.serve(async req => {
       if(!measurement)return reply({error:'not_found'},404);
       if(!validMeasurementValue(c.value,measurement.value_type))return reply({error:'invalid_value_type'},400);
       const {data,error}=await client.rpc('correct_measurement',{p_pet_id:pet.id,p_measurement_id:body.measurement_id,p_revision:body.revision,p_value:c.value,p_unit:c.unit,p_reference:c.reference,p_note:c.note,p_is_key:c.is_key});
-      if(error)return reply({error:error.code==='PT409'?'edit_conflict':'save_failed'},error.code==='PT409'?409:error.code==='42501'?403:400);
+      if(error)return reply({error:error.code==='PT409'?'edit_conflict':error.code==='PT428'?'recovery_key_required':'save_failed'},error.code==='PT409'?409:error.code==='PT428'?428:error.code==='42501'?403:400);
       if(typeof measurement.wynik_id==='string'){await indexReportsByIds(client,pet.id,[measurement.wynik_id]);}
       return reply({correction:data});
     }
@@ -342,6 +345,7 @@ Deno.serve(async req => {
       const duplicate=await findDuplicate(client,pet.id,hash,body.id);
       if(duplicate)return reply({error:'duplicate_document',duplicate},409);
       const {data,error}=await client.rpc('confirm_medical_report',{p_id:body.id,p_pet_id:pet.id,p_source_path:path,p_source_name:body.source_name,p_source_mime:body.source_mime,p_report:report,p_source_sha256:hash});
+      if(error?.code==='PT428')return reply({error:'recovery_key_required'},428);
       if(error?.code==='PT409')return reply({error:'duplicate_document',duplicate:await findDuplicate(client,pet.id,hash,body.id)},409);
       if(error){console.error('report_confirm_failed',error.code);return reply({error:error.code==='23505'?'already_confirmed':'save_failed'},error.code==='23505'?409:500);}
       await indexPetKnowledgeChunk(client,{petId:pet.id,sourceType:'medical_report',sourceId:String(data),eventDate:String(report.test_date),title:String(report.title),content:formatReportKnowledgeContent(report)});

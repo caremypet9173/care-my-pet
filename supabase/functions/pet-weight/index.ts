@@ -16,13 +16,13 @@ Deno.serve(async req=>{
   if(body.action==='delete'){
    if(!uuid.test(body.id??'')||!uuid.test(body.pet_id??'')||!Number.isInteger(body.revision)||body.revision<1)return reply({error:'invalid_input'},400);
    const {error}=await client.rpc('delete_pet_weight',{p_id:body.id,p_pet_id:body.pet_id,p_revision:body.revision});
-   if(error)return reply({error:error.code==='PT409'?'conflict':error.code==='PT423'?'pet_archived':'delete_failed'},error.code==='PT409'?409:error.code==='PT423'?423:400);
+   if(error)return reply({error:error.code==='PT409'?'conflict':error.code==='PT423'?'pet_archived':error.code==='PT428'?'recovery_key_required':'delete_failed'},error.code==='PT409'?409:error.code==='PT423'?423:error.code==='PT428'?428:400);
    return reply({deleted:true});
   }
   const parsed=validateWeight(body.measurement);
   if(!parsed.value||!uuid.test(body.id??'')||!uuid.test(body.pet_id??'')||!Number.isInteger(body.revision)||body.revision<0)return reply({error:'invalid_input',fields:parsed.errors},400);
   const {data,error}=await client.rpc('save_pet_weight',{p_id:body.id,p_pet_id:body.pet_id,p_revision:body.revision,p_kg:parsed.value.kg,p_date:parsed.value.measured_on,p_note:parsed.value.note});
-  if(error)return reply({error:error.code==='PT409'?'conflict':error.code==='PT423'?'pet_archived':'save_failed'},error.code==='PT409'?409:error.code==='PT423'?423:error.code==='42501'||error.code==='P0002'?404:400);
+  if(error)return reply({error:error.code==='PT409'?'conflict':error.code==='PT423'?'pet_archived':error.code==='PT428'?'recovery_key_required':'save_failed'},error.code==='PT409'?409:error.code==='PT423'?423:error.code==='PT428'?428:error.code==='42501'||error.code==='P0002'?404:400);
   return reply({measurement:data});
  }catch{return reply({error:'invalid_request'},400);}
 });

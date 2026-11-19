@@ -19,7 +19,7 @@ function Choices({ name, label, options, value, onChange, error }: {
   return <fieldset className="pet-choice-field"><legend>{label}</legend><div className="pet-choice-options">{options.map(option => <label key={option.value}><input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} aria-describedby={error ? `${name}-error` : undefined} /><span>{option.label}</span></label>)}</div>{error && <p className="pet-field-error" id={`${name}-error`}>{error}</p>}</fieldset>;
 }
 
-export function PetForm({ pet }: { pet?: Pet }) {
+export function PetForm({ pet, householdId }: { pet?: Pet; householdId?: string }) {
   const locale = useLocale(); const t = petMessages[locale]; const d = petFormMessages[locale];
   const router = useRouter();
   const [species, setSpecies] = useState(pet?.gatunek ?? "");
@@ -89,6 +89,7 @@ export function PetForm({ pet }: { pet?: Pet }) {
       const values = Object.fromEntries(fields.entries());
       const { data, error: invokeError } = await client.functions.invoke("pets", { body: {
         action: pet ? "update" : "create", id: pet?.id, updated_at: pet?.updated_at,
+        ...(pet ? {} : householdId ? { household_id: householdId } : {}),
         pet: { ...values, gatunek: species, plec: sex, identyfikacja: identification,
           kastracja: neutered === "unknown" ? null : neutered === "yes",
           tagi: tags,
@@ -97,6 +98,14 @@ export function PetForm({ pet }: { pet?: Pet }) {
       if (invokeError) {
         const response = invokeError.context;
         const body = response instanceof Response ? await response.json().catch(() => null) : null;
+        if (body?.error === "recovery_key_required") {
+          setError(
+            locale === "pl"
+              ? "Domostwo wymaga najpierw wygenerowania klucza odzyskania dostępu (tryb tylko do odczytu)."
+              : "Household requires setting an emergency recovery key before adding or editing pets.",
+          );
+          return;
+        }
         if (body?.error === "conflict_or_not_found") { setError(t.conflict); return; }
         if (body?.error === "invalid_input" && typeof body.field === "string" && body.field in t) { report({ [body.field]: `${t.invalid} ${t[body.field as keyof typeof t]}` }); return; }
         throw invokeError;

@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
       if (error) {
         console.error('pet_archive_failed', error.code, error.message);
         if (error.code === '42501') return reply({ error: 'forbidden' }, 403);
+        if (error.code === 'PT428') return reply({ error: 'recovery_key_required' }, 428);
         if (error.code === 'PT409') return reply({ error: 'already_archived' }, 409);
         if (error.code === '22023') return reply({ error: 'invalid_input' }, 400);
         if (error.code === 'P0002') return reply({ error: 'not_found' }, 404);
@@ -82,6 +83,7 @@ Deno.serve(async (req) => {
       if (error) {
         console.error('pet_restore_failed', error.code, error.message);
         if (error.code === '42501') return reply({ error: 'forbidden' }, 403);
+        if (error.code === 'PT428') return reply({ error: 'recovery_key_required' }, 428);
         if (error.code === 'PT409') return reply({ error: 'not_archived' }, 409);
         if (error.code === 'P0002') return reply({ error: 'not_found' }, 404);
         return reply({ error: 'save_failed' }, 500);
@@ -91,10 +93,17 @@ Deno.serve(async (req) => {
     const parsed = validatePet(body?.pet);
     if (!parsed.ok || !parsed.value) return reply({ error: 'invalid_input', field: parsed.field }, 400);
     if (body.action === 'create') {
-      const { data, error } = await client.rpc('create_pet', { p_pet: parsed.value });
+      const householdId = typeof body.household_id === 'string' && uuidPattern.test(body.household_id)
+        ? body.household_id
+        : null;
+      const { data, error } = await client.rpc(
+        'create_pet',
+        householdId ? { p_pet: parsed.value, p_household_id: householdId } : { p_pet: parsed.value },
+      );
       if (error) {
         console.error('pet_create_failed', error.code, error.message);
         if (error.code === '42501') return reply({ error: 'forbidden' }, 403);
+        if (error.code === 'PT428') return reply({ error: 'recovery_key_required' }, 428);
         return reply({ error: 'save_failed' }, 500);
       }
       return reply({ pet: data }, 201);
@@ -106,6 +115,7 @@ Deno.serve(async (req) => {
       if (error) {
         console.error('pet_update_failed', error.code);
         if (error.code === 'PT423') return reply({ error: 'pet_archived' }, 423);
+        if (error.code === 'PT428') return reply({ error: 'recovery_key_required' }, 428);
         return reply({ error: 'save_failed' }, 500);
       }
       if (!data) return reply({ error: 'conflict_or_not_found' }, 409);

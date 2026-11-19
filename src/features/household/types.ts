@@ -1,8 +1,28 @@
+export type HouseholdRole = "owner" | "admin" | "member";
+
 export interface HouseholdInfo {
   id: string;
   nazwa: string;
   created_at: string;
   is_owner: boolean;
+  can_manage: boolean;
+  my_role: HouseholdRole;
+  has_recovery_key: boolean;
+  recovery_key_hint: string | null;
+  recovery_key_set_at: string | null;
+  recovery_email: string | null;
+}
+
+export interface HouseholdAdminRequest {
+  id: string;
+  household_id: string;
+  requester_user_id: string;
+  requester_email: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  requested_at: string;
+  resolves_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
 }
 
 export interface HouseholdMember {
@@ -45,6 +65,7 @@ export interface HouseholdDetailsResponse {
   invitations: HouseholdInvitation[];
   pets: HouseholdPetSummary[];
   availableHouseholds?: AvailableHouseholdItem[];
+  admin_request?: HouseholdAdminRequest | null;
 }
 
 export interface InvitationDetailsResponse {
