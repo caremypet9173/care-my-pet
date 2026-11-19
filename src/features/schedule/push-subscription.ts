@@ -99,32 +99,23 @@ export async function subscribeToPush(householdId?: string | null): Promise<{ ok
       return { ok: false, error: "unauthenticated" };
     }
 
-    let targetHouseholdId = householdId ?? null;
-    if (!targetHouseholdId) {
-      const { data: member } = await supabase
-        .from("household_member")
-        .select("household_id")
-        .limit(1)
-        .maybeSingle();
-      targetHouseholdId = member?.household_id ?? null;
-    }
-
-    const { error: dbError } = await supabase.from("pet_push_subscription").upsert(
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "schedule-notifications",
       {
-        user_id: user.id,
-        household_id: targetHouseholdId,
-        endpoint,
-        p256dh,
-        auth,
-        user_agent: navigator.userAgent.slice(0, 300),
-        last_used_at: new Date().toISOString(),
+        body: {
+          action: "register_push",
+          household_id: householdId ?? null,
+          endpoint,
+          p256dh,
+          auth,
+          user_agent: navigator.userAgent.slice(0, 300),
+        },
       },
-      { onConflict: "user_id,endpoint" }
     );
 
-    if (dbError) {
-      console.error("[PWA Push] Failed to save subscription in Supabase:", dbError);
-      return { ok: false, error: dbError.message };
+    if (fnError || !data?.ok) {
+      console.error("[PWA Push] Failed to save subscription via Edge Function:", fnError ?? data);
+      return { ok: false, error: fnError?.message || data?.error || "save_failed" };
     }
 
     return { ok: true };
@@ -147,10 +138,12 @@ export async function unsubscribeFromPush(): Promise<{ ok: boolean; error?: stri
       await sub.unsubscribe();
 
       const supabase = createClient();
-      await supabase
-        .from("pet_push_subscription")
-        .delete()
-        .eq("endpoint", endpoint);
+      await supabase.functions.invoke("schedule-notifications", {
+        body: {
+          action: "unregister_push",
+          endpoint,
+        },
+      });
     }
 
     return { ok: true };

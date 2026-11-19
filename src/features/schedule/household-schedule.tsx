@@ -146,6 +146,7 @@ const EMPTY_MED_LOGS: MedicationLog[] = [];
 
 export function HouseholdSchedule({
   pets,
+  householdId,
   initialScheduleItems,
   initialHealthEvents,
   initialReports = EMPTY_REPORTS,
@@ -158,6 +159,7 @@ export function HouseholdSchedule({
   readOnly = false,
 }: {
   pets: Pick<Pet, "id" | "imie">[];
+  householdId?: string;
   initialScheduleItems: ScheduleItem[];
   initialHealthEvents: HealthEvent[];
   initialReports?: CalendarReportSummary[];
@@ -822,7 +824,7 @@ export function HouseholdSchedule({
           {
             body: {
               action: "delete_dose_log",
-              pet_id: fixedPetId || pets[0]?.id,
+              pet_id: deletedLog?.pet_id || fixedPetId || pets[0]?.id,
               log_id: logId,
             },
           },
@@ -1290,7 +1292,7 @@ export function HouseholdSchedule({
           });
         }
       } else {
-        const sub = await subscribeToPush();
+        const sub = await subscribeToPush(householdId ?? initialNotificationSettings?.household_id ?? null);
         if (sub.ok) {
           const fresh = await getDevicePushStatus();
           setPushStatus(fresh);

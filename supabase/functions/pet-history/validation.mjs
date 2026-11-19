@@ -1,4 +1,4 @@
-export const MAX_FILE = 6 * 1024 * 1024;
+export const MAX_FILE = 12 * 1024 * 1024;
 export const mimeExtensions = {
   "application/pdf": "pdf",
   "image/jpeg": "jpg",

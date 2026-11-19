@@ -277,6 +277,7 @@ Deno.serve(async (req) => {
         eventDate: createdEvent.event_date,
         title: createdEvent.title,
         content: formatHealthEventKnowledgeContent(createdEvent),
+        userId: user.id,
       });
 
       return reply({

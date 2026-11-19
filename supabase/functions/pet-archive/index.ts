@@ -232,6 +232,7 @@ Deno.serve(async (req) => {
       .from("zwierze")
       .select("id,imie")
       .eq("id", link.pet_id)
+      .eq("gospodarstwo_id", link.household_id)
       .maybeSingle();
 
     if (!petMeta) {
@@ -332,11 +333,13 @@ Deno.serve(async (req) => {
           "id,imie,gatunek,rasa,data_urodzenia,data_urodzenia_przyblizona,plec,kastracja,identyfikacja,numer_id,notatki,tagi,avatar_path,updated_at,archived_at,archive_reason,closed_on",
         )
         .eq("id", link.pet_id)
+        .eq("gospodarstwo_id", link.household_id)
         .maybeSingle(),
       adminClient
         .from("pet_weight")
         .select("id,kg,measured_on,note")
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .order("measured_on", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(1000),
@@ -346,6 +349,7 @@ Deno.serve(async (req) => {
           "id,metric_type,value_primary,value_secondary,value_tertiary,unit,measured_on,measured_at,context,note",
         )
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .order("measured_on", { ascending: false })
         .order("measured_at", { ascending: false })
         .limit(1000),
@@ -355,6 +359,7 @@ Deno.serve(async (req) => {
           "id,fluid_name,volume_ml,route,medications_added,location,administered_at,administered_on,notes",
         )
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .order("administered_on", { ascending: false })
         .order("administered_at", { ascending: false })
         .limit(1000),
@@ -364,6 +369,7 @@ Deno.serve(async (req) => {
           "id,category,title,event_date,next_due_date,clinic,doctor,batch_or_product,description,source_path,source_name,source_mime",
         )
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .order("event_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(1000),
@@ -373,6 +379,7 @@ Deno.serve(async (req) => {
           "id,title,test_date,laboratory,doctor,notes,ai_interpretation,source_path,source_name,source_mime,rows:pomiar_parametru(id,ordinal,category,name,value,unit,reference,correction:measurement_correction(value,unit,reference,note,is_key,revision))",
         )
         .eq("zwierze_id", link.pet_id)
+        .eq("gospodarstwo_id", link.household_id)
         .order("test_date", { ascending: false })
         .order("confirmed_at", { ascending: false })
         .limit(500),
@@ -382,6 +389,7 @@ Deno.serve(async (req) => {
           "id,name,dosage,schedule_type,interval_value,interval_unit,start_date,end_date,scheduled_time,scheduled_times,instructions,is_active,schedule_category,fluid_name,fluid_volume_ml,fluid_route,fluid_location",
         )
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .order("is_active", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(200),
@@ -573,6 +581,7 @@ Deno.serve(async (req) => {
         .from("wynik_badania")
         .select("id,source_name")
         .eq("zwierze_id", link.pet_id)
+        .eq("gospodarstwo_id", link.household_id)
         .eq("source_path", sourcePath)
         .limit(1)
         .maybeSingle(),
@@ -580,6 +589,7 @@ Deno.serve(async (req) => {
         .from("pet_health_event")
         .select("id,source_name")
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .eq("source_path", sourcePath)
         .limit(1)
         .maybeSingle(),
@@ -783,11 +793,12 @@ Deno.serve(async (req) => {
       return reply({ error: "invalid_input" }, 400);
     }
 
-    const { data: revoked, error: revErr } = await userClient
+    const { data: revoked, error: revErr } = await adminClient
       .from("pet_archive_link")
       .update({ revoked_at: new Date().toISOString() })
       .eq("id", linkId)
       .eq("pet_id", pet.id)
+      .eq("household_id", pet.gospodarstwo_id)
       .is("revoked_at", null)
       .select(
         "id,pet_id,household_id,token,recipient_email,label,expires_at,revoked_at,failed_attempts,locked_until,unlocked_count,pdf_download_count,file_download_count,last_accessed_at,email_sent_at,created_by,created_at",

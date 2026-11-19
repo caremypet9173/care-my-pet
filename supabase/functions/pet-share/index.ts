@@ -89,12 +89,13 @@ Deno.serve(async (req) => {
         return reply({ error: "invalid_input" }, 400);
       }
 
-      // Weryfikujemy, że żądany plik faktycznie należy do tego pupila
+      // Weryfikujemy, że żądany plik faktycznie należy do tego pupila i gospodarstwa
       const [{ data: repMatch }, { data: evMatch }] = await Promise.all([
         adminClient
           .from("wynik_badania")
           .select("id")
           .eq("zwierze_id", link.pet_id)
+          .eq("gospodarstwo_id", link.household_id)
           .eq("source_path", sourcePath)
           .limit(1)
           .maybeSingle(),
@@ -102,6 +103,7 @@ Deno.serve(async (req) => {
           .from("pet_health_event")
           .select("id")
           .eq("pet_id", link.pet_id)
+          .eq("household_id", link.household_id)
           .eq("source_path", sourcePath)
           .limit(1)
           .maybeSingle(),
@@ -156,34 +158,47 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       adminClient
         .from("zwierze")
-        .select("*")
+        .select(
+          "id,imie,gatunek,rasa,data_urodzenia,data_urodzenia_przyblizona,plec,kastracja,identyfikacja,numer_id,notatki,tagi,avatar_path,updated_at,archived_at,archive_reason,closed_on",
+        )
         .eq("id", link.pet_id)
+        .eq("gospodarstwo_id", link.household_id)
         .maybeSingle(),
       adminClient
         .from("pet_weight")
-        .select("*")
+        .select("id,pet_id,kg,measured_on,note,created_at,updated_at,revision")
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .order("measured_on", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(100),
       adminClient
         .from("pet_health_event")
-        .select("*")
+        .select(
+          "id,pet_id,category,title,event_date,next_due_date,clinic,doctor,batch_or_product,description,source_path,source_name,source_mime,created_at,updated_at,revision",
+        )
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .order("event_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(200),
       adminClient
         .from("wynik_badania")
-        .select("*,rows:pomiar_parametru(*,correction:measurement_correction(*))")
+        .select(
+          "id,zwierze_id,title,test_date,laboratory,doctor,notes,ai_interpretation,source_path,source_name,source_mime,confirmed_at,rows:pomiar_parametru(id,wynik_id,ordinal,category,name,value,unit,reference,value_type,correction:measurement_correction(value,unit,reference,note,is_key,revision))",
+        )
         .eq("zwierze_id", link.pet_id)
+        .eq("gospodarstwo_id", link.household_id)
         .order("test_date", { ascending: false })
         .order("confirmed_at", { ascending: false })
         .limit(100),
       adminClient
         .from("pet_schedule_item")
-        .select("*")
+        .select(
+          "id,pet_id,category,title,scheduled_date,scheduled_time,clinic,doctor,prep_notes,status,completed_event_id,created_at,updated_at,revision",
+        )
         .eq("pet_id", link.pet_id)
+        .eq("household_id", link.household_id)
         .eq("status", "planned")
         .order("scheduled_date", { ascending: true })
         .limit(50),
@@ -283,13 +298,26 @@ Deno.serve(async (req) => {
 
   const { data: pet, error: petError } = await userClient
     .from("zwierze")
-    .select("id,gospodarstwo_id,imie")
+    .select("id,gospodarstwo_id,imie,archived_at,gospodarstwo(recovery_key_set_at)")
     .eq("id", petId)
     .maybeSingle();
 
   if (petError || !pet) {
     return reply({ error: "not_found" }, 404);
   }
+
+  const hhMeta = (
+    pet as unknown as {
+      gospodarstwo?:
+        | { recovery_key_set_at?: string | null }
+        | Array<{ recovery_key_set_at?: string | null }>;
+    }
+  ).gospodarstwo;
+  const hasRecoveryKey = Boolean(
+    Array.isArray(hhMeta)
+      ? hhMeta[0]?.recovery_key_set_at
+      : hhMeta?.recovery_key_set_at,
+  );
 
   if (action === "list") {
     const [{ data: links }, { data: openLogs }] = await Promise.all([
@@ -314,6 +342,12 @@ Deno.serve(async (req) => {
   }
 
   if (action === "create") {
+    if (pet.archived_at) {
+      return reply({ error: "pet_archived" }, 423);
+    }
+    if (!hasRecoveryKey) {
+      return reply({ error: "recovery_key_required" }, 428);
+    }
     const ttlHours =
       body.ttl_hours === 1 || body.ttl_hours === 24 || body.ttl_hours === 168
         ? Number(body.ttl_hours)

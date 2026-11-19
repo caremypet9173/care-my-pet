@@ -34,26 +34,26 @@ export default async function NewReportPage({params}:{params:Promise<{id:string}
   const locale = (await getLocale()) as Locale;
   if (pet.archived_at) {
     return (
-      <main className="pets-page" style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem 1rem" }}>
+      <div className="pets-page" style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem 1rem" }}>
         <PetArchivedBlockedCard pet={pet} locale={locale} />
-      </main>
+      </div>
     );
   }
   const details = await getHouseholdDetails(pet.gospodarstwo_id);
   const hasRecoveryKey = Boolean(details?.household?.has_recovery_key);
   if (!hasRecoveryKey && details?.household) {
     return (
-      <main className="pets-page" style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem 1rem" }}>
+      <div className="pets-page" style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem 1rem" }}>
         <Link href={`/app/zwierzeta/${pet.id}`}>← {pet.imie}</Link>
         <HouseholdRecoveryBanner
           householdId={details.household.id}
           householdName={details.household.nazwa}
           ownerEmail={details.owner?.email ?? ""}
           recoveryEmail={details.household.recovery_email}
-          canManage={details.household.can_manage}
+          canManage={Boolean(details.household.is_owner)}
           hasRecoveryKey={hasRecoveryKey}
         />
-      </main>
+      </div>
     );
   }
   return <ReviewForm pet={pet}/>;

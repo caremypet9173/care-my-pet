@@ -376,7 +376,7 @@ export function HouseholdManager({
 
   async function handleSaveBackupEmail(e: React.FormEvent) {
     e.preventDefault();
-    if (!canManage || isSavingBackupEmail) return;
+    if (!isOwner || isSavingBackupEmail) return;
     setIsSavingBackupEmail(true);
     setBackupEmailMsg(null);
     try {
@@ -543,8 +543,7 @@ export function HouseholdManager({
   const isRequesterSelf = Boolean(
     adminRequest && selfMember && adminRequest.requester_user_id === selfMember.user_id,
   );
-  const canRotateOrSetKey =
-    isOwner || (!household.has_recovery_key && canManage);
+  const canRotateOrSetKey = isOwner;
 
   return (
     <div className="household-manager-layout">
@@ -578,7 +577,7 @@ export function HouseholdManager({
         householdName={household.nazwa}
         ownerEmail={initialData.owner?.email ?? ""}
         recoveryEmail={household.recovery_email}
-        canManage={canManage}
+        canManage={isOwner}
         hasRecoveryKey={household.has_recovery_key}
       />
 
@@ -1072,7 +1071,7 @@ export function HouseholdManager({
             </div>
           </div>
 
-          {canManage && (
+          {isOwner && (
             <form onSubmit={handleSaveBackupEmail} className="recovery-setting-box">
               <div className="recovery-setting-meta">
                 <label htmlFor="household-backup-email">

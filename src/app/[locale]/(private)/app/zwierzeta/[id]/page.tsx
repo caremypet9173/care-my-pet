@@ -93,7 +93,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     listFluidTherapies(pet.id),
     listHealthEvents(pet.id),
     listPetScheduleItems(pet.id),
-    getHouseholdNotificationSettings(),
+    getHouseholdNotificationSettings(pet.gospodarstwo_id),
     isAssistantTab ? listAssistantThreads(pet.id) : Promise.resolve(undefined),
     isAssistantTab ? listAssistantMessages(pet.id) : Promise.resolve(undefined),
     isAssistantTab ? getAssistantQuotaUsed() : Promise.resolve(undefined),
@@ -171,7 +171,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
         householdName={householdDetails.household.nazwa}
         ownerEmail={householdDetails.owner?.email ?? ""}
         recoveryEmail={householdDetails.household.recovery_email}
-        canManage={canManage}
+        canManage={isOwner}
         hasRecoveryKey={hasRecoveryKey}
       />
     )}
@@ -230,9 +230,9 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Pomiary zdrowia →':'Health measurements →'}</Link></dd></div>
     </dl></section>
-    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} readOnly={isArchived} />
+    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} readOnly={isReadOnly} />
   </aside></div>
-    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} readOnly={isArchived} />
+    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} householdId={pet.gospodarstwo_id} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} readOnly={isReadOnly} />
     </RecordSections>
     </PetQuickAddProvider>
   </Container>;

@@ -1,4 +1,29 @@
-import type { SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
+
+function getServiceClient(): SupabaseClient | null {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function logEmbeddingUsage(
+  fallbackClient: SupabaseClient,
+  payload: Record<string, unknown>,
+  userId?: string,
+): Promise<void> {
+  const svc = getServiceClient();
+  const target = svc ?? fallbackClient;
+  const { error } = await target.rpc("log_ai_usage", {
+    ...payload,
+    ...(userId ? { p_user_id: userId } : {}),
+  });
+  if (error) {
+    console.error("rag_log_ai_usage_failed", error);
+  }
+}
 
 function normalizeVector(values: number[]): number[] {
   let sumSq = 0;
@@ -17,6 +42,7 @@ export async function indexPetKnowledgeChunk(
     eventDate: string;
     title: string;
     content: string;
+    userId?: string;
   },
 ): Promise<void> {
   const key = Deno.env.get("GEMINI_API_KEY");
@@ -52,20 +78,24 @@ export async function indexPetKnowledgeChunk(
         if (model === modelsToTry[0] && (response.status === 404 || response.status === 400)) {
           continue;
         }
-        await client.rpc("log_ai_usage", {
-          p_pet_id: params.petId,
-          p_feature: "embedding",
-          p_model: model,
-          p_mime_type: "text/plain",
-          p_file_size_bytes: new TextEncoder().encode(text).byteLength,
-          p_prompt_tokens: 0,
-          p_output_tokens: 0,
-          p_thoughts_tokens: 0,
-          p_total_tokens: 0,
-          p_duration_ms: durationMs,
-          p_status: "http_error",
-          p_http_status: response.status,
-        });
+        await logEmbeddingUsage(
+          client,
+          {
+            p_pet_id: params.petId,
+            p_feature: "embedding",
+            p_model: model,
+            p_mime_type: "text/plain",
+            p_file_size_bytes: new TextEncoder().encode(text).byteLength,
+            p_prompt_tokens: 0,
+            p_output_tokens: 0,
+            p_thoughts_tokens: 0,
+            p_total_tokens: 0,
+            p_duration_ms: durationMs,
+            p_status: "http_error",
+            p_http_status: response.status,
+          },
+          params.userId,
+        );
         return;
       }
 
@@ -74,20 +104,24 @@ export async function indexPetKnowledgeChunk(
         result?.embedding?.values ?? result?.embeddings?.[0]?.values;
 
       if (!Array.isArray(rawValues) || rawValues.length !== 768) {
-        await client.rpc("log_ai_usage", {
-          p_pet_id: params.petId,
-          p_feature: "embedding",
-          p_model: model,
-          p_mime_type: "text/plain",
-          p_file_size_bytes: new TextEncoder().encode(text).byteLength,
-          p_prompt_tokens: 0,
-          p_output_tokens: 0,
-          p_thoughts_tokens: 0,
-          p_total_tokens: 0,
-          p_duration_ms: durationMs,
-          p_status: "invalid_output",
-          p_http_status: 200,
-        });
+        await logEmbeddingUsage(
+          client,
+          {
+            p_pet_id: params.petId,
+            p_feature: "embedding",
+            p_model: model,
+            p_mime_type: "text/plain",
+            p_file_size_bytes: new TextEncoder().encode(text).byteLength,
+            p_prompt_tokens: 0,
+            p_output_tokens: 0,
+            p_thoughts_tokens: 0,
+            p_total_tokens: 0,
+            p_duration_ms: durationMs,
+            p_status: "invalid_output",
+            p_http_status: 200,
+          },
+          params.userId,
+        );
         return;
       }
 
@@ -108,20 +142,24 @@ export async function indexPetKnowledgeChunk(
           p_content: text,
           p_embedding: vectorLiteral,
         }),
-        client.rpc("log_ai_usage", {
-          p_pet_id: params.petId,
-          p_feature: "embedding",
-          p_model: model,
-          p_mime_type: "text/plain",
-          p_file_size_bytes: new TextEncoder().encode(text).byteLength,
-          p_prompt_tokens: estimatedTokens,
-          p_output_tokens: 0,
-          p_thoughts_tokens: 0,
-          p_total_tokens: estimatedTokens,
-          p_duration_ms: durationMs,
-          p_status: "ok",
-          p_http_status: 200,
-        }),
+        logEmbeddingUsage(
+          client,
+          {
+            p_pet_id: params.petId,
+            p_feature: "embedding",
+            p_model: model,
+            p_mime_type: "text/plain",
+            p_file_size_bytes: new TextEncoder().encode(text).byteLength,
+            p_prompt_tokens: estimatedTokens,
+            p_output_tokens: 0,
+            p_thoughts_tokens: 0,
+            p_total_tokens: estimatedTokens,
+            p_duration_ms: durationMs,
+            p_status: "ok",
+            p_http_status: 200,
+          },
+          params.userId,
+        ),
       ]);
       return;
     } catch (err) {
@@ -134,6 +172,7 @@ export async function embedTextQuery(
   client: SupabaseClient,
   petId: string,
   text: string,
+  userId?: string,
 ): Promise<string | null> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) return null;
@@ -181,20 +220,24 @@ export async function embedTextQuery(
 
       const vector = normalizeVector(rawValues);
       const estimatedTokens = Math.max(1, Math.ceil(query.length / 4));
-      await client.rpc("log_ai_usage", {
-        p_pet_id: petId,
-        p_feature: "embedding",
-        p_model: model,
-        p_mime_type: "text/plain",
-        p_file_size_bytes: new TextEncoder().encode(query).byteLength,
-        p_prompt_tokens: estimatedTokens,
-        p_output_tokens: 0,
-        p_thoughts_tokens: 0,
-        p_total_tokens: estimatedTokens,
-        p_duration_ms: durationMs,
-        p_status: "ok",
-        p_http_status: 200,
-      });
+      await logEmbeddingUsage(
+        client,
+        {
+          p_pet_id: petId,
+          p_feature: "embedding",
+          p_model: model,
+          p_mime_type: "text/plain",
+          p_file_size_bytes: new TextEncoder().encode(query).byteLength,
+          p_prompt_tokens: estimatedTokens,
+          p_output_tokens: 0,
+          p_thoughts_tokens: 0,
+          p_total_tokens: estimatedTokens,
+          p_duration_ms: durationMs,
+          p_status: "ok",
+          p_http_status: 200,
+        },
+        userId,
+      );
 
       return `[${vector.join(",")}]`;
     } catch {

@@ -127,7 +127,7 @@ export default async function AppPage() {
           householdName={activeHousehold.nazwa}
           ownerEmail=""
           recoveryEmail={activeHousehold.recovery_email}
-          canManage={canManage}
+          canManage={isOwner}
           hasRecoveryKey={hasRecoveryKey}
         />
       )}

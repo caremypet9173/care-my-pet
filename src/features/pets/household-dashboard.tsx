@@ -299,6 +299,7 @@ export function HouseholdDashboard({
 
       <HouseholdSchedule
         pets={activePets}
+        householdId={pets[0]?.gospodarstwo_id}
         initialScheduleItems={activeScheduleItems}
         initialHealthEvents={activeHealthEvents}
         initialReports={activeReportsSummary}

@@ -14,7 +14,7 @@ import { ReviewParameter } from "./review-parameter";
 import { rangeStatus } from "./comparison";
 import { FormattedMedicalText } from "./formatted-text";
 const blank = ():ReportDraft => ({title:"",test_date:"",laboratory:"",doctor:"",notes:"",ai_interpretation:"",rows:[]});
-const maxFile=6*1024*1024;
+const maxFile=12*1024*1024;
 const extensions:Record<string,string>={"application/pdf":"pdf","image/jpeg":"jpg","image/png":"png"};
 export function ReviewForm({pet}:{pet:Pet}) {
   const t=medicalMessages[useLocale()];const router=useRouter();
@@ -83,6 +83,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
   },[duplicate,error,busy,t.validation]);
   useEffect(()=>{let active=true;createClient().functions.invoke("medical-reports",{body:{action:"capabilities",pet_id:pet.id}}).then(({data,error})=>{if(active)setAi(!error&&data?.extraction===true);});return()=>{active=false;};},[pet.id]);
   useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview);},[preview]);
+  useEffect(()=>()=>{if(!saved.current&&upload.current?.uploaded){void createClient().storage.from("medical-documents").remove([upload.current.path]);}},[]);
   useEffect(()=>{if(!file)return;const guard=(event:BeforeUnloadEvent)=>{if(!saved.current){event.preventDefault();event.returnValue="";}};window.addEventListener("beforeunload",guard);return()=>window.removeEventListener("beforeunload",guard);},[file]);
   async function choose(next?:File){
     if(!next||busy||choosing.current)return;
@@ -115,8 +116,19 @@ export function ReviewForm({pet}:{pet:Pet}) {
     if(reviewing&&!window.confirm(t.resetWarning))return;
     setBusy("read");setError("");setSubmitted(false);
     try{
-      const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=reject;reader.readAsDataURL(file);});
-      const {data,error}=await createClient().functions.invoke("medical-reports",{body:{action:"extract",pet_id:pet.id,mime:file.type,file:base64}});
+      const client=createClient();
+      const {data:{user}}=await client.auth.getUser();
+      if(!user)throw new Error("unauthorized");
+      if(!upload.current){
+        const id=crypto.randomUUID();
+        upload.current={id,path:`${pet.gospodarstwo_id}/${user.id}/${id}.${extensions[file.type]}`,uploaded:false};
+      }
+      if(!upload.current.uploaded){
+        const {error:upErr}=await client.storage.from("medical-documents").upload(upload.current.path,file,{contentType:file.type,upsert:false,cacheControl:"0"});
+        if(upErr&&String((upErr as {statusCode?:string}).statusCode)!=="409")throw upErr;
+        upload.current.uploaded=true;
+      }
+      const {data,error}=await client.functions.invoke("medical-reports",{body:{action:"extract",pet_id:pet.id,mime:file.type,storage_path:upload.current.path}});
       if(error){const details=await error.context?.json?.().catch(()=>null);if(details?.duplicate){setDuplicate(details.duplicate);return;}throw new Error(details?.error??"extraction_failed");}
       setDraft({...data.report,ai_interpretation:data.report.ai_interpretation??"",rows:data.report.rows.map((row:Measurement)=>({...row,value_type:measurementValueType(row)}))});setPatient(data.patient_name);setReadAutomatically(true);setNotesPreview(Boolean(data.report.notes?.trim()));setAiPreview(true);setReviewing(true);
     }catch(error){setError(error instanceof Error&&error.message==="daily_limit"?t.limit:error instanceof Error&&error.message==="ai_billing"?t.aiBilling:t.aiError);}finally{setBusy(null);}

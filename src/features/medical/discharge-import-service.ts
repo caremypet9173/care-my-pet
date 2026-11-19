@@ -25,22 +25,77 @@ export async function extractClinicalDischarge(
   sha256: string;
 }> {
   const sha256 = await computeFileSha256(file);
-  const base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
   const client = createClient();
-  const { data, error } = await client.functions.invoke("medical-reports", {
-    body: {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+
+  let tempStoragePath: string | null = null;
+  let invokeBody: Record<string, unknown>;
+
+  if (user) {
+    const { data: petRow } = await client
+      .from("zwierze")
+      .select("gospodarstwo_id")
+      .eq("id", petId)
+      .maybeSingle();
+    const householdId = petRow?.gospodarstwo_id;
+    const ext =
+      file.type === "application/pdf"
+        ? "pdf"
+        : file.type === "image/png"
+          ? "png"
+          : "jpg";
+    if (householdId) {
+      const candidatePath = `${householdId}/${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await client.storage
+        .from("medical-documents")
+        .upload(candidatePath, file, {
+          contentType: file.type,
+          upsert: false,
+          cacheControl: "0",
+        });
+      if (!uploadError) {
+        tempStoragePath = candidatePath;
+      }
+    }
+  }
+
+  if (tempStoragePath) {
+    invokeBody = {
+      action: "extract_discharge",
+      pet_id: petId,
+      mime: file.type,
+      storage_path: tempStoragePath,
+    };
+  } else {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    invokeBody = {
       action: "extract_discharge",
       pet_id: petId,
       mime: file.type,
       file: base64,
-    },
-  });
+    };
+  }
+
+  let data: { discharge?: RawDischargeExtraction } | null = null;
+  let error: { context?: { json?: () => Promise<{ error?: string; message?: string }> }; message?: string } | null = null;
+  try {
+    const res = await client.functions.invoke("medical-reports", {
+      body: invokeBody,
+    });
+    data = res.data;
+    error = res.error;
+  } finally {
+    if (tempStoragePath) {
+      await client.storage.from("medical-documents").remove([tempStoragePath]);
+    }
+  }
 
   if (error) {
     const details = await error.context?.json?.().catch(() => null);
@@ -60,7 +115,7 @@ export async function extractClinicalDischarge(
     throw new Error(message);
   }
 
-  const raw: RawDischargeExtraction = data?.discharge || {};
+  const raw: Partial<RawDischargeExtraction> = data?.discharge ?? {};
 
   const validCategories: LabCategory[] = ["blood", "renal", "liver", "other"];
 

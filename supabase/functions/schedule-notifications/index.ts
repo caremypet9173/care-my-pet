@@ -59,12 +59,42 @@ function warsawDatePlusDays(days: number): string {
   }).format(shifted);
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+const uuidPattern =
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+
+function isSafePushEndpoint(raw: string): boolean {
+  if (!raw || raw.length > 1000) return false;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      host === "0.0.0.0" ||
+      host === "::1" ||
+      host.startsWith("127.") ||
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      host.startsWith("169.254.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+      host.startsWith("[")
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function constantTimeEqualStrings(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 function formatDatePl(iso: string): string {
@@ -246,8 +276,14 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Przypadek 1: Zalogowany użytkownik zapisuje ustawienia, wysyła testowego maila lub testowy push
-  if (action === "save_settings" || action === "send_test" || action === "send_test_push") {
+  // Przypadek 1: Zalogowany użytkownik zapisuje ustawienia, rejestruje/wyrejestrowuje push lub wysyła test
+  if (
+    action === "save_settings" ||
+    action === "send_test" ||
+    action === "send_test_push" ||
+    action === "register_push" ||
+    action === "unregister_push"
+  ) {
     const token = req.headers.get("Authorization");
     if (!token?.startsWith("Bearer ")) {
       return reply({ error: "unauthorized" }, 401);
@@ -265,6 +301,98 @@ Deno.serve(async (req) => {
 
     if (authError || !user || user.is_anonymous) {
       return reply({ error: "unauthorized" }, 401);
+    }
+
+    if (action === "register_push") {
+      const endpoint =
+        typeof body.endpoint === "string" ? body.endpoint.trim() : "";
+      const p256dh =
+        typeof body.p256dh === "string" ? body.p256dh.trim() : "";
+      const authKey =
+        typeof body.auth === "string" ? body.auth.trim() : "";
+      const userAgent =
+        typeof body.user_agent === "string"
+          ? body.user_agent.slice(0, 300)
+          : (req.headers.get("user-agent") ?? "").slice(0, 300);
+
+      if (
+        !isSafePushEndpoint(endpoint) ||
+        !p256dh ||
+        p256dh.length > 300 ||
+        !authKey ||
+        authKey.length > 300
+      ) {
+        return reply({ error: "invalid_subscription" }, 400);
+      }
+
+      let targetHouseholdId: string | null = null;
+      const requestedHouseholdId =
+        typeof body.household_id === "string" ? body.household_id.trim() : "";
+      if (uuidPattern.test(requestedHouseholdId)) {
+        const { data: hh } = await userClient
+          .from("gospodarstwo")
+          .select("id")
+          .eq("id", requestedHouseholdId)
+          .maybeSingle();
+        if (!hh) {
+          return reply({ error: "forbidden_household" }, 403);
+        }
+        targetHouseholdId = hh.id;
+      } else {
+        const { data: fallbackHh } = await userClient
+          .from("gospodarstwo")
+          .select("id")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        targetHouseholdId = fallbackHh?.id ?? null;
+      }
+
+      if (!targetHouseholdId) {
+        return reply({ error: "no_household" }, 404);
+      }
+
+      const { error: upsertErr } = await userClient
+        .from("pet_push_subscription")
+        .upsert(
+          {
+            user_id: user.id,
+            household_id: targetHouseholdId,
+            endpoint,
+            p256dh,
+            auth: authKey,
+            user_agent: userAgent,
+            last_used_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,endpoint" },
+        );
+
+      if (upsertErr) {
+        console.error("[PWA Push] Upsert failed:", upsertErr);
+        return reply({ error: "save_failed" }, 400);
+      }
+
+      return reply({ ok: true, household_id: targetHouseholdId });
+    }
+
+    if (action === "unregister_push") {
+      const endpoint =
+        typeof body.endpoint === "string" ? body.endpoint.trim() : "";
+      if (!endpoint || endpoint.length > 1000) {
+        return reply({ error: "invalid_input" }, 400);
+      }
+
+      const { error: delErr } = await userClient
+        .from("pet_push_subscription")
+        .delete()
+        .eq("endpoint", endpoint);
+
+      if (delErr) {
+        console.error("[PWA Push] Delete failed:", delErr);
+        return reply({ error: "delete_failed" }, 400);
+      }
+
+      return reply({ ok: true });
     }
 
     if (action === "save_settings") {
@@ -308,11 +436,7 @@ Deno.serve(async (req) => {
         .eq("household_id", household.id)
         .maybeSingle();
 
-      const targetEmail =
-        (typeof body.recipient_email === "string" &&
-          body.recipient_email.trim()) ||
-        settings?.custom_email?.trim() ||
-        user.email;
+      const targetEmail = settings?.custom_email?.trim() || user.email;
 
       if (!targetEmail) {
         return reply({ error: "no_recipient_email" }, 400);
@@ -427,6 +551,7 @@ Deno.serve(async (req) => {
 
       let sent = 0;
       for (const sub of subs) {
+        if (!isSafePushEndpoint(sub.endpoint)) continue;
         const ok = await sendWebPush(sub, {
           title: "Care My Pet — Test powiadomień Push",
           body: "Powiadomienia na Twoim telefonie działają prawidłowo! 🐾",
@@ -440,7 +565,33 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Przypadek 2: Automatyczna wysyłka z pg_cron (lub ręczny dispatch)
+  if (action !== "cron_dispatch") {
+    return reply({ error: "unknown_action" }, 400);
+  }
+
+  // Przypadek 2: Automatyczna wysyłka z pg_cron / Vercel Cron — wymagany sekret x-cron-secret
+  const providedSecret = (req.headers.get("x-cron-secret") ?? "").trim();
+  const envCronSecret = (Deno.env.get("CRON_SECRET") ?? "").trim();
+  let cronAuthorized = false;
+
+  if (providedSecret.length >= 32) {
+    if (envCronSecret && constantTimeEqualStrings(providedSecret, envCronSecret)) {
+      cronAuthorized = true;
+    } else {
+      const { data: dbVerified, error: verifyErr } = await adminClient.rpc(
+        "verify_cron_dispatch_secret",
+        { p_secret: providedSecret },
+      );
+      if (!verifyErr && dbVerified === true) {
+        cronAuthorized = true;
+      }
+    }
+  }
+
+  if (!cronAuthorized) {
+    return reply({ error: "unauthorized" }, 401);
+  }
+
   // Najpierw zatwierdź wnioski o współadministrację po upływie 14 dni bez weta
   try {
     const { data: approvedRequests } = await adminClient.rpc(

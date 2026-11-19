@@ -121,8 +121,8 @@ export function HistoryDialog({
     if (!ext || !next.size || next.size > MAX_FILE) {
       setFileError(
         pl
-          ? 'Wybierz poprawny plik PDF, JPG lub PNG o rozmiarze do 6 MB.'
-          : 'Choose a valid PDF, JPG, or PNG file up to 6 MB.',
+          ? 'Wybierz poprawny plik PDF, JPG lub PNG o rozmiarze do 12 MB.'
+          : 'Choose a valid PDF, JPG, or PNG file up to 12 MB.',
       );
       return;
     }
@@ -201,19 +201,44 @@ export function HistoryDialog({
     setFileError('');
     setError('');
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const client = createClient();
+      const {
+        data: { user },
+      } = await client.auth.getUser();
+      if (!user) throw new Error('unauthorized');
 
-      const {data, error: invokeError} = await createClient().functions.invoke('pet-history', {
+      const fileExt = mimeExtensions[file.type];
+      if (!uploadRef.current) {
+        const uploadId = crypto.randomUUID();
+        uploadRef.current = {
+          id: uploadId,
+          path: `${householdId}/${user.id}/${uploadId}.${fileExt}`,
+          uploaded: false,
+        };
+      }
+      if (!uploadRef.current.uploaded) {
+        const { error: storageError } = await client.storage
+          .from('medical-documents')
+          .upload(uploadRef.current.path, file, {
+            contentType: file.type,
+            upsert: false,
+            cacheControl: '0',
+          });
+        if (
+          storageError &&
+          String((storageError as { statusCode?: string }).statusCode) !== '409'
+        ) {
+          throw storageError;
+        }
+        uploadRef.current.uploaded = true;
+      }
+
+      const {data, error: invokeError} = await client.functions.invoke('pet-history', {
         body: {
           action: 'extract',
           pet_id: petId,
           mime: file.type,
-          file: base64,
+          storage_path: uploadRef.current.path,
         },
       });
 
@@ -504,8 +529,8 @@ export function HistoryDialog({
                         ? `Obecny załącznik: ${event.source_name}. Wybierz nowy plik, aby go zastąpić.`
                         : `Current attachment: ${event.source_name}. Choose a new file to replace it.`
                       : pl
-                        ? 'PDF, JPG lub PNG (do 6 MB) — AI uzupełni formularz i zapisze dokument.'
-                        : 'PDF, JPG or PNG (up to 6 MB) — AI will pre-fill the form and save the document.'}
+                        ? 'PDF, JPG lub PNG (do 12 MB) — AI uzupełni formularz i zapisze dokument.'
+                        : 'PDF, JPG or PNG (up to 12 MB) — AI will pre-fill the form and save the document.'}
                   </small>
                 </div>
                 <button

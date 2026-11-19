@@ -51,7 +51,7 @@ export default async function EditPetPage({ params }: { params: Promise<{ id: st
           householdName={details.household.nazwa}
           ownerEmail={details.owner?.email ?? ""}
           recoveryEmail={details.household.recovery_email}
-          canManage={canManage}
+          canManage={Boolean(details.household.is_owner)}
           hasRecoveryKey={hasRecoveryKey}
         />
       ) : (

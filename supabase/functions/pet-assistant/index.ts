@@ -88,7 +88,8 @@ function normalizeSummaryItems(input: unknown, maxItems = 8, maxLen = 320): stri
 type GeminiClient = ReturnType<typeof createClient>;
 
 async function callGeminiJson(params: {
-  client: GeminiClient;
+  adminClient: GeminiClient;
+  userId: string;
   apiKey: string;
   petId: string;
   inputByteLength: number;
@@ -144,7 +145,7 @@ async function callGeminiJson(params: {
     );
   } catch {
     const durationMs = Math.round(performance.now() - startedAt);
-    await params.client.rpc("log_ai_usage", {
+    const { error: logErr } = await params.adminClient.rpc("log_ai_usage", {
       p_pet_id: params.petId,
       p_feature: "ai_assistant",
       p_model: model,
@@ -157,13 +158,15 @@ async function callGeminiJson(params: {
       p_duration_ms: durationMs,
       p_status: "timeout",
       p_http_status: 504,
+      p_user_id: params.userId,
     });
+    if (logErr) console.error("log_ai_usage_failed", logErr);
     return { ok: false, error: "ai_unavailable", status: 503 };
   }
 
   const durationMs = Math.round(performance.now() - startedAt);
   if (!response.ok) {
-    await params.client.rpc("log_ai_usage", {
+    const { error: logErr } = await params.adminClient.rpc("log_ai_usage", {
       p_pet_id: params.petId,
       p_feature: "ai_assistant",
       p_model: model,
@@ -176,7 +179,9 @@ async function callGeminiJson(params: {
       p_duration_ms: durationMs,
       p_status: "http_error",
       p_http_status: response.status,
+      p_user_id: params.userId,
     });
+    if (logErr) console.error("log_ai_usage_failed", logErr);
     return { ok: false, error: "ai_unavailable", status: 503 };
   }
 
@@ -184,7 +189,8 @@ async function callGeminiJson(params: {
   const usage = result?.usageMetadata ?? {};
   const rawText = (
     result?.candidates?.[0]?.content?.parts
-      ?.map((p: { text?: string }) => p.text ?? "")
+      ?.filter((p: { text?: string; thought?: boolean }) => Boolean(p.text) && !p.thought)
+      .map((p: { text?: string }) => p.text ?? "")
       .join("") ?? ""
   ).trim();
 
@@ -212,11 +218,19 @@ Deno.serve(async (req) => {
   const token = req.headers.get("Authorization");
   if (!token?.startsWith("Bearer ")) return reply({ error: "unauthorized" }, 401);
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const client = createClient(
-    Deno.env.get("SUPABASE_URL")!,
+    supabaseUrl,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     {
       global: { headers: { Authorization: token } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  );
+  const adminClient = createClient(
+    supabaseUrl,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    {
       auth: { persistSession: false, autoRefreshToken: false },
     },
   );
@@ -329,7 +343,7 @@ Deno.serve(async (req) => {
       }
 
       if (!activeThread) {
-        const { data: createdThread, error: threadError } = await client
+        const { data: createdThread, error: threadError } = await adminClient
           .from("pet_assistant_thread")
           .insert({
             pet_id: pet.id,
@@ -356,8 +370,8 @@ Deno.serve(async (req) => {
 
       const historyTurns = (recentChat ?? []).reverse();
 
-      // Save the user's question in DB
-      const { data: savedUserMsg, error: userInsertError } = await client
+      // Save the user's question in DB via service_role (direct client INSERT revoked by RLS)
+      const { data: savedUserMsg, error: userInsertError } = await adminClient
         .from("pet_assistant_message")
         .insert({
           thread_id: activeThread.id,
@@ -375,7 +389,7 @@ Deno.serve(async (req) => {
       if (userInsertError) return reply({ error: "save_failed" }, 500);
 
       // Gather RAG knowledge chunks + recent weights + vitals + medications + fluids + upcoming due dates in parallel
-      const queryEmbeddingPromise = embedTextQuery(client, pet.id, rawMessage);
+      const queryEmbeddingPromise = embedTextQuery(client, pet.id, rawMessage, user.id);
       const weightsPromise = client
         .from("pet_weight")
         .select("kg,measured_on,note")
@@ -955,7 +969,8 @@ ${knowledgeContext}`;
       ];
 
       const geminiRes = await callGeminiJson({
-        client,
+        adminClient,
+        userId: user.id,
         apiKey: key,
         petId: pet.id,
         inputByteLength: new TextEncoder().encode(rawMessage).byteLength,
@@ -993,7 +1008,7 @@ ${knowledgeContext}`;
       }
 
       if (!answerText) {
-        await client.rpc("log_ai_usage", {
+        const { error: logErr } = await adminClient.rpc("log_ai_usage", {
           p_pet_id: pet.id,
           p_feature: "ai_assistant",
           p_model: model,
@@ -1006,7 +1021,9 @@ ${knowledgeContext}`;
           p_duration_ms: durationMs,
           p_status: "invalid_output",
           p_http_status: 200,
+          p_user_id: user.id,
         });
+        if (logErr) console.error("log_ai_usage_failed", logErr);
         return reply({ error: "ai_invalid_output" }, 502);
       }
 
@@ -1020,8 +1037,9 @@ ${knowledgeContext}`;
       const [
         { data: savedAssistantMsg, error: assistantInsertError },
         { data: updatedThread },
+        { error: usageLogErr },
       ] = await Promise.all([
-        client
+        adminClient
           .from("pet_assistant_message")
           .insert({
             thread_id: activeThread.id,
@@ -1035,13 +1053,13 @@ ${knowledgeContext}`;
           })
           .select("id,thread_id,pet_id,household_id,role,content,sources,follow_ups,created_by,created_at")
           .single(),
-        client
+        adminClient
           .from("pet_assistant_thread")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", activeThread.id)
           .select("id,pet_id,household_id,title,created_by,created_at,updated_at")
           .single(),
-        client.rpc("log_ai_usage", {
+        adminClient.rpc("log_ai_usage", {
           p_pet_id: pet.id,
           p_feature: "ai_assistant",
           p_model: model,
@@ -1054,8 +1072,10 @@ ${knowledgeContext}`;
           p_duration_ms: durationMs,
           p_status: "ok",
           p_http_status: 200,
+          p_user_id: user.id,
         }),
       ]);
+      if (usageLogErr) console.error("log_ai_usage_failed", usageLogErr);
 
       if (assistantInsertError) return reply({ error: "save_failed" }, 500);
 
@@ -1183,7 +1203,8 @@ ZASADY:
 7. "questions_for_vet": 2-5 konkretnych pytań, które opiekun może zadać lekarzowi weterynarii podczas wizyty.`;
 
       const geminiRes = await callGeminiJson({
-        client,
+        adminClient,
+        userId: user.id,
         apiKey: key,
         petId: pet.id,
         inputByteLength: new TextEncoder().encode(transcript).byteLength,
@@ -1227,7 +1248,7 @@ ZASADY:
           : "";
 
       if (!executiveSummary) {
-        await client.rpc("log_ai_usage", {
+        const { error: logErr } = await adminClient.rpc("log_ai_usage", {
           p_pet_id: pet.id,
           p_feature: "ai_assistant",
           p_model: model,
@@ -1240,11 +1261,13 @@ ZASADY:
           p_duration_ms: durationMs,
           p_status: "invalid_output",
           p_http_status: 200,
+          p_user_id: user.id,
         });
+        if (logErr) console.error("log_ai_usage_failed", logErr);
         return reply({ error: "ai_invalid_output" }, 502);
       }
 
-      await client.rpc("log_ai_usage", {
+      const { error: logOkErr } = await adminClient.rpc("log_ai_usage", {
         p_pet_id: pet.id,
         p_feature: "ai_assistant",
         p_model: model,
@@ -1257,7 +1280,9 @@ ZASADY:
         p_duration_ms: durationMs,
         p_status: "ok",
         p_http_status: 200,
+        p_user_id: user.id,
       });
+      if (logOkErr) console.error("log_ai_usage_failed", logOkErr);
 
       const latestWeight = weightsData?.[0];
       const documentTitle =
@@ -1294,7 +1319,7 @@ ZASADY:
         sources: uniqueSources,
       };
 
-      const { error: cacheErr } = await client
+      const { error: cacheErr } = await adminClient
         .from("pet_assistant_thread")
         .update({
           summary_cache: summaryPayload,

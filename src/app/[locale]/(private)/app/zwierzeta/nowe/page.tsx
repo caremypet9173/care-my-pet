@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function NewPetPage() {
   const locale = await getLocale();
-  const { activeHousehold, canManage, hasRecoveryKey } =
+  const { activeHousehold, isOwner, canManage, hasRecoveryKey } =
     await getActiveHouseholdContext();
   if (!canManage) {
     return redirect({ href: "/app", locale });
@@ -45,7 +45,7 @@ export default async function NewPetPage() {
           householdName={activeHousehold.nazwa}
           ownerEmail=""
           recoveryEmail={activeHousehold.recovery_email}
-          canManage={canManage}
+          canManage={isOwner}
           hasRecoveryKey={hasRecoveryKey}
         />
       ) : (

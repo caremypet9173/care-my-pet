@@ -333,30 +333,44 @@ Deno.serve(async (req) => {
       return reply({ error: "already_owner" }, 400);
     }
 
-    // Dodaj użytkownika do członków (on conflict do nothing)
-    const { error: insertErr } = await adminClient
-      .from("czlonek_gospodarstwa")
-      .upsert({
-        gospodarstwo_id: invite.gospodarstwo_id,
-        user_id: user.id,
-        email: user.email || invite.email,
-        rola: invite.rola || "member",
-      });
-
-    if (insertErr) {
-      console.error("Error adding member to household:", insertErr);
-      return reply({ error: "membership_failed" }, 500);
+    const userEmailNorm = user.email ? normalizeEmail(user.email) : "";
+    const inviteEmailNorm = invite.email ? normalizeEmail(String(invite.email)) : "";
+    if (!userEmailNorm || !inviteEmailNorm || userEmailNorm !== inviteEmailNorm) {
+      return reply({ error: "email_mismatch" }, 403);
     }
 
-    // Oznacz zaproszenie jako zaakceptowane
-    await adminClient
+    // Atomowo oznacz zaproszenie jako zaakceptowane (chroni przed race condition i ponownym użyciem)
+    const { data: claimedInvite, error: claimErr } = await adminClient
       .from("zaproszenie_gospodarstwa")
       .update({
         status: "accepted",
         accepted_at: now.toISOString(),
         accepted_by: user.id,
       })
-      .eq("id", invite.id);
+      .eq("id", invite.id)
+      .eq("status", "pending")
+      .select("id, rola")
+      .maybeSingle();
+
+    if (claimErr || !claimedInvite) {
+      return reply({ error: "invite_already_used" }, 409);
+    }
+
+    // Dodaj użytkownika do członków (zwalidowana rola z zaproszenia)
+    const memberRole = claimedInvite.rola === "admin" ? "admin" : "member";
+    const { error: insertErr } = await adminClient
+      .from("czlonek_gospodarstwa")
+      .upsert({
+        gospodarstwo_id: invite.gospodarstwo_id,
+        user_id: user.id,
+        email: user.email || invite.email,
+        rola: memberRole,
+      });
+
+    if (insertErr) {
+      console.error("Error adding member to household:", insertErr);
+      return reply({ error: "membership_failed" }, 500);
+    }
 
     return reply({
       success: true,
@@ -825,10 +839,10 @@ Deno.serve(async (req) => {
   // -------------------------------------------------------------------------
   if (action === "generate_recovery_key") {
     const hasExistingKey = Boolean(activeHousehold.recovery_key_set_at);
-    if (!isOwner && (hasExistingKey || !canManage)) {
+    if (!isOwner) {
       return reply(
         {
-          error: hasExistingKey ? "owner_required_to_rotate" : "forbidden",
+          error: hasExistingKey ? "owner_required_to_rotate" : "owner_required",
         },
         403,
       );
@@ -968,8 +982,8 @@ Deno.serve(async (req) => {
   // 2h. Ustawienie pomocniczego e-maila odzyskania (update_recovery_email)
   // -------------------------------------------------------------------------
   if (action === "update_recovery_email") {
-    if (!canManage) {
-      return reply({ error: "forbidden" }, 403);
+    if (!isOwner) {
+      return reply({ error: "owner_required" }, 403);
     }
 
     const rawEmail =

@@ -468,8 +468,8 @@ export function HouseholdRecoveryBanner({
                 ? `Domostwo „${householdName}” nie ma aktywnego klucza odzyskania dostępu. Dopóki nie wygenerujesz i nie zabezpieczysz jednorazowego klucza, kartoteki pupili działają wyłącznie w trybie odczytu i eksportu.`
                 : `Household "${householdName}" has no active recovery key. Until you generate one, pet records stay in read-only & export mode.`
               : pl
-                ? `Domostwo „${householdName}” nie ma aktywnego klucza odzyskania, dlatego edycja kartotek jest tymczasowo zablokowana. Właściciel lub współadministrator musi najpierw wygenerować klucz.`
-                : `Household "${householdName}" has no active recovery key, so edits are locked until an owner or co-admin generates one.`}
+                ? `Domostwo „${householdName}” nie ma aktywnego klucza odzyskania, dlatego edycja kartotek jest tymczasowo zablokowana. Właściciel domostwa musi najpierw wygenerować klucz.`
+                : `Household "${householdName}" has no active recovery key, so edits are locked until the household owner generates one.`}
           </p>
         </div>
         <div className="recovery-readonly-banner-actions">
