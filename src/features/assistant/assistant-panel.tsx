@@ -18,7 +18,6 @@ import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { FormattedMedicalText } from "@/features/medical/formatted-text";
-import { downloadAssistantSummaryPdf } from "./assistant-pdf";
 import type {
   AssistantMessage,
   AssistantPdfSummary,
@@ -254,6 +253,7 @@ export function AssistantPanel({
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
       if (cachedSummary) {
+        const { downloadAssistantSummaryPdf } = await import("./assistant-pdf");
         await downloadAssistantSummaryPdf(cachedSummary, pl ? "pl" : "en");
         return;
       }
@@ -316,6 +316,7 @@ export function AssistantPanel({
         );
       }
 
+      const { downloadAssistantSummaryPdf } = await import("./assistant-pdf");
       await downloadAssistantSummaryPdf(generatedSummary, pl ? "pl" : "en");
     } catch {
       setError(

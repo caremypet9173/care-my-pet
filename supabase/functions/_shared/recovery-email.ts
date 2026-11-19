@@ -1,4 +1,3 @@
-import nodemailer from "npm:nodemailer@6.9.16";
 import { escapeHtml } from "./recovery-crypto.mjs";
 
 export async function sendSmtpEmail(params: {
@@ -14,6 +13,7 @@ export async function sendSmtpEmail(params: {
   }
 
   try {
+    const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,

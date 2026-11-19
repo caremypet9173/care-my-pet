@@ -1,16 +1,16 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Measurement, MedicalReport, MeasurementCorrection } from "./types";
 
-export async function listReports(
-  petId: string,
-  requestedId?: string,
-  options?: { full?: boolean },
-): Promise<MedicalReport[]> {
-  const client = await createClient();
-  if (!client) throw new Error("Supabase unavailable");
-
-  const isFull = options?.full ?? true;
+const listReportsCached = cache(
+  async (
+    petId: string,
+    requestedId: string | undefined,
+    isFull: boolean,
+  ): Promise<MedicalReport[]> => {
+    const client = await createClient();
+    if (!client) throw new Error("Supabase unavailable");
 
   if (!isFull) {
     const { data: reportsData, error: reportsErr } = await client
@@ -122,4 +122,12 @@ export async function listReports(
       }))
       .sort((a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0)),
   }));
+});
+
+export async function listReports(
+  petId: string,
+  requestedId?: string,
+  options?: { full?: boolean },
+): Promise<MedicalReport[]> {
+  return listReportsCached(petId, requestedId, options?.full ?? true);
 }

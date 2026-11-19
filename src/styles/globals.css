@@ -1,137 +1,21 @@
-@import "tailwindcss" source("../");
 @import "./tokens.css";
 @import "./themes.css";
-@import "./waitlist.css";
 
-.auth-content { display: grid; gap: 1.25rem; text-align: left; }
-.auth-content h1, .auth-content p { margin: 0; }
-.auth-form { display: grid; gap: .6rem; }
-.auth-form label { font-weight: 600; }
-.auth-form input { width: 100%; min-width: 0; padding: .8rem 1rem; border: 1px solid var(--color-text-muted); border-radius: .75rem; background: var(--color-surface); color: var(--color-text); font: inherit; }
-.auth-form .button { margin-top: .75rem; }
-.auth-divider, .auth-legal { font-size: .875rem; }
-.auth-divider { text-align: center; }
-.auth-content a { text-decoration: underline; text-underline-offset: .2em; }
-/* Auth alerts & error banners */
-.auth-message.auth-alert,
-.auth-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.875rem;
-  padding: 1rem 1.125rem;
-  border-radius: 0.875rem;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  text-align: left;
+:root {
+  --font-jakarta: var(--font-jakarta-latin), var(--font-jakarta-ext);
+  --font-inter: var(--font-inter-latin), var(--font-inter-ext);
 }
 
-.auth-alert-icon {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  margin-top: 0.125rem;
-}
-
-.auth-alert-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.auth-alert-body strong {
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.auth-alert-body p {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.auth-alert-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.35rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.auth-alert-action:hover {
-  text-decoration-thickness: 2px;
-}
-
-/* Wariant: Zamknięty pilotaż (Ciepły bursztyn/miód - wyraźny i przyjazny) */
-.auth-alert.is-pilot {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-left: 5px solid #d97706;
-  color: #78350f;
-}
-.auth-alert.is-pilot .auth-alert-icon {
-  color: #d97706;
-}
-.auth-alert.is-pilot strong {
-  color: #92400e;
-}
-.auth-alert.is-pilot p {
-  color: #78350f;
-}
-.auth-alert.is-pilot .auth-alert-action {
-  color: #b45309;
-}
-.auth-alert.is-pilot .auth-alert-action:hover {
-  color: #78350f;
-}
-
-/* Wariant: Błąd (Czerwony) */
-.auth-alert.is-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-left: 5px solid #dc2626;
-  color: #991b1b;
-}
-.auth-alert.is-error .auth-alert-icon {
-  color: #dc2626;
-}
-.auth-alert.is-error strong {
-  color: #7f1d1d;
-}
-.auth-alert.is-error p {
-  color: #991b1b;
-}
-
-/* Wariant: Informacyjny (np. konto już zarejestrowane) */
-.auth-alert.is-info {
-  background: #f0fdfa;
-  border: 1px solid #ccfbf1;
-  border-left: 5px solid #0d9488;
-  color: #115e59;
-}
-.auth-alert.is-info .auth-alert-icon {
-  color: #0d9488;
-}
-.auth-alert.is-info strong {
-  color: #134e4a;
-}
-.auth-alert.is-info p {
-  color: #115e59;
-}
-.auth-alert.is-info .auth-alert-action {
-  color: #0f766e;
-}
-
-@theme inline {
-  --font-sans: var(--font-jakarta), sans-serif;
-  --font-label: var(--font-inter), sans-serif;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 @layer base {
@@ -200,6 +84,10 @@
   }
   button {
     font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
     cursor: pointer;
   }
   button:disabled {

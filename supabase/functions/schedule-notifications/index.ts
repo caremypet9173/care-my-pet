@@ -1,6 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.117.3";
-import nodemailer from "npm:nodemailer@6.9.16";
-import webpush from "npm:web-push@3.6.7";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 import { escapeHtml } from "../_shared/recovery-crypto.mjs";
 import { renderEmailCard, sendSmtpEmail } from "../_shared/recovery-email.ts";
 
@@ -9,19 +7,44 @@ const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "";
 const vapidSubject =
   Deno.env.get("VAPID_SUBJECT") || "mailto:caremypet9173@gmail.com";
 
-if (vapidPublicKey && vapidPrivateKey) {
-  try {
-    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-  } catch (err) {
-    console.warn("[VAPID Init Warning]", err);
+type WebPushModule = typeof import("npm:web-push@3.6.7")["default"];
+type SmtpTransporter = {
+  sendMail: (opts: {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+  }) => Promise<unknown>;
+  close?: () => void;
+};
+
+let cachedWebPush: WebPushModule | null = null;
+let vapidInitialized = false;
+
+async function getWebPush(): Promise<WebPushModule | null> {
+  if (!vapidPublicKey || !vapidPrivateKey) return null;
+  if (!cachedWebPush) {
+    const mod = await import("npm:web-push@3.6.7");
+    cachedWebPush = mod.default;
   }
+  if (!vapidInitialized && cachedWebPush) {
+    try {
+      cachedWebPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+      vapidInitialized = true;
+    } catch (err) {
+      console.warn("[VAPID Init Warning]", err);
+      return null;
+    }
+  }
+  return cachedWebPush;
 }
 
 async function sendWebPush(
   sub: { endpoint: string; p256dh: string; auth: string },
-  payload: { title: string; body: string; url?: string; tag?: string }
-): Promise<boolean> {
-  if (!vapidPublicKey || !vapidPrivateKey) return false;
+  payload: { title: string; body: string; url?: string; tag?: string },
+): Promise<{ ok: boolean; expired: boolean }> {
+  const webpush = await getWebPush();
+  if (!webpush) return { ok: false, expired: false };
   try {
     await webpush.sendNotification(
       {
@@ -31,13 +54,52 @@ async function sendWebPush(
           auth: sub.auth,
         },
       },
-      JSON.stringify(payload)
+      JSON.stringify(payload),
     );
-    return true;
+    return { ok: true, expired: false };
   } catch (err: unknown) {
-    console.warn("[WebPush Send Warning]", err);
-    return false;
+    const statusCode =
+      typeof err === "object" && err !== null && "statusCode" in err
+        ? Number((err as { statusCode?: unknown }).statusCode)
+        : 0;
+    const expired = statusCode === 404 || statusCode === 410;
+    if (!expired) {
+      console.warn("[WebPush Send Warning]", err);
+    }
+    return { ok: false, expired };
   }
+}
+
+async function createSmtpTransporter(pooled: boolean): Promise<{
+  transporter: SmtpTransporter;
+  smtpUser: string;
+}> {
+  const smtpUser = Deno.env.get("SMTP_USER") || "caremypet9173@gmail.com";
+  const smtpPass = Deno.env.get("SMTP_PASS");
+  if (!smtpPass) {
+    throw new Error("Missing SMTP_PASS secret");
+  }
+  const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    ...(pooled ? { pool: true, maxConnections: 3, maxMessages: 50 } : {}),
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  }) as unknown as SmtpTransporter;
+
+  return { transporter, smtpUser };
+}
+
+function chunkArray<T>(items: T[], size = 200): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 const headers = {
@@ -128,6 +190,17 @@ interface DueReminderItem {
   notes: string;
   offsetDays: -1 | 0 | 1 | 7;
   extraEmails?: string[];
+}
+
+function buildLogKey(
+  householdId: string,
+  sourceKind: string,
+  sourceId: string,
+  dueDate: string,
+  offsetDays: number,
+  recipient: string,
+): string {
+  return `${householdId}|${sourceKind}|${sourceId}|${dueDate}|${offsetDays}|${recipient.toLowerCase()}`;
 }
 
 function buildEmailHtml(
@@ -223,33 +296,54 @@ function buildEmailHtml(
   return { subject, html };
 }
 
-async function sendEmailViaSmtp(
-  to: string,
-  subject: string,
-  html: string,
-): Promise<void> {
-  const smtpUser = Deno.env.get("SMTP_USER") || "caremypet9173@gmail.com";
-  const smtpPass = Deno.env.get("SMTP_PASS");
-  if (!smtpPass) {
-    throw new Error("Missing SMTP_PASS secret");
+async function fetchInChunks<T>(
+  ids: string[],
+  fetcher: (chunk: string[]) => Promise<{ data: T[] | null }>,
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const results: T[] = [];
+  for (const chunk of chunkArray(ids, 200)) {
+    const { data } = await fetcher(chunk);
+    if (Array.isArray(data) && data.length > 0) {
+      results.push(...data);
+    }
   }
+  return results;
+}
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
+async function fetchPaginated<T>(
+  fetcher: (from: number, to: number) => Promise<{ data: T[] | null }>,
+  pageSize = 1000,
+): Promise<T[]> {
+  const all: T[] = [];
+  let offset = 0;
+  while (true) {
+    const { data } = await fetcher(offset, offset + pageSize - 1);
+    if (!Array.isArray(data) || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
 
-  await transporter.sendMail({
-    from: `"Care My Pet" <${smtpUser}>`,
-    to,
-    subject,
-    html,
-  });
+async function flushNotificationLogs(
+  adminClient: SupabaseClient,
+  rows: Array<Record<string, unknown>>,
+): Promise<void> {
+  if (rows.length === 0) return;
+  for (const batch of chunkArray(rows, 200)) {
+    const { error } = await adminClient
+      .from("schedule_notification_log")
+      .upsert(batch, {
+        onConflict:
+          "household_id,source_kind,source_id,due_date,offset_days,recipient_email",
+        ignoreDuplicates: true,
+      });
+    if (error) {
+      console.error("[NotificationLog Batch Error]", error);
+    }
+  }
 }
 
 Deno.serve(async (req) => {
@@ -420,14 +514,28 @@ Deno.serve(async (req) => {
     }
 
     if (action === "send_test") {
-      const { data: household } = await userClient
-        .from("gospodarstwo")
-        .select("id")
-        .limit(1)
-        .maybeSingle();
+      const requestedHouseholdId =
+        typeof body.household_id === "string" ? body.household_id.trim() : "";
+      const householdQuery = userClient.from("gospodarstwo").select("id");
+      const { data: household } = uuidPattern.test(requestedHouseholdId)
+        ? await householdQuery.eq("id", requestedHouseholdId).maybeSingle()
+        : await householdQuery.limit(1).maybeSingle();
 
       if (!household) {
         return reply({ error: "no_household" }, 404);
+      }
+
+      // Rate-limit test digests: max 3 per hour per household
+      const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count: recentTestCount } = await adminClient
+        .from("schedule_notification_log")
+        .select("id", { count: "exact", head: true })
+        .eq("household_id", household.id)
+        .eq("source_kind", "test_digest")
+        .gte("sent_at", oneHourAgoIso);
+
+      if ((recentTestCount ?? 0) >= 3) {
+        return reply({ error: "rate_limited" }, 429);
       }
 
       const { data: settings } = await userClient
@@ -437,7 +545,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       const targetEmail = settings?.custom_email?.trim() || user.email;
-
       if (!targetEmail) {
         return reply({ error: "no_recipient_email" }, 400);
       }
@@ -446,17 +553,23 @@ Deno.serve(async (req) => {
 
       const [{ data: pets }, { data: scheduleItems }, { data: healthEvents }] =
         await Promise.all([
-          userClient.from("zwierze").select("id,imie").is("archived_at", null),
+          userClient
+            .from("zwierze")
+            .select("id,imie")
+            .eq("gospodarstwo_id", household.id)
+            .is("archived_at", null),
           userClient
             .from("pet_schedule_item")
-            .select("*")
+            .select("id,pet_id,category,title,scheduled_date,scheduled_time,clinic,doctor,prep_notes")
+            .eq("household_id", household.id)
             .eq("status", "planned")
             .gte("scheduled_date", todayIso)
             .order("scheduled_date", { ascending: true })
             .limit(8),
           userClient
             .from("pet_health_event")
-            .select("*")
+            .select("id,pet_id,category,title,next_due_date,clinic,doctor,batch_or_product")
+            .eq("household_id", household.id)
             .not("next_due_date", "is", null)
             .gte("next_due_date", todayIso)
             .order("next_due_date", { ascending: true })
@@ -471,37 +584,37 @@ Deno.serve(async (req) => {
         ...(scheduleItems ?? [])
           .filter((it: Record<string, unknown>) => petMap.has(String(it.pet_id)))
           .map((it: Record<string, unknown>) => ({
-          sourceKind: "schedule_item" as const,
-          sourceId: String(it.id),
-          householdId: household.id,
-          petId: String(it.pet_id),
-          petName: petMap.get(String(it.pet_id)) ?? "Pupil",
-          category: String(it.category),
-          title: String(it.title),
-          dueDate: String(it.scheduled_date),
-          dueTime: String(it.scheduled_time ?? ""),
-          clinic: String(it.clinic ?? ""),
-          doctor: String(it.doctor ?? ""),
-          notes: String(it.prep_notes ?? ""),
-          offsetDays: -1 as const,
-        })),
+            sourceKind: "schedule_item" as const,
+            sourceId: String(it.id),
+            householdId: household.id,
+            petId: String(it.pet_id),
+            petName: petMap.get(String(it.pet_id)) ?? "Pupil",
+            category: String(it.category),
+            title: String(it.title),
+            dueDate: String(it.scheduled_date),
+            dueTime: String(it.scheduled_time ?? ""),
+            clinic: String(it.clinic ?? ""),
+            doctor: String(it.doctor ?? ""),
+            notes: String(it.prep_notes ?? ""),
+            offsetDays: -1 as const,
+          })),
         ...(healthEvents ?? [])
           .filter((ev: Record<string, unknown>) => petMap.has(String(ev.pet_id)))
           .map((ev: Record<string, unknown>) => ({
-          sourceKind: "health_event_due" as const,
-          sourceId: String(ev.id),
-          householdId: household.id,
-          petId: String(ev.pet_id),
-          petName: petMap.get(String(ev.pet_id)) ?? "Pupil",
-          category: String(ev.category),
-          title: String(ev.title),
-          dueDate: String(ev.next_due_date),
-          dueTime: "",
-          clinic: String(ev.clinic ?? ""),
-          doctor: String(ev.doctor ?? ""),
-          notes: String(ev.batch_or_product ?? ""),
-          offsetDays: -1 as const,
-        })),
+            sourceKind: "health_event_due" as const,
+            sourceId: String(ev.id),
+            householdId: household.id,
+            petId: String(ev.pet_id),
+            petName: petMap.get(String(ev.pet_id)) ?? "Pupil",
+            category: String(ev.category),
+            title: String(ev.title),
+            dueDate: String(ev.next_due_date),
+            dueTime: "",
+            clinic: String(ev.clinic ?? ""),
+            doctor: String(ev.doctor ?? ""),
+            notes: String(ev.batch_or_product ?? ""),
+            offsetDays: -1 as const,
+          })),
       ]
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
         .slice(0, 6);
@@ -509,7 +622,13 @@ Deno.serve(async (req) => {
       const { subject, html } = buildEmailHtml(previewItems, true);
 
       try {
-        await sendEmailViaSmtp(targetEmail, subject, html);
+        const { transporter, smtpUser } = await createSmtpTransporter(false);
+        await transporter.sendMail({
+          from: `"Care My Pet" <${smtpUser}>`,
+          to: targetEmail,
+          subject,
+          html,
+        });
 
         const logId = crypto.randomUUID();
         await adminClient.from("schedule_notification_log").insert({
@@ -546,22 +665,41 @@ Deno.serve(async (req) => {
       }
 
       if (!subs || subs.length === 0) {
-        return reply({ error: "no_push_subscriptions", message: "Brak aktywnych subskrypcji push na tym koncie." }, 404);
+        return reply(
+          {
+            error: "no_push_subscriptions",
+            message: "Brak aktywnych subskrypcji push na tym koncie.",
+          },
+          404,
+        );
       }
 
       let sent = 0;
+      const expiredIds: string[] = [];
       for (const sub of subs) {
         if (!isSafePushEndpoint(sub.endpoint)) continue;
-        const ok = await sendWebPush(sub, {
+        const res = await sendWebPush(sub, {
           title: "Care My Pet — Test powiadomień Push",
           body: "Powiadomienia na Twoim telefonie działają prawidłowo! 🐾",
           url: "/app",
           tag: "test-push",
         });
-        if (ok) sent++;
+        if (res.ok) sent++;
+        if (res.expired) expiredIds.push(String(sub.id));
       }
 
-      return reply({ ok: true, sent_count: sent, total_subscriptions: subs.length });
+      if (expiredIds.length > 0) {
+        await adminClient
+          .from("pet_push_subscription")
+          .delete()
+          .in("id", expiredIds);
+      }
+
+      return reply({
+        ok: true,
+        sent_count: sent,
+        total_subscriptions: subs.length,
+      });
     }
   }
 
@@ -597,7 +735,11 @@ Deno.serve(async (req) => {
     const { data: approvedRequests } = await adminClient.rpc(
       "auto_approve_expired_admin_requests",
     );
-    const appOrigin = (Deno.env.get("SITE_URL") || Deno.env.get("APP_URL") || "https://caremypet.app").replace(/\/$/, "");
+    const appOrigin = (
+      Deno.env.get("SITE_URL") ||
+      Deno.env.get("APP_URL") ||
+      "https://caremypet.app"
+    ).replace(/\/$/, "");
     for (const reqRow of Array.isArray(approvedRequests) ? approvedRequests : []) {
       if (reqRow?.requester_email) {
         await sendSmtpEmail({
@@ -627,27 +769,100 @@ Deno.serve(async (req) => {
   const day7 = warsawDatePlusDays(7);
   const targetDates = [day0, day1, day7];
 
-  const [
-    { data: scheduleRows },
-    { data: eventRows },
-    { data: allPets },
-    { data: allSettings },
-  ] = await Promise.all([
-    adminClient
-      .from("pet_schedule_item")
-      .select("*")
-      .eq("status", "planned")
-      .in("scheduled_date", targetDates),
-    adminClient
-      .from("pet_health_event")
-      .select("*")
-      .in("next_due_date", targetDates),
-    adminClient.from("zwierze").select("id,imie,gospodarstwo_id").is("archived_at", null),
-    adminClient.from("household_notification_settings").select("*"),
+  // Krok 1: Pobierz wyłącznie terminy przypadające na day0/day1/day7 (paginowane, bez limitu 1000)
+  const [scheduleRows, eventRows] = await Promise.all([
+    fetchPaginated<Record<string, unknown>>((from, to) =>
+      adminClient
+        .from("pet_schedule_item")
+        .select(
+          "id,household_id,pet_id,category,title,scheduled_date,scheduled_time,clinic,doctor,prep_notes,notify_emails",
+        )
+        .eq("status", "planned")
+        .in("scheduled_date", targetDates)
+        .range(from, to),
+    ),
+    fetchPaginated<Record<string, unknown>>((from, to) =>
+      adminClient
+        .from("pet_health_event")
+        .select(
+          "id,household_id,pet_id,category,title,next_due_date,clinic,doctor,batch_or_product",
+        )
+        .in("next_due_date", targetDates)
+        .range(from, to),
+    ),
   ]);
 
+  if (scheduleRows.length === 0 && eventRows.length === 0) {
+    return reply({ ok: true, emails_sent: 0, pushes_sent: 0 });
+  }
+
+  // Krok 2: Zbierz unikalne ID pupili i domostw z faktycznych kandydatów i dociągnij powiązane dane hurtowo
+  const petIdSet = new Set<string>();
+  const householdIdSet = new Set<string>();
+  for (const row of scheduleRows) {
+    if (row.pet_id) petIdSet.add(String(row.pet_id));
+    if (row.household_id) householdIdSet.add(String(row.household_id));
+  }
+  for (const row of eventRows) {
+    if (row.pet_id) petIdSet.add(String(row.pet_id));
+    if (row.household_id) householdIdSet.add(String(row.household_id));
+  }
+
+  const petIds = Array.from(petIdSet);
+  const householdIds = Array.from(householdIdSet);
+
+  const [activePets, matchedSettings, existingSentLogs, householdSubsAll] =
+    await Promise.all([
+      fetchInChunks<{ id: string; imie: string; gospodarstwo_id: string }>(
+        petIds,
+        (chunk) =>
+          adminClient
+            .from("zwierze")
+            .select("id,imie,gospodarstwo_id")
+            .in("id", chunk)
+            .is("archived_at", null),
+      ),
+      fetchInChunks<Record<string, unknown>>(householdIds, (chunk) =>
+        adminClient
+          .from("household_notification_settings")
+          .select(
+            "household_id,email_enabled,notify_7_days_before,notify_1_day_before,notify_day_of,custom_email",
+          )
+          .in("household_id", chunk),
+      ),
+      fetchInChunks<{
+        household_id: string;
+        source_kind: string;
+        source_id: string;
+        due_date: string;
+        offset_days: number;
+        recipient_email: string;
+      }>(householdIds, (chunk) =>
+        adminClient
+          .from("schedule_notification_log")
+          .select(
+            "household_id,source_kind,source_id,due_date,offset_days,recipient_email",
+          )
+          .in("household_id", chunk)
+          .in("due_date", targetDates)
+          .eq("status", "sent"),
+      ),
+      fetchInChunks<{
+        id: string;
+        household_id: string;
+        endpoint: string;
+        p256dh: string;
+        auth: string;
+      }>(householdIds, (chunk) =>
+        adminClient
+          .from("pet_push_subscription")
+          .select("id,household_id,endpoint,p256dh,auth")
+          .in("household_id", chunk),
+      ),
+    ]);
+
   const petInfoMap = new Map<string, { name: string; householdId: string }>();
-  for (const p of allPets ?? []) {
+  for (const p of activePets) {
     petInfoMap.set(String(p.id), {
       name: String(p.imie),
       householdId: String(p.gospodarstwo_id),
@@ -655,8 +870,38 @@ Deno.serve(async (req) => {
   }
 
   const settingsByHousehold = new Map<string, Record<string, unknown>>();
-  for (const s of allSettings ?? []) {
+  for (const s of matchedSettings) {
     settingsByHousehold.set(String(s.household_id), s);
+  }
+
+  const sentLogKeys = new Set<string>();
+  for (const log of existingSentLogs) {
+    sentLogKeys.add(
+      buildLogKey(
+        String(log.household_id),
+        String(log.source_kind),
+        String(log.source_id),
+        String(log.due_date),
+        Number(log.offset_days),
+        String(log.recipient_email),
+      ),
+    );
+  }
+
+  const subsByHousehold = new Map<
+    string,
+    Array<{ id: string; endpoint: string; p256dh: string; auth: string }>
+  >();
+  for (const sub of householdSubsAll) {
+    const hId = String(sub.household_id);
+    const list = subsByHousehold.get(hId) ?? [];
+    list.push({
+      id: String(sub.id),
+      endpoint: String(sub.endpoint),
+      p256dh: String(sub.p256dh),
+      auth: String(sub.auth),
+    });
+    subsByHousehold.set(hId, list);
   }
 
   const byHousehold = new Map<string, DueReminderItem[]>();
@@ -664,7 +909,8 @@ Deno.serve(async (req) => {
   const pushCandidate = (item: DueReminderItem) => {
     const cfg = settingsByHousehold.get(item.householdId);
     const emailEnabled = cfg ? Boolean(cfg.email_enabled) : true;
-    if (!emailEnabled) return;
+    const hasPushSubs = (subsByHousehold.get(item.householdId)?.length ?? 0) > 0;
+    if (!emailEnabled && !hasPushSubs) return;
 
     const allow7 = cfg ? Boolean(cfg.notify_7_days_before) : true;
     const allow1 = cfg ? Boolean(cfg.notify_1_day_before) : true;
@@ -679,7 +925,7 @@ Deno.serve(async (req) => {
     byHousehold.set(item.householdId, list);
   };
 
-  for (const row of scheduleRows ?? []) {
+  for (const row of scheduleRows) {
     const d = String(row.scheduled_date);
     const offset: 0 | 1 | 7 = d === day0 ? 0 : d === day1 ? 1 : 7;
     const petInfo = petInfoMap.get(String(row.pet_id));
@@ -689,7 +935,7 @@ Deno.serve(async (req) => {
       sourceId: String(row.id),
       householdId: String(row.household_id),
       petId: String(row.pet_id),
-      petName: petInfo?.name ?? "Pupil",
+      petName: petInfo.name,
       category: String(row.category),
       title: String(row.title),
       dueDate: d,
@@ -706,7 +952,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  for (const row of eventRows ?? []) {
+  for (const row of eventRows) {
     const d = String(row.next_due_date);
     const offset: 0 | 1 | 7 = d === day0 ? 0 : d === day1 ? 1 : 7;
     const petInfo = petInfoMap.get(String(row.pet_id));
@@ -716,7 +962,7 @@ Deno.serve(async (req) => {
       sourceId: String(row.id),
       householdId: String(row.household_id),
       petId: String(row.pet_id),
-      petName: petInfo?.name ?? "Pupil",
+      petName: petInfo.name,
       category: String(row.category),
       title: String(row.title),
       dueDate: d,
@@ -728,30 +974,38 @@ Deno.serve(async (req) => {
     });
   }
 
+  let pooledSmtp: { transporter: SmtpTransporter; smtpUser: string } | null = null;
+  const ensurePooledSmtp = async () => {
+    if (!pooledSmtp) {
+      pooledSmtp = await createSmtpTransporter(true);
+    }
+    return pooledSmtp;
+  };
+
+  const pendingLogs: Array<Record<string, unknown>> = [];
+  const expiredPushSubIds: string[] = [];
+  let emailsSent = 0;
+  let pushesSent = 0;
+
   async function sendUnsentDigest(
     householdId: string,
     email: string,
     candidateItems: DueReminderItem[],
     isExternalRecipient: boolean,
   ): Promise<boolean> {
-    const unsentItems: DueReminderItem[] = [];
-    for (const item of candidateItems) {
-      const { data: existing } = await adminClient
-        .from("schedule_notification_log")
-        .select("id")
-        .eq("household_id", householdId)
-        .eq("source_kind", item.sourceKind)
-        .eq("source_id", item.sourceId)
-        .eq("due_date", item.dueDate)
-        .eq("offset_days", item.offsetDays)
-        .eq("recipient_email", email)
-        .eq("status", "sent")
-        .maybeSingle();
-
-      if (!existing) {
-        unsentItems.push(item);
-      }
-    }
+    const unsentItems = candidateItems.filter(
+      (item) =>
+        !sentLogKeys.has(
+          buildLogKey(
+            householdId,
+            item.sourceKind,
+            item.sourceId,
+            item.dueDate,
+            item.offsetDays,
+            email,
+          ),
+        ),
+    );
 
     if (unsentItems.length === 0) return false;
 
@@ -761,9 +1015,24 @@ Deno.serve(async (req) => {
       isExternalRecipient,
     );
     try {
-      await sendEmailViaSmtp(email, subject, html);
+      const { transporter, smtpUser } = await ensurePooledSmtp();
+      await transporter.sendMail({
+        from: `"Care My Pet" <${smtpUser}>`,
+        to: email,
+        subject,
+        html,
+      });
       for (const item of unsentItems) {
-        await adminClient.from("schedule_notification_log").insert({
+        const key = buildLogKey(
+          householdId,
+          item.sourceKind,
+          item.sourceId,
+          item.dueDate,
+          item.offsetDays,
+          email,
+        );
+        sentLogKeys.add(key);
+        pendingLogs.push({
           household_id: householdId,
           pet_id: item.petId,
           source_kind: item.sourceKind,
@@ -779,7 +1048,7 @@ Deno.serve(async (req) => {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "smtp_error";
       for (const item of unsentItems) {
-        await adminClient.from("schedule_notification_log").insert({
+        pendingLogs.push({
           household_id: householdId,
           pet_id: item.petId,
           source_kind: item.sourceKind,
@@ -796,84 +1065,141 @@ Deno.serve(async (req) => {
     }
   }
 
-  let emailsSent = 0;
+  try {
+    for (const [householdId, items] of byHousehold.entries()) {
+      const cfg = settingsByHousehold.get(householdId);
+      const emailEnabled = cfg ? Boolean(cfg.email_enabled) : true;
 
-  for (const [householdId, items] of byHousehold.entries()) {
-    const cfg = settingsByHousehold.get(householdId);
-    const customEmail =
-      typeof cfg?.custom_email === "string" ? cfg.custom_email.trim() : "";
+      if (emailEnabled) {
+        const customEmail =
+          typeof cfg?.custom_email === "string" ? cfg.custom_email.trim() : "";
 
-    const recipients = new Set<string>();
-    if (customEmail) {
-      recipients.add(customEmail);
-    } else {
-      const { data: recRows } = await adminClient.rpc(
-        "get_household_notification_recipients",
-        { p_household_id: householdId },
-      );
-      for (const r of recRows ?? []) {
-        if (r.email) recipients.add(String(r.email));
+        const recipients = new Set<string>();
+        if (customEmail) {
+          recipients.add(customEmail);
+        } else {
+          const { data: recRows } = await adminClient.rpc(
+            "get_household_notification_recipients",
+            { p_household_id: householdId },
+          );
+          for (const r of recRows ?? []) {
+            if (r.email) recipients.add(String(r.email));
+          }
+        }
+
+        const householdEmailLowerSet = new Set(
+          Array.from(recipients).map((r) => r.toLowerCase()),
+        );
+
+        for (const email of recipients) {
+          if (await sendUnsentDigest(householdId, email, items, false)) {
+            emailsSent += 1;
+          }
+        }
+
+        // Dodatkowe adresy przypisane per konkretny termin (otrzymują wyłącznie własne pozycje)
+        const extraByEmail = new Map<string, DueReminderItem[]>();
+        for (const item of items) {
+          for (const extraEmail of item.extraEmails ?? []) {
+            if (!extraEmail || householdEmailLowerSet.has(extraEmail)) continue;
+            const list = extraByEmail.get(extraEmail) ?? [];
+            list.push(item);
+            extraByEmail.set(extraEmail, list);
+          }
+        }
+
+        for (const [extraEmail, assignedItems] of extraByEmail.entries()) {
+          if (await sendUnsentDigest(householdId, extraEmail, assignedItems, true)) {
+            emailsSent += 1;
+          }
+        }
       }
-    }
 
-    const householdEmailLowerSet = new Set(
-      Array.from(recipients).map((r) => r.toLowerCase()),
-    );
-
-    for (const email of recipients) {
-      if (await sendUnsentDigest(householdId, email, items, false)) {
-        emailsSent += 1;
-      }
-    }
-
-    // Dodatkowe adresy przypisane per konkretny termin (otrzymują wyłącznie własne pozycje)
-    const extraByEmail = new Map<string, DueReminderItem[]>();
-    for (const item of items) {
-      for (const extraEmail of item.extraEmails ?? []) {
-        if (!extraEmail || householdEmailLowerSet.has(extraEmail)) continue;
-        const list = extraByEmail.get(extraEmail) ?? [];
-        list.push(item);
-        extraByEmail.set(extraEmail, list);
-      }
-    }
-
-    for (const [extraEmail, assignedItems] of extraByEmail.entries()) {
-      if (await sendUnsentDigest(householdId, extraEmail, assignedItems, true)) {
-        emailsSent += 1;
-      }
-    }
-
-    // Web Push Notifications for household devices
-    try {
-      const { data: householdSubs } = await adminClient
-        .from("pet_push_subscription")
-        .select("id, endpoint, p256dh, auth")
-        .eq("household_id", householdId);
-
-      if (householdSubs && householdSubs.length > 0 && items.length > 0) {
-        const first = items[0];
-        const pushTitle =
-          items.length === 1
-            ? `🐾 ${first.petName}: ${first.title}`
-            : `Care My Pet: ${items.length} nadchodzących terminów`;
-        const pushBody =
-          items.length === 1
-            ? `${first.offsetDays === 0 ? "Dzisiaj" : first.offsetDays === 1 ? "Jutro" : "Za 7 dni"}: ${first.title}${first.dueTime ? ` (${first.dueTime})` : ""}`
-            : "Sprawdź dzisiejszy terminarz opieki nad pupilami.";
-
+      // Web Push Notifications z deduplikacją i czyszczeniem wygasłych subskrypcji (404/410)
+      const householdSubs = subsByHousehold.get(householdId) ?? [];
+      if (householdSubs.length > 0 && items.length > 0) {
         for (const sub of householdSubs) {
-          await sendWebPush(sub, {
+          if (!isSafePushEndpoint(sub.endpoint)) continue;
+          const pushRecipientKey = `webpush:${sub.id}`;
+          const unsentForSub = items.filter(
+            (item) =>
+              !sentLogKeys.has(
+                buildLogKey(
+                  householdId,
+                  item.sourceKind,
+                  item.sourceId,
+                  item.dueDate,
+                  item.offsetDays,
+                  pushRecipientKey,
+                ),
+              ),
+          );
+          if (unsentForSub.length === 0) continue;
+
+          const first = unsentForSub[0];
+          const pushTitle =
+            unsentForSub.length === 1
+              ? `🐾 ${first.petName}: ${first.title}`
+              : `Care My Pet: ${unsentForSub.length} nadchodzących terminów`;
+          const pushBody =
+            unsentForSub.length === 1
+              ? `${first.offsetDays === 0 ? "Dzisiaj" : first.offsetDays === 1 ? "Jutro" : "Za 7 dni"}: ${first.title}${first.dueTime ? ` (${first.dueTime})` : ""}`
+              : "Sprawdź dzisiejszy terminarz opieki nad pupilami.";
+
+          const res = await sendWebPush(sub, {
             title: pushTitle,
             body: pushBody,
             url: `/app/zwierzeta/${first.petId}`,
             tag: `due-${first.dueDate}-${first.sourceId}`,
           });
+
+          if (res.ok) {
+            pushesSent += 1;
+            for (const item of unsentForSub) {
+              sentLogKeys.add(
+                buildLogKey(
+                  householdId,
+                  item.sourceKind,
+                  item.sourceId,
+                  item.dueDate,
+                  item.offsetDays,
+                  pushRecipientKey,
+                ),
+              );
+              pendingLogs.push({
+                household_id: householdId,
+                pet_id: item.petId,
+                source_kind: item.sourceKind,
+                source_id: item.sourceId,
+                due_date: item.dueDate,
+                offset_days: item.offsetDays,
+                recipient_email: pushRecipientKey,
+                subject: pushTitle.slice(0, 200),
+                status: "sent",
+              });
+            }
+          } else if (res.expired) {
+            expiredPushSubIds.push(sub.id);
+          }
         }
       }
-    } catch (pushErr) {
-      console.warn("[WebPush Cron Warning]", pushErr);
     }
+
+    await flushNotificationLogs(adminClient, pendingLogs);
+
+    if (expiredPushSubIds.length > 0) {
+      for (const batch of chunkArray(expiredPushSubIds, 200)) {
+        await adminClient.from("pet_push_subscription").delete().in("id", batch);
+      }
+    }
+  } finally {
+    pooledSmtp?.transporter.close?.();
   }
 
-  return reply({ ok: true, emails_sent: emailsSent });
+  return reply({
+    ok: true,
+    emails_sent: emailsSent,
+    pushes_sent: pushesSent,
+    expired_subscriptions_removed: expiredPushSubIds.length,
+  });
 });

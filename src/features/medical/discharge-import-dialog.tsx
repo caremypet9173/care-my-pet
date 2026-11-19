@@ -35,13 +35,11 @@ import {
   recordPdfImportPages,
   type ImportedPdfHistory,
 } from "./pdf-history";
-import {
-  MAX_DISCHARGE_PAGES,
-  inspectPdf,
-  sliceSelectedPdfPages,
-  type PdfInfo,
-} from "./pdf-page-utils";
+import type { PdfInfo } from "./pdf-page-utils";
 import { DischargePdfPageViewer } from "./discharge-pdf-page-viewer";
+import "@/styles/discharge-import.css";
+
+const MAX_DISCHARGE_PAGES = 10;
 
 interface DischargeImportDialogProps {
   pet: Pick<Pet, "id" | "imie"> & { gospodarstwo_id?: string };
@@ -193,6 +191,7 @@ export function DischargeImportDialog({
     setIsInspecting(true);
 
     try {
+      const { inspectPdf } = await import("./pdf-page-utils");
       const [info, computedHash] = await Promise.all([
         inspectPdf(selectedFile),
         computeFileSha256(selectedFile),
@@ -300,6 +299,7 @@ export function DischargeImportDialog({
     setStep("analyzing");
 
     try {
+      const { sliceSelectedPdfPages } = await import("./pdf-page-utils");
       const fileToProcess = await sliceSelectedPdfPages(rawFile, selectedPages);
       setFile(fileToProcess);
       setActivePagesInfo({ pages: selectedPages, total: pdfInfo.pageCount });

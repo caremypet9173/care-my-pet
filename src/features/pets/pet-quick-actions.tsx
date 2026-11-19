@@ -32,18 +32,62 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
+import dynamic from "next/dynamic";
 import type { Pet } from "./types";
 import type { MetricType } from "@/features/measurements/types";
-import { HistoryDialog } from "@/features/history/history-dialog";
-import { DischargeImportDialog } from "@/features/medical/discharge-import-dialog";
-import { WeightDialog } from "@/features/weight/weight-dialog";
-import { BloodPressureDialog } from "@/features/measurements/blood-pressure-dialog";
-import { GlucoseDialog } from "@/features/measurements/glucose-dialog";
-import { TemperatureDialog } from "@/features/measurements/temperature-dialog";
-import { MedicationDialog } from "@/features/medications/medication-dialog";
-import { ScheduleDialog } from "@/features/schedule/schedule-dialog";
 import "@/styles/weight.css";
 import "@/styles/measurements.css";
+
+const HistoryDialog = dynamic(
+  () => import("@/features/history/history-dialog").then((m) => m.HistoryDialog),
+  { ssr: false },
+);
+const DischargeImportDialog = dynamic(
+  () =>
+    import("@/features/medical/discharge-import-dialog").then(
+      (m) => m.DischargeImportDialog,
+    ),
+  { ssr: false },
+);
+const WeightDialog = dynamic(
+  () => import("@/features/weight/weight-dialog").then((m) => m.WeightDialog),
+  { ssr: false },
+);
+const BloodPressureDialog = dynamic(
+  () =>
+    import("@/features/measurements/blood-pressure-dialog").then(
+      (m) => m.BloodPressureDialog,
+    ),
+  { ssr: false },
+);
+const GlucoseDialog = dynamic(
+  () =>
+    import("@/features/measurements/glucose-dialog").then(
+      (m) => m.GlucoseDialog,
+    ),
+  { ssr: false },
+);
+const TemperatureDialog = dynamic(
+  () =>
+    import("@/features/measurements/temperature-dialog").then(
+      (m) => m.TemperatureDialog,
+    ),
+  { ssr: false },
+);
+const MedicationDialog = dynamic(
+  () =>
+    import("@/features/medications/medication-dialog").then(
+      (m) => m.MedicationDialog,
+    ),
+  { ssr: false },
+);
+const ScheduleDialog = dynamic(
+  () =>
+    import("@/features/schedule/schedule-dialog").then(
+      (m) => m.ScheduleDialog,
+    ),
+  { ssr: false },
+);
 
 export type QuickAddAction =
   | "history_manual"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
@@ -30,10 +30,10 @@ const TreatmentSummaryModal = dynamic(
   { ssr: false },
 );
 import {
-  normalizeMedicationSchedule,
   parseScheduledTimes,
   projectMedicationDoses,
 } from "./projection";
+import { useMedicationRealtime } from "./use-medication-realtime";
 import type {
   MedicationLog,
   MedicationSchedule,
@@ -166,129 +166,62 @@ export function ActiveMedicationsCard({
     return "";
   }
 
-  // Subskrypcja Supabase Realtime do natychmiastowej synchronizacji dawek między domownikami
-  useEffect(() => {
-    let isCancelled = false;
-    const client = createClient();
-    let channel: ReturnType<typeof client.channel> | null = null;
-
-    async function initSubscription() {
-      try {
-        const {
-          data: { session },
-        } = await client.auth.getSession();
-        if (session?.access_token) {
-          await client.realtime.setAuth(session.access_token);
-        }
-      } catch (err) {
-        console.warn("[Realtime] auth initialization warning:", err);
-      }
-
-      if (isCancelled) return;
-
-      channel = client
-        .channel(`realtime-meds-${petId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "medication_logs",
-            filter: `pet_id=eq.${petId}`,
-          },
-          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
-            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const incoming = payload.new as unknown as MedicationLog;
-              setLogs((prev) => {
-                const filtered = prev.filter(
-                  (l) =>
-                    l.id !== incoming.id &&
-                    !(
-                      l.schedule_id === incoming.schedule_id &&
-                      l.dose_date === incoming.dose_date &&
-                      l.scheduled_time === incoming.scheduled_time
-                    ),
-                );
-                return [incoming, ...filtered];
-              });
-              router.refresh();
-            } else if (payload.eventType === "DELETE") {
-              const deletedId = (payload.old as { id?: string })?.id;
-              if (deletedId) {
-                setLogs((prev) => prev.filter((l) => l.id !== deletedId));
-                router.refresh();
-              }
-            }
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "medication_schedules",
-            filter: `pet_id=eq.${petId}`,
-          },
-          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
-            if (payload.eventType === "INSERT") {
-              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
-              setSchedules((prev) => {
-                if (prev.some((s) => s.id === incoming.id)) {
-                  return prev.map((s) => (s.id === incoming.id ? incoming : s));
-                }
-                return [incoming, ...prev];
-              });
-              router.refresh();
-            } else if (payload.eventType === "UPDATE") {
-              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
-              setSchedules((prev) =>
-                prev.map((s) => (s.id === incoming.id ? incoming : s)),
-              );
-              router.refresh();
-            } else if (payload.eventType === "DELETE") {
-              const deletedId = (payload.old as { id?: string })?.id;
-              if (deletedId) {
-                setSchedules((prev) => prev.filter((s) => s.id !== deletedId));
-                router.refresh();
-              }
-            }
-          },
-        )
-        .subscribe((status: string, err?: Error) => {
-          if (process.env.NODE_ENV !== "production") {
-            if (status === "SUBSCRIBED") {
-              console.log(`[Realtime meds] Subscribed for pet ${petId}`);
-            } else if (status === "CHANNEL_ERROR") {
-              console.error(`[Realtime meds] Channel error for pet ${petId}:`, err);
-            }
-          }
+  // Współdzielona subskrypcja Supabase Realtime + odświeżanie po powrocie do karty (cooldown 30s)
+  useMedicationRealtime({
+    petId,
+    onLog: (event) => {
+      if (event.type === "UPSERT") {
+        const incoming = event.log;
+        setLogs((prev) => {
+          const filtered = prev.filter(
+            (l) =>
+              l.id !== incoming.id &&
+              !(
+                l.schedule_id === incoming.schedule_id &&
+                l.dose_date === incoming.dose_date &&
+                l.scheduled_time === incoming.scheduled_time
+              ),
+          );
+          return [incoming, ...filtered];
         });
-    }
-
-    void initSubscription();
-
-    return () => {
-      isCancelled = true;
-      if (channel) {
-        void client.removeChannel(channel);
+      } else {
+        setLogs((prev) => prev.filter((l) => l.id !== event.id));
       }
-    };
-  }, [petId, router]);
-
-  // Automatyczne odświeżenie danych po powrocie do uśpionej karty/odblokowaniu ekranu telefonu
-  useEffect(() => {
-    function handleVisibility() {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        router.refresh();
+    },
+    onSchedule: (event) => {
+      if (event.type === "INSERT") {
+        const incoming = event.schedule;
+        setSchedules((prev) =>
+          prev.some((s) => s.id === incoming.id)
+            ? prev.map((s) => (s.id === incoming.id ? incoming : s))
+            : [incoming, ...prev],
+        );
+      } else if (event.type === "UPDATE") {
+        const incoming = event.schedule;
+        setSchedules((prev) =>
+          prev.map((s) => (s.id === incoming.id ? incoming : s)),
+        );
+      } else {
+        setSchedules((prev) => prev.filter((s) => s.id !== event.id));
       }
+    },
+  });
+
+  const todayDosesByScheduleId = useMemo(() => {
+    const projected = projectMedicationDoses({
+      schedules,
+      logs,
+      rangeStart: todayIso,
+      rangeEnd: todayIso,
+    });
+    const map = new Map<string, ProjectedMedicationDose[]>();
+    for (const dose of projected) {
+      const list = map.get(dose.schedule_id) ?? [];
+      list.push(dose);
+      map.set(dose.schedule_id, list);
     }
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("focus", handleVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("focus", handleVisibility);
-    };
-  }, [router]);
+    return map;
+  }, [schedules, logs, todayIso]);
 
   // Szybka akcja podania lub pominięcia dawki bezpośrednio z karty z optymistyczną aktualizacją UI
   async function handleQuickRecordDose(
@@ -524,13 +457,8 @@ export function ActiveMedicationsCard({
             const isFinished = !s.is_active || (s.end_date && s.end_date < todayIso);
             const times = parseScheduledTimes(s);
 
-            // Projekcja dzisiejszych dawek dla tego konkretnego leku
-            const todayDoses = projectMedicationDoses({
-              schedules: [s],
-              logs,
-              rangeStart: todayIso,
-              rangeEnd: todayIso,
-            });
+            // Zmemoizowana projekcja dzisiejszych dawek dla tego leku
+            const todayDoses = todayDosesByScheduleId.get(s.id) ?? [];
 
             const isLowStock =
               s.stock_quantity != null &&

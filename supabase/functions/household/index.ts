@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
-import nodemailer from "npm:nodemailer@6.9.16";
 import {
   formatRecoveryKeyHint,
   generateRecoveryKey,
@@ -56,6 +55,7 @@ async function sendEmailViaSmtp(
   }
 
   try {
+    const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,
@@ -543,7 +543,9 @@ Deno.serve(async (req) => {
   if (action === "get") {
     const [ownerRes, membersRes, invitesRes, petsRes, adminReqRes] =
       await Promise.all([
-        adminClient.auth.admin.getUserById(activeHousehold.owner_id),
+        isOwner
+          ? Promise.resolve({ data: { user: { email: user.email ?? null } } })
+          : adminClient.auth.admin.getUserById(activeHousehold.owner_id),
         adminClient
           .from("czlonek_gospodarstwa")
           .select("user_id, email, rola, created_at")

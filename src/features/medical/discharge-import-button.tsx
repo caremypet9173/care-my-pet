@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useLocale } from "next-intl";
 import { IconSparkles } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import type { Pet } from "@/features/pets/types";
-import { DischargeImportDialog } from "./discharge-import-dialog";
+
+const DischargeImportDialog = dynamic(
+  () => import("./discharge-import-dialog").then((m) => m.DischargeImportDialog),
+  { ssr: false },
+);
 
 interface DischargeImportButtonProps {
   pet: Pick<Pet, "id" | "imie"> & { gospodarstwo_id?: string };

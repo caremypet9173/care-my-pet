@@ -1,6 +1,6 @@
 import { Link, redirect } from "@/i18n/navigation";
 import { getLocale } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LanguageSwitch } from "@/components/layout/language-switch";
 import { PublicFooter } from "@/components/layout/public-footer";
@@ -11,6 +11,7 @@ import { dashboardMessages } from "@/features/pets/dashboard-messages";
 import { getActiveHouseholdContext } from "@/features/household/data";
 import { HouseholdHeaderSwitcher } from "@/features/household/household-header-switcher";
 import { IconUsers } from "@tabler/icons-react";
+import "@/styles/tailwind-private.css";
 import "@/styles/pets.css";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,8 @@ export const metadata = { robots: { index: false, follow: false } };
 
 export default async function PrivateLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
-  const supabase = await createClient();
-  const result = supabase ? await supabase.auth.getUser() : null;
-  if (!result?.data.user || result.error) return redirect({ href: "/login", locale });
+  const { user, error } = await getCurrentUser();
+  if (!user || error) return redirect({ href: "/login", locale });
   const t = authMessages[locale];
   const pl = locale === "pl";
 
@@ -36,7 +36,7 @@ export default async function PrivateLayout({ children }: { children: React.Reac
           </div>
           <p className="household-account">
             {t.signedIn}
-            <strong>{result.data.user.email}</strong>
+            <strong>{user.email}</strong>
           </p>
           <div className="household-header-actions">
             <HouseholdHeaderSwitcher

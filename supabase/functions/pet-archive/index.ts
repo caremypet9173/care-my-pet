@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
-import nodemailer from "npm:nodemailer@6.9.16";
 import {
   ARCHIVE_LOCK_MS,
   ARCHIVE_MAX_FAILED_ATTEMPTS,
@@ -152,6 +151,7 @@ async function sendArchiveEmail(params: {
     `;
 
   try {
+    const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,

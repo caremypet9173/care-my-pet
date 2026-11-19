@@ -285,13 +285,24 @@ export function LabComparisonMatrix({
     }
   }
 
-  const formatDateShort = (iso: string) =>
-    new Intl.DateTimeFormat(locale, {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(iso));
+  const shortDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+    [locale],
+  );
+  const deltaFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 4,
+      }),
+    [locale],
+  );
+  const formatDateShort = (iso: string) => shortDateFormatter.format(new Date(iso));
 
   if (labReportsDesc.length === 0) {
     return (
@@ -558,6 +569,7 @@ export function LabComparisonMatrix({
                 );
                 if (grouped.length === 0) return null;
                 const open = !collapsedCategories[category];
+                const visibleRows = open ? grouped : [];
 
                 return (
                   <Fragment key={category}>
@@ -595,7 +607,7 @@ export function LabComparisonMatrix({
                     </tbody>
 
                     <tbody id={`${groupId}-${category}`} hidden={!open}>
-                      {grouped.map((paramRow) => {
+                      {visibleRows.map((paramRow) => {
                         const isChartSelected = selectedChartKeys.includes(
                           paramRow.key,
                         );
@@ -791,12 +803,7 @@ export function LabComparisonMatrix({
                                   : " is-delta-neg"
                                 : "";
                               const formattedDelta = hasDelta
-                                ? `${delta > 0 ? "+" : ""}${new Intl.NumberFormat(
-                                    locale,
-                                    {
-                                      maximumFractionDigits: 4,
-                                    },
-                                  ).format(Number(delta.toFixed(6)))}`
+                                ? `${delta > 0 ? "+" : ""}${deltaFormatter.format(Number(delta.toFixed(6)))}`
                                 : "";
 
                               const originalInfo = cell.converted

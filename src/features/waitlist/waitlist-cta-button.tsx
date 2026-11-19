@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useLocale } from "next-intl";
 import { IconSparkles } from "@tabler/icons-react";
-import { WaitlistModal } from "./waitlist-modal";
+import "@/styles/waitlist.css";
+
+const WaitlistModal = dynamic(
+  () => import("./waitlist-modal").then((m) => m.WaitlistModal),
+  { ssr: false },
+);
 
 export function WaitlistCtaButton({
   className,
@@ -27,7 +33,7 @@ export function WaitlistCtaButton({
         <span>{children ?? (pl ? "Jestem zainteresowany" : "Join waitlist")}</span>
       </button>
 
-      <WaitlistModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      {isOpen && <WaitlistModal isOpen={isOpen} onClose={() => setIsOpen(false)} />}
     </>
   );
 }

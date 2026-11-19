@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
@@ -27,7 +28,14 @@ import type { ScheduleItem } from "@/features/schedule/types";
 import type { PetFluidTherapy } from "@/features/fluid-therapy/types";
 import type { VitalMeasurement } from "@/features/measurements/types";
 import type { WeightMeasurement } from "@/features/weight/types";
-import { SkipDoseDialog } from "@/features/medications/skip-dose-dialog";
+
+const SkipDoseDialog = dynamic(
+  () =>
+    import("@/features/medications/skip-dose-dialog").then(
+      (m) => m.SkipDoseDialog,
+    ),
+  { ssr: false },
+);
 
 function createTempLogId(): string {
   return `temp-${Date.now()}`;
@@ -61,31 +69,46 @@ export function DailyCareCard({
   const locale = useLocale();
   const pl = locale === "pl";
 
+  const [prevInitialLogs, setPrevInitialLogs] = useState(initialLogs);
   const [logs, setLogs] = useState<MedicationLog[]>(initialLogs);
+  if (initialLogs !== prevInitialLogs) {
+    setPrevInitialLogs(initialLogs);
+    setLogs(initialLogs);
+  }
   const [skippingDose, setSkippingDose] =
     useState<ProjectedMedicationDose | null>(null);
   const [busyDoseKey, setBusyDoseKey] = useState<string | null>(null);
 
-  const todayIso = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Warsaw",
-  }).format(new Date());
+  const todayIso = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Warsaw",
+      }).format(new Date()),
+    [],
+  );
 
-  const todayFormatted = new Intl.DateTimeFormat(locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(new Date());
+  const todayFormatted = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }).format(new Date()),
+    [locale],
+  );
 
   // Projected medication doses for today
-  const activeSchedules = schedules.filter(
-    (s) => s.is_active && (!s.end_date || s.end_date >= todayIso),
-  );
-  const todayDoses = projectMedicationDoses({
-    schedules: activeSchedules,
-    logs,
-    rangeStart: todayIso,
-    rangeEnd: todayIso,
-  });
+  const todayDoses = useMemo(() => {
+    const activeSchedules = schedules.filter(
+      (s) => s.is_active && (!s.end_date || s.end_date >= todayIso),
+    );
+    return projectMedicationDoses({
+      schedules: activeSchedules,
+      logs,
+      rangeStart: todayIso,
+      rangeEnd: todayIso,
+    });
+  }, [schedules, logs, todayIso]);
   const completedDoses = todayDoses.filter((d) => d.is_completed);
   const pendingDoses = todayDoses.filter((d) => !d.is_completed && !d.is_skipped);
 

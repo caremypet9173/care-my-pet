@@ -17,7 +17,6 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { buildRecoveryKeyPdf } from "./recovery-key-pdf";
 
 interface GeneratedKeyPayload {
   recovery_key: string;
@@ -142,6 +141,7 @@ export function RecoveryKeyDialog({
     try {
       const origin =
         typeof window !== "undefined" ? window.location.origin : "https://caremypet.app";
+      const { buildRecoveryKeyPdf } = await import("./recovery-key-pdf");
       const pdfBytes = await buildRecoveryKeyPdf({
         householdName: householdName || (pl ? "Mój dom" : "My home"),
         ownerEmail: generated.owner_email || ownerEmail || "",

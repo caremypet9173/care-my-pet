@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import type { Metadata } from "next";
-import { inter, jakarta } from "@/lib/fonts";
+import { inter, interExt, jakarta, jakartaExt } from "@/lib/fonts";
 import { CookieNotice } from "@/components/legal/cookie-notice";
 import { NetworkStatus } from "@/components/layout/network-status";
 import { PwaProvider } from "@/components/pwa/pwa-provider";
@@ -51,7 +51,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       data-theme="signature"
-      className={`${jakarta.variable} ${inter.variable}`}
+      className={`${jakarta.variable} ${jakartaExt.variable} ${inter.variable} ${interExt.variable}`}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>

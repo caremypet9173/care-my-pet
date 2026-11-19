@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { PetIcon } from "@/features/pets/pet-icon";
 import type { Locale } from "@/i18n/types";
-import { downloadPetArchivePdf } from "./archive-pdf";
 import { archiveMessages } from "./messages";
 import type { ArchiveMetaPayload, PetArchivePayload } from "./types";
 
@@ -130,6 +129,7 @@ export function ArchivePortalView({
     setGeneratingPdf(true);
     setPortalError("");
     try {
+      const { downloadPetArchivePdf } = await import("./archive-pdf");
       await downloadPetArchivePdf(payload, locale);
       void callArchiveApi({
         action: "track_pdf_download",

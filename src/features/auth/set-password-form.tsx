@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { authMessages } from "./messages";
+import "@/styles/auth.css";
 import {
   IconEye,
   IconEyeOff,

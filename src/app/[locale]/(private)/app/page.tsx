@@ -21,7 +21,6 @@ import { dashboardMessages } from "@/features/pets/dashboard-messages";
 import { IconPlus, IconUpload, IconUsers } from "@tabler/icons-react";
 import "@/styles/pets.css";
 import "@/styles/weight.css";
-import "@/styles/medical.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();

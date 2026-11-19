@@ -16,7 +16,7 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/container";
 import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
-import { getPet, listPets } from "@/features/pets/data";
+import { getPet, listPetSwitcherPets } from "@/features/pets/data";
 import { PetHeroCover } from "@/features/pets/pet-hero-cover";
 import { PetSwitcher } from "@/features/pets/pet-switcher";
 import { petMessages } from "@/features/pets/messages";
@@ -86,7 +86,8 @@ export default async function PetPage({ params, searchParams }: { params: Promis
           ? "assistant"
           : null;
   const isAssistantTab = initialTab === 5;
-  const [reports,weights,vitalMeasurements,fluids,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails,householdPets] = await Promise.all([
+  const isArchived = Boolean(pet.archived_at);
+  const [reports,weights,vitalMeasurements,fluids,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails,switcherPets] = await Promise.all([
     listReports(pet.id, requestedReport),
     listWeights(pet.id),
     listVitalMeasurements(pet.id),
@@ -100,9 +101,8 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     listPetMedicationSchedules(pet.id),
     listPetMedicationLogs(pet.id),
     getHouseholdDetails(pet.gospodarstwo_id),
-    listPets(pet.gospodarstwo_id)
+    isArchived ? Promise.resolve([]) : listPetSwitcherPets(pet.gospodarstwo_id)
   ]);
-  const isArchived = Boolean(pet.archived_at);
   const isOwner = Boolean(
     householdDetails?.household?.is_owner ?? householdDetails?.owner?.is_self,
   );
@@ -112,17 +112,6 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   const hasRecoveryKey = Boolean(householdDetails?.household?.has_recovery_key);
   const isReadOnly = isArchived || !hasRecoveryKey;
   const archiveMsgs = petArchiveMessages[locale as Locale] ?? petArchiveMessages.pl;
-  const switcherPets = isArchived
-    ? []
-    : (householdPets ?? [pet])
-        .filter((p) => !p.archived_at)
-        .map(({ id, imie, gatunek, avatar_url, tagi }) => ({
-          id,
-          imie,
-          gatunek,
-          avatar_url,
-          tagi,
-        }));
   const memberNames: Record<string, string> = {};
   if (householdDetails?.owner?.user_id) {
     memberNames[householdDetails.owner.user_id] = householdDetails.owner.email?.split("@")[0] || (locale === "pl" ? "Właściciel" : "Owner");

@@ -1,0 +1,6 @@
+@import "tailwindcss" source("../");
+
+@theme inline {
+  --font-sans: var(--font-jakarta), sans-serif;
+  --font-label: var(--font-inter), sans-serif;
+}

@@ -71,10 +71,8 @@ const SkipDoseDialog = dynamic(
     ),
   { ssr: false },
 );
-import {
-  normalizeMedicationSchedule,
-  projectMedicationDoses,
-} from "@/features/medications/projection";
+import { projectMedicationDoses } from "@/features/medications/projection";
+import { useMedicationRealtime } from "@/features/medications/use-medication-realtime";
 import type {
   MedicationLog,
   MedicationSchedule,
@@ -91,10 +89,23 @@ import {
   buildMonthGrid,
 } from "./calendar-utils";
 import { CalendarMonthView } from "./views/calendar-month-view";
-import { CalendarWeekView } from "./views/calendar-week-view";
-import { CalendarDayView } from "./views/calendar-day-view";
-import { CalendarAgendaView } from "./views/calendar-agenda-view";
-import { FutureDoseDialog } from "./future-dose-dialog";
+
+const CalendarWeekView = dynamic(
+  () => import("./views/calendar-week-view").then((m) => m.CalendarWeekView),
+  { ssr: false },
+);
+const CalendarDayView = dynamic(
+  () => import("./views/calendar-day-view").then((m) => m.CalendarDayView),
+  { ssr: false },
+);
+const CalendarAgendaView = dynamic(
+  () => import("./views/calendar-agenda-view").then((m) => m.CalendarAgendaView),
+  { ssr: false },
+);
+const FutureDoseDialog = dynamic(
+  () => import("./future-dose-dialog").then((m) => m.FutureDoseDialog),
+  { ssr: false },
+);
 
 function formatMonthHeading(ym: string, locale: string) {
   const [y, m] = ym.split("-").map(Number);
@@ -335,132 +346,46 @@ export function HouseholdSchedule({
     };
   }, [miniPickerOpen]);
 
-  // Subskrypcja Supabase Realtime do synchronizacji ewidencji dawek i harmonogramow miedzy domownikami
-  useEffect(() => {
-    let isCancelled = false;
-    const client = createClient();
-    let channel: ReturnType<typeof client.channel> | null = null;
-
-    async function initSubscription() {
-      try {
-        const {
-          data: { session },
-        } = await client.auth.getSession();
-        if (session?.access_token) {
-          await client.realtime.setAuth(session.access_token);
-        }
-      } catch (err) {
-        console.warn("[Realtime schedule] auth initialization warning:", err);
-      }
-
-      if (isCancelled) return;
-
-      const petFilter = fixedPetId ? `pet_id=eq.${fixedPetId}` : undefined;
-      channel = client
-        .channel(`realtime-schedule-${fixedPetId || "all"}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "medication_logs",
-            ...(petFilter ? { filter: petFilter } : {}),
-          },
-          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
-            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const incoming = payload.new as unknown as MedicationLog;
-              setMedicationLogs((prev) => {
-                const filtered = prev.filter(
-                  (l) =>
-                    l.id !== incoming.id &&
-                    !(
-                      l.schedule_id === incoming.schedule_id &&
-                      l.dose_date === incoming.dose_date &&
-                      l.scheduled_time === incoming.scheduled_time
-                    ),
-                );
-                return [incoming, ...filtered];
-              });
-              router.refresh();
-            } else if (payload.eventType === "DELETE") {
-              const deletedId = (payload.old as { id?: string })?.id;
-              if (deletedId) {
-                setMedicationLogs((prev) => prev.filter((l) => l.id !== deletedId));
-                router.refresh();
-              }
-            }
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "medication_schedules",
-            ...(petFilter ? { filter: petFilter } : {}),
-          },
-          (payload: { eventType: string; new: Record<string, unknown>; old: Record<string, unknown> }) => {
-            if (payload.eventType === "INSERT") {
-              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
-              setMedicationSchedules((prev) => {
-                if (prev.some((s) => s.id === incoming.id)) {
-                  return prev.map((s) => (s.id === incoming.id ? incoming : s));
-                }
-                return [incoming, ...prev];
-              });
-              router.refresh();
-            } else if (payload.eventType === "UPDATE") {
-              const incoming = normalizeMedicationSchedule(payload.new as unknown as MedicationSchedule);
-              setMedicationSchedules((prev) =>
-                prev.map((s) => (s.id === incoming.id ? incoming : s)),
-              );
-              router.refresh();
-            } else if (payload.eventType === "DELETE") {
-              const deletedId = (payload.old as { id?: string })?.id;
-              if (deletedId) {
-                setMedicationSchedules((prev) =>
-                  prev.filter((s) => s.id !== deletedId),
-                );
-                router.refresh();
-              }
-            }
-          },
-        )
-        .subscribe((status: string, err?: Error) => {
-          if (process.env.NODE_ENV !== "production") {
-            if (status === "SUBSCRIBED") {
-              console.log(`[Realtime schedule] Subscribed for ${fixedPetId || "all"}`);
-            } else if (status === "CHANNEL_ERROR") {
-              console.error(`[Realtime schedule] Channel error for ${fixedPetId || "all"}:`, err);
-            }
-          }
+  // Współdzielona subskrypcja Supabase Realtime + odświeżanie po powrocie do karty (cooldown 30s)
+  useMedicationRealtime({
+    petId: fixedPetId,
+    onLog: (event) => {
+      if (event.type === "UPSERT") {
+        const incoming = event.log;
+        setMedicationLogs((prev) => {
+          const filtered = prev.filter(
+            (l) =>
+              l.id !== incoming.id &&
+              !(
+                l.schedule_id === incoming.schedule_id &&
+                l.dose_date === incoming.dose_date &&
+                l.scheduled_time === incoming.scheduled_time
+              ),
+          );
+          return [incoming, ...filtered];
         });
-    }
-
-    void initSubscription();
-
-    return () => {
-      isCancelled = true;
-      if (channel) {
-        void client.removeChannel(channel);
+      } else {
+        setMedicationLogs((prev) => prev.filter((l) => l.id !== event.id));
       }
-    };
-  }, [fixedPetId, router]);
-
-  // Automatyczne odświeżenie danych po powrocie do uśpionej karty/odblokowaniu ekranu telefonu
-  useEffect(() => {
-    function handleVisibility() {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        router.refresh();
+    },
+    onSchedule: (event) => {
+      if (event.type === "INSERT") {
+        const incoming = event.schedule;
+        setMedicationSchedules((prev) =>
+          prev.some((s) => s.id === incoming.id)
+            ? prev.map((s) => (s.id === incoming.id ? incoming : s))
+            : [incoming, ...prev],
+        );
+      } else if (event.type === "UPDATE") {
+        const incoming = event.schedule;
+        setMedicationSchedules((prev) =>
+          prev.map((s) => (s.id === incoming.id ? incoming : s)),
+        );
+      } else {
+        setMedicationSchedules((prev) => prev.filter((s) => s.id !== event.id));
       }
-    }
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("focus", handleVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("focus", handleVisibility);
-    };
-  }, [router]);
+    },
+  });
 
   const [notifSettings, setNotifSettings] =
     useState<HouseholdNotificationSettings>(() => ({
@@ -867,10 +792,11 @@ export function HouseholdSchedule({
   }
 
   const projectedDoses = useMemo(() => {
-    const startYear = monthCursor.year - 1;
-    const endYear = monthCursor.year + 1;
-    const rangeStart = `${startYear}-01-01`;
-    const rangeEnd = `${endYear}-12-31`;
+    // Bounded 6-month projection window around the active month (2 months back, 3 months forward)
+    const startDate = new Date(Date.UTC(monthCursor.year, monthCursor.month - 2, 1));
+    const endDate = new Date(Date.UTC(monthCursor.year, monthCursor.month + 4, 0));
+    const rangeStart = startDate.toISOString().slice(0, 10);
+    const rangeEnd = endDate.toISOString().slice(0, 10);
 
     return projectMedicationDoses({
       schedules: medicationSchedules,

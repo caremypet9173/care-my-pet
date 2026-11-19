@@ -10,6 +10,8 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { joinWaitlist } from "./actions";
+import "@/styles/waitlist.css";
+import "@/styles/auth.css";
 
 export function WaitlistModal({
   isOpen,
