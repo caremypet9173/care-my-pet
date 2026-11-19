@@ -11,6 +11,11 @@ import {
   formatHealthEventKnowledgeContent,
   indexPetKnowledgeChunk,
 } from "../_shared/rag.ts";
+import {
+  countPdfPages,
+  MAX_PDF_PAGES,
+  UnreadablePdfError,
+} from "../medical-reports/pdf-counter.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -200,6 +205,29 @@ Deno.serve(async (req) => {
           return reply({ error: "invalid_file" }, 400);
         }
         base64 = body.file;
+      }
+
+      if (mime === "application/pdf") {
+        let pageCount: number;
+        try {
+          pageCount = await countPdfPages(file);
+        } catch (err) {
+          if (err instanceof UnreadablePdfError) {
+            return reply({ error: "invalid_file" }, 400);
+          }
+          throw err;
+        }
+        if (pageCount > MAX_PDF_PAGES) {
+          return reply(
+            {
+              error: "page_limit_exceeded",
+              page_count: pageCount,
+              max_allowed: MAX_PDF_PAGES,
+              message: `Dokument ma ${pageCount} stron. Maksymalny dopuszczalny limit pojedynczej analizy to ${MAX_PDF_PAGES} stron.`,
+            },
+            400,
+          );
+        }
       }
 
       const { data: allowed, error: quotaError } = await client.rpc(

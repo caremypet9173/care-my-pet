@@ -131,7 +131,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
       const {data,error}=await client.functions.invoke("medical-reports",{body:{action:"extract",pet_id:pet.id,mime:file.type,storage_path:upload.current.path}});
       if(error){const details=await error.context?.json?.().catch(()=>null);if(details?.duplicate){setDuplicate(details.duplicate);return;}throw new Error(details?.error??"extraction_failed");}
       setDraft({...data.report,ai_interpretation:data.report.ai_interpretation??"",rows:data.report.rows.map((row:Measurement)=>({...row,value_type:measurementValueType(row)}))});setPatient(data.patient_name);setReadAutomatically(true);setNotesPreview(Boolean(data.report.notes?.trim()));setAiPreview(true);setReviewing(true);
-    }catch(error){setError(error instanceof Error&&error.message==="daily_limit"?t.limit:error instanceof Error&&error.message==="ai_billing"?t.aiBilling:t.aiError);}finally{setBusy(null);}
+    }catch(error){setError(error instanceof Error&&error.message==="daily_limit"?t.limit:error instanceof Error&&error.message==="ai_billing"?t.aiBilling:error instanceof Error&&error.message==="page_limit_exceeded"?t.pageLimit:t.aiError);}finally{setBusy(null);}
   }
   async function save(event:FormEvent){
     event.preventDefault();if(!file||busy||duplicate)return;

@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
-import { countPdfPages } from './pdf-counter.ts';
+import { countPdfPages, MAX_PDF_PAGES, UnreadablePdfError } from './pdf-counter.ts';
 import { MAX_FILE, uuid, mimeExtensions, validateReport, fileMatches } from './validation.mjs';
 import { fileHash, findDuplicate } from './file-hash.ts';
 import { validMeasurementValue } from './value-type.mjs';
@@ -439,6 +439,28 @@ Deno.serve(async (req) => {
       const resolved = await resolveExtractionFile(client, pet.gospodarstwo_id, user.id, body);
       if (!resolved) return reply({ error: 'invalid_file' }, 400);
       const { file, base64, mime } = resolved;
+      if (mime === 'application/pdf') {
+        let pageCount: number;
+        try {
+          pageCount = await countPdfPages(file);
+        } catch (err) {
+          if (err instanceof UnreadablePdfError) {
+            return reply({ error: 'invalid_file' }, 400);
+          }
+          throw err;
+        }
+        if (pageCount > MAX_PDF_PAGES) {
+          return reply(
+            {
+              error: 'page_limit_exceeded',
+              page_count: pageCount,
+              max_allowed: MAX_PDF_PAGES,
+              message: `Dokument ma ${pageCount} stron. Maksymalny dopuszczalny limit pojedynczej analizy to ${MAX_PDF_PAGES} stron.`,
+            },
+            400,
+          );
+        }
+      }
       const duplicate = await findDuplicate(client, pet.id, await fileHash(file));
       if (duplicate) return reply({ error: 'duplicate_document', duplicate }, 409);
       const { data: allowed, error: quotaError } = await client.rpc('take_medical_read_quota');
@@ -595,19 +617,28 @@ Deno.serve(async (req) => {
       const resolved = await resolveExtractionFile(client, pet.gospodarstwo_id, user.id, body);
       if (!resolved) return reply({ error: 'invalid_file' }, 400);
       const { file, base64, mime } = resolved;
-      if (mime === 'application/pdf') {
-        const pageCount = countPdfPages(file);
-        if (pageCount > 10) {
-          return reply(
-            {
-              error: 'page_limit_exceeded',
-              page_count: pageCount,
-              max_allowed: 10,
-              message: `Dokument ma ${pageCount} stron. Maksymalny dopuszczalny limit pojedynczej analizy to 10 stron. Wybierz zakres stron w oknie importu.`,
-            },
-            400,
-          );
+      if (mime !== 'application/pdf') {
+        return reply({ error: 'invalid_file' }, 400);
+      }
+      let pageCount: number;
+      try {
+        pageCount = await countPdfPages(file);
+      } catch (err) {
+        if (err instanceof UnreadablePdfError) {
+          return reply({ error: 'invalid_file' }, 400);
         }
+        throw err;
+      }
+      if (pageCount > MAX_PDF_PAGES) {
+        return reply(
+          {
+            error: 'page_limit_exceeded',
+            page_count: pageCount,
+            max_allowed: MAX_PDF_PAGES,
+            message: `Dokument ma ${pageCount} stron. Maksymalny dopuszczalny limit pojedynczej analizy to ${MAX_PDF_PAGES} stron. Wybierz zakres stron w oknie importu.`,
+          },
+          400,
+        );
       }
       const { data: allowed, error: quotaError } = await client.rpc('take_medical_read_quota');
       if (quotaError) return reply({ error: 'ai_unavailable' }, 503);

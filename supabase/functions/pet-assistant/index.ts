@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
-import { embedTextQuery } from "../_shared/rag.ts";
+import { embedTextQuery, getEmbeddingModel } from "../_shared/rag.ts";
 import {
   formatWeightContext,
   formatVitalsContext,
@@ -342,51 +342,24 @@ Deno.serve(async (req) => {
         activeThread = existingThread;
       }
 
-      if (!activeThread) {
-        const { data: createdThread, error: threadError } = await adminClient
-          .from("pet_assistant_thread")
-          .insert({
-            pet_id: pet.id,
-            household_id: pet.gospodarstwo_id,
-            title: makeThreadTitle(rawMessage),
-            created_by: user.id,
-          })
-          .select("id,pet_id,household_id,title,created_by,created_at,updated_at")
-          .single();
+      // Fetch recent chat history ONLY from the active thread (clean context window per thread).
+      // New thread creation and user/assistant message persistence are deferred until Gemini
+      // returns a valid answer, preventing orphan user messages or empty threads on 502/503.
+      let historyTurns: Array<{ role: string; content: string }> = [];
+      if (activeThread) {
+        const { data: recentChat } = await client
+          .from("pet_assistant_message")
+          .select("role,content")
+          .eq("thread_id", activeThread.id)
+          .order("created_at", { ascending: false })
+          .limit(8);
 
-        if (threadError || !createdThread) {
-          return reply({ error: "save_failed" }, 500);
-        }
-        activeThread = createdThread;
+        historyTurns = (recentChat ?? []).reverse();
       }
 
-      // Fetch recent chat history ONLY from the active thread (clean context window per thread)
-      const { data: recentChat } = await client
-        .from("pet_assistant_message")
-        .select("role,content")
-        .eq("thread_id", activeThread.id)
-        .order("created_at", { ascending: false })
-        .limit(8);
-
-      const historyTurns = (recentChat ?? []).reverse();
-
-      // Save the user's question in DB via service_role (direct client INSERT revoked by RLS)
-      const { data: savedUserMsg, error: userInsertError } = await adminClient
-        .from("pet_assistant_message")
-        .insert({
-          thread_id: activeThread.id,
-          pet_id: pet.id,
-          household_id: pet.gospodarstwo_id,
-          role: "user",
-          content: rawMessage,
-          sources: [],
-          follow_ups: [],
-          created_by: user.id,
-        })
-        .select("id,thread_id,pet_id,household_id,role,content,sources,follow_ups,created_by,created_at")
-        .single();
-
-      if (userInsertError) return reply({ error: "save_failed" }, 500);
+      const todayIso = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Warsaw",
+      }).format(new Date());
 
       // Gather RAG knowledge chunks + recent weights + vitals + medications + fluids + upcoming due dates in parallel
       const queryEmbeddingPromise = embedTextQuery(client, pet.id, rawMessage, user.id);
@@ -445,6 +418,7 @@ Deno.serve(async (req) => {
         .select("id,category,title,event_date,next_due_date,clinic,batch_or_product")
         .eq("pet_id", pet.id)
         .not("next_due_date", "is", null)
+        .gte("next_due_date", todayIso)
         .order("next_due_date", { ascending: true })
         .limit(6);
       const scheduleItemsPromise = client
@@ -517,6 +491,7 @@ Deno.serve(async (req) => {
           p_pet_id: pet.id,
           p_query_embedding: queryEmbedding,
           p_match_count: 8,
+          p_embedding_model: getEmbeddingModel(),
         });
         if (Array.isArray(ragData) && ragData.length > 0) {
           for (const m of ragData) {
@@ -586,10 +561,8 @@ Deno.serve(async (req) => {
         if (eventDate) parts.push(`Data: ${eventDate}`);
         if (rep.laboratory?.trim()) parts.push(`Laboratorium / placówka: ${rep.laboratory.trim()}`);
         if (rep.doctor?.trim()) parts.push(`Lekarz: ${rep.doctor.trim()}`);
-        if (rep.notes?.trim()) parts.push(`Opis / notatki:\n${rep.notes.trim()}`);
-        if (rep.ai_interpretation?.trim()) {
-          parts.push(`Wstępna interpretacja:\n${rep.ai_interpretation.trim()}`);
-        }
+        // Parameter-first ordering: keep numeric lab results ahead of prose notes so
+        // prompt context truncation never drops laboratory values.
         if (rows.length > 0) {
           const lines = rows.map((row) => {
             const corr = Array.isArray(row.correction) ? row.correction[0] : row.correction;
@@ -599,6 +572,17 @@ Deno.serve(async (req) => {
             return `- ${row.name ?? "Parametr"}: ${val}${unit ? ` ${unit}` : ""}${ref ? ` (norma: ${ref})` : ""}`;
           });
           parts.push(`Parametry:\n${lines.join("\n")}`);
+        }
+        const trimmedNotes = rep.notes?.trim() ?? "";
+        if (trimmedNotes) {
+          const notesCap = isDescriptive ? 3500 : 1800;
+          parts.push(`Opis / notatki:\n${trimmedNotes.slice(0, notesCap)}`);
+        }
+        // Only fall back to preliminary AI interpretation when neither rows nor clinical notes exist
+        if (rows.length === 0 && !trimmedNotes && rep.ai_interpretation?.trim()) {
+          parts.push(
+            `Wstępna interpretacja:\n${rep.ai_interpretation.trim().slice(0, 1200)}`,
+          );
         }
 
         const keyId = `medical_report:${rep.id}`;
@@ -815,8 +799,15 @@ Deno.serve(async (req) => {
         );
       });
 
-      const matchedChunks: KnowledgeSource[] = scored
-        .slice(0, 10)
+      // Relevance filtering: drop low-signal noise when query terms are present,
+      // while always keeping at least top 3 highest-scoring chunks (max 8 total).
+      const relevantScored =
+        termMatchers.length > 0
+          ? scored.filter((item, idx) => idx < 3 || item.score >= 2.5)
+          : scored;
+
+      const matchedChunks: KnowledgeSource[] = relevantScored
+        .slice(0, 8)
         .map(({ cand }) => ({
           source_type: cand.source_type,
           source_id: cand.source_id,
@@ -824,10 +815,6 @@ Deno.serve(async (req) => {
           title: cand.title,
           content: cand.content,
         }));
-
-      const todayIso = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Europe/Warsaw",
-      }).format(new Date());
 
       const speciesLabel = pet.gatunek === "cat" ? "Kot" : "Pies";
       const sexLabel =
@@ -897,15 +884,34 @@ Deno.serve(async (req) => {
           ? allUpcomingLines.join("\n")
           : "Brak zaplanowanych wizyt w kalendarzu ani kolejnych terminów w kartotece.";
 
+      const MAX_KNOWLEDGE_CONTEXT_CHARS = 16000;
+      const knowledgeSections: string[] = [];
+      let usedKnowledgeChars = 0;
+      for (let i = 0; i < matchedChunks.length; i += 1) {
+        const c = matchedChunks[i];
+        const header = `[Źródło ${i + 1} | ${c.event_date} | ${c.title}]\n`;
+        const separatorLen = knowledgeSections.length > 0 ? 7 : 0; // "\n\n---\n\n"
+        const remainingBudget =
+          MAX_KNOWLEDGE_CONTEXT_CHARS - usedKnowledgeChars - separatorLen - header.length;
+        if (remainingBudget < 200) break;
+        const perChunkCap = i < 3 ? 3200 : 2000;
+        const bodySlice = (c.content ?? "").slice(0, Math.min(perChunkCap, remainingBudget));
+        const section = `${header}${bodySlice}`;
+        knowledgeSections.push(section);
+        usedKnowledgeChars += separatorLen + section.length;
+      }
+
       const knowledgeContext =
-        matchedChunks.length > 0
-          ? matchedChunks
-              .map(
-                (c, i) =>
-                  `[Źródło ${i + 1} | ${c.event_date} | ${c.title}]\n${(c.content ?? "").slice(0, 2200)}`,
-              )
-              .join("\n\n---\n\n")
+        knowledgeSections.length > 0
+          ? knowledgeSections.join("\n\n---\n\n")
           : "Brak zapisanych badań i wpisów historii zdrowia w kartotece.";
+
+      const archiveNoteShort = pet.archive_note
+        ? String(pet.archive_note).trim().slice(0, 400)
+        : "";
+      const petNotesShort = pet.notatki
+        ? String(pet.notatki).trim().slice(0, 1500)
+        : "";
 
       const archiveStatusLine = pet.archived_at
         ? `\n- Status kartoteki: ZAMKNIĘTA / ARCHIWALNA (powód: ${
@@ -914,7 +920,7 @@ Deno.serve(async (req) => {
               : pet.archive_reason === "rehomed"
                 ? "zmiana opiekuna"
                 : "inny powód"
-          }${pet.archive_note ? `; notatka: ${pet.archive_note}` : ""}). Odpowiadaj wyłącznie retrospektywnie na podstawie zgromadzonej dokumentacji i NIE sugeruj planowania przyszłych wizyt, profilaktyki ani modyfikacji aktualnego leczenia.`
+          }${archiveNoteShort ? `; notatka: ${archiveNoteShort}` : ""}). Odpowiadaj wyłącznie retrospektywnie na podstawie zgromadzonej dokumentacji i NIE sugeruj planowania przyszłych wizyt, profilaktyki ani modyfikacji aktualnego leczenia.`
         : "";
 
       const systemInstruction = `Jesteś Asystentem AI w aplikacji Care My Pet. Pomagasz opiekunowi zrozumieć historię zdrowia, wyniki badań, parametry życiowe, leki, wagę i terminy profilaktyki jego pupila na podstawie kartoteki.
@@ -937,7 +943,7 @@ DANE PROFILOWE PUPILA:
 - Data urodzenia: ${pet.data_urodzenia ? `${pet.data_urodzenia}${pet.data_urodzenia_przyblizona ? " (przybliżona)" : ""}` : "Nieznana"}
 - Płeć: ${sexLabel}, Kastracja/sterylizacja: ${neuteredLabel}
 - Tagi / ważne hasła: ${Array.isArray(pet.tagi) && pet.tagi.length > 0 ? pet.tagi.join(", ") : "Brak"}
-- Opis pupila (Parę słów o mnie): ${pet.notatki || "Brak"}${archiveStatusLine}
+- Opis pupila (Parę słów o mnie): ${petNotesShort || "Brak"}${archiveStatusLine}
 
 POMIARY WAGI (od najnowszych):
 ${weightLines}
@@ -1034,28 +1040,64 @@ ${knowledgeContext}`;
         title: c.title,
       }));
 
+      // Create the thread now (only after a valid Gemini answer) if this is a fresh conversation
+      if (!activeThread) {
+        const { data: createdThread, error: threadError } = await adminClient
+          .from("pet_assistant_thread")
+          .insert({
+            pet_id: pet.id,
+            household_id: pet.gospodarstwo_id,
+            title: makeThreadTitle(rawMessage),
+            created_by: user.id,
+          })
+          .select("id,pet_id,household_id,title,created_by,created_at,updated_at")
+          .single();
+
+        if (threadError || !createdThread) {
+          return reply({ error: "save_failed" }, 500);
+        }
+        activeThread = createdThread;
+      }
+
+      const nowMs = Date.now();
+      const userCreatedAt = new Date(nowMs).toISOString();
+      const assistantCreatedAt = new Date(nowMs + 1).toISOString();
+
       const [
-        { data: savedAssistantMsg, error: assistantInsertError },
+        { data: savedPair, error: messageInsertError },
         { data: updatedThread },
         { error: usageLogErr },
       ] = await Promise.all([
         adminClient
           .from("pet_assistant_message")
-          .insert({
-            thread_id: activeThread.id,
-            pet_id: pet.id,
-            household_id: pet.gospodarstwo_id,
-            role: "assistant",
-            content: answerText.slice(0, 8000),
-            sources: citations,
-            follow_ups: followUps,
-            created_by: user.id,
-          })
-          .select("id,thread_id,pet_id,household_id,role,content,sources,follow_ups,created_by,created_at")
-          .single(),
+          .insert([
+            {
+              thread_id: activeThread.id,
+              pet_id: pet.id,
+              household_id: pet.gospodarstwo_id,
+              role: "user",
+              content: rawMessage,
+              sources: [],
+              follow_ups: [],
+              created_by: user.id,
+              created_at: userCreatedAt,
+            },
+            {
+              thread_id: activeThread.id,
+              pet_id: pet.id,
+              household_id: pet.gospodarstwo_id,
+              role: "assistant",
+              content: answerText.slice(0, 8000),
+              sources: citations,
+              follow_ups: followUps,
+              created_by: user.id,
+              created_at: assistantCreatedAt,
+            },
+          ])
+          .select("id,thread_id,pet_id,household_id,role,content,sources,follow_ups,created_by,created_at"),
         adminClient
           .from("pet_assistant_thread")
-          .update({ updated_at: new Date().toISOString() })
+          .update({ updated_at: assistantCreatedAt })
           .eq("id", activeThread.id)
           .select("id,pet_id,household_id,title,created_by,created_at,updated_at")
           .single(),
@@ -1077,7 +1119,11 @@ ${knowledgeContext}`;
       ]);
       if (usageLogErr) console.error("log_ai_usage_failed", usageLogErr);
 
-      if (assistantInsertError) return reply({ error: "save_failed" }, 500);
+      const savedUserMsg = (savedPair ?? []).find((m) => m.role === "user");
+      const savedAssistantMsg = (savedPair ?? []).find((m) => m.role === "assistant");
+      if (messageInsertError || !savedUserMsg || !savedAssistantMsg) {
+        return reply({ error: "save_failed" }, 500);
+      }
 
       return reply({
         thread: updatedThread ?? activeThread,

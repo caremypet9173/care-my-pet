@@ -70,6 +70,15 @@ export function AssistantPanel({
 
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const sendingRef = useRef(false);
+  const exportingRef = useRef(false);
+  const activeAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      activeAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (initialPrompt) {
@@ -98,7 +107,7 @@ export function AssistantPanel({
             .from("pet_assistant_message")
             .select("*")
             .eq("pet_id", petId)
-            .order("created_at", { ascending: true })
+            .order("created_at", { ascending: false })
             .limit(300),
           client.rpc("get_ai_assistant_quota_used"),
         ]);
@@ -112,11 +121,14 @@ export function AssistantPanel({
         }
         if (msgsRes.data) {
           setMessages(
-            (msgsRes.data as Array<Record<string, unknown>>).map((row) => ({
-              ...row,
-              sources: Array.isArray(row.sources) ? row.sources : [],
-              follow_ups: Array.isArray(row.follow_ups) ? row.follow_ups : [],
-            })) as AssistantMessage[],
+            (msgsRes.data as Array<Record<string, unknown>>)
+              .slice()
+              .reverse()
+              .map((row) => ({
+                ...row,
+                sources: Array.isArray(row.sources) ? row.sources : [],
+                follow_ups: Array.isArray(row.follow_ups) ? row.follow_ups : [],
+              })) as AssistantMessage[],
           );
         }
         if (typeof quotaRes.data === "number") {
@@ -190,7 +202,7 @@ export function AssistantPanel({
   }, [activeMessages]);
 
   function startNewChat() {
-    if (sending || exportingPdf) return;
+    if (sendingRef.current || exportingRef.current || sending || exportingPdf) return;
     setSelectedThreadId(null);
     setError("");
     textareaRef.current?.focus();
@@ -227,14 +239,19 @@ export function AssistantPanel({
     if (
       !selectedThreadId ||
       !canExportPdf ||
+      sendingRef.current ||
+      exportingRef.current ||
       sending ||
       exportingPdf ||
       (!cachedSummary && quotaReached)
     ) {
       return;
     }
+    exportingRef.current = true;
     setError("");
     setExportingPdf(true);
+    let controller: AbortController | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
       if (cachedSummary) {
         await downloadAssistantSummaryPdf(cachedSummary, pl ? "pl" : "en");
@@ -242,6 +259,9 @@ export function AssistantPanel({
       }
 
       const client = createClient();
+      controller = new AbortController();
+      activeAbortRef.current = controller;
+      timeoutId = setTimeout(() => controller?.abort(), 55000);
       const { data, error: fnError } = await client.functions.invoke(
         "pet-assistant",
         {
@@ -251,6 +271,7 @@ export function AssistantPanel({
             thread_id: selectedThreadId,
             locale,
           },
+          signal: controller.signal,
         },
       );
 
@@ -303,13 +324,27 @@ export function AssistantPanel({
           : "Could not create the PDF file. Check your connection and retry.",
       );
     } finally {
+      clearTimeout(timeoutId);
+      if (activeAbortRef.current === controller) {
+        activeAbortRef.current = null;
+      }
+      exportingRef.current = false;
       setExportingPdf(false);
     }
   }
 
   async function sendQuestion(questionText?: string) {
     const textToSend = (questionText ?? input).trim();
-    if (!textToSend || sending || quotaReached) return;
+    if (
+      !textToSend ||
+      sendingRef.current ||
+      exportingRef.current ||
+      sending ||
+      exportingPdf ||
+      quotaReached
+    ) {
+      return;
+    }
     if (textToSend.length > MAX_MESSAGE_CHARS) {
       setError(
         pl
@@ -319,6 +354,7 @@ export function AssistantPanel({
       return;
     }
 
+    sendingRef.current = true;
     setError("");
     setSending(true);
 
@@ -344,6 +380,9 @@ export function AssistantPanel({
     if (!questionText) setInput("");
     setMessages((prev) => [...prev, optimisticUserMsg]);
 
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
+    const timeoutId = setTimeout(() => controller.abort(), 55000);
     try {
       const client = createClient();
       const { data, error: fnError } = await client.functions.invoke(
@@ -356,6 +395,7 @@ export function AssistantPanel({
             message: textToSend,
             locale,
           },
+          signal: controller.signal,
         },
       );
 
@@ -430,6 +470,11 @@ export function AssistantPanel({
           : "Could not connect to AI Assistant. Check your connection and retry.",
       );
     } finally {
+      clearTimeout(timeoutId);
+      if (activeAbortRef.current === controller) {
+        activeAbortRef.current = null;
+      }
+      sendingRef.current = false;
       setSending(false);
       textareaRef.current?.focus();
     }
@@ -517,7 +562,7 @@ export function AssistantPanel({
           <button
             type="button"
             className={`assistant-new-thread-btn${selectedThreadId === null ? " is-active" : ""}`}
-            disabled={sending}
+            disabled={sending || exportingPdf}
             onClick={startNewChat}
           >
             <IconPlus size={16} aria-hidden="true" />
@@ -542,8 +587,9 @@ export function AssistantPanel({
                     <button
                       type="button"
                       className={`assistant-thread-item${isSelected ? " is-active" : ""}`}
-                      disabled={sending}
+                      disabled={sending || exportingPdf}
                       onClick={() => {
+                        if (sendingRef.current || exportingRef.current) return;
                         setSelectedThreadId(thread.id);
                         setError("");
                       }}
@@ -628,7 +674,7 @@ export function AssistantPanel({
                     key={prompt}
                     type="button"
                     className="assistant-suggestion-chip"
-                    disabled={sending || quotaReached}
+                    disabled={sending || exportingPdf || quotaReached}
                     onClick={() => void sendQuestion(prompt)}
                   >
                     <IconSparkles size={15} aria-hidden="true" />
@@ -731,7 +777,7 @@ export function AssistantPanel({
                           key={followUp}
                           type="button"
                           className="assistant-followup-chip"
-                          disabled={sending || quotaReached}
+                          disabled={sending || exportingPdf || quotaReached}
                           onClick={() => void sendQuestion(followUp)}
                         >
                           <span>{followUp}</span>
@@ -793,7 +839,7 @@ export function AssistantPanel({
               ref={textareaRef}
               rows={2}
               value={input}
-              disabled={sending || quotaReached}
+              disabled={sending || exportingPdf || quotaReached}
               maxLength={MAX_MESSAGE_CHARS}
               onChange={(e) => {
                 setInput(e.target.value);
@@ -826,7 +872,7 @@ export function AssistantPanel({
                 type="submit"
                 variant="primary"
                 size="sm"
-                disabled={!trimmed || overCharLimit || sending || quotaReached}
+                disabled={!trimmed || overCharLimit || sending || exportingPdf || quotaReached}
               >
                 <IconSend size={16} aria-hidden="true" />
                 {sending

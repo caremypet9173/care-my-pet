@@ -9,6 +9,7 @@ import {
   normalizeEmail,
 } from "../_shared/recovery-crypto.mjs";
 import { renderEmailCard } from "../_shared/recovery-email.ts";
+import { resolveSafeOrigin } from "../_shared/safe-origin.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -534,11 +535,7 @@ Deno.serve(async (req) => {
       ? "admin"
       : "member";
   const canManage = myRole === "owner" || myRole === "admin";
-  const origin =
-    req.headers.get("origin") ||
-    Deno.env.get("SITE_URL") ||
-    Deno.env.get("APP_URL") ||
-    "https://caremypet.app";
+  const origin = resolveSafeOrigin(req);
 
   // -------------------------------------------------------------------------
   // 2b. Pobranie danych gospodarstwa (get)
@@ -727,13 +724,13 @@ Deno.serve(async (req) => {
             Po dołączeniu zyskasz pełen wgląd w profile zwierzaków, ich historię medyczną, wyniki badań, szczepienia oraz terminarz przypomnień.
           </p>
           <div style="text-align:center;margin:28px 0;">
-            <a href="${inviteUrl}" style="display:inline-block;background:#164d34;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;">
+            <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#164d34;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;">
               Dołącz do gospodarstwa →
             </a>
           </div>
           <p style="font-size:12px;color:#718b80;line-height:1.4;margin-bottom:0;">
             Link do zaproszenia jest ważny przez 7 dni. Możesz go również skopiować bezpośrednio: <br />
-            <a href="${inviteUrl}" style="color:#164d34;word-break:break-all;">${inviteUrl}</a>
+            <a href="${escapeHtml(inviteUrl)}" style="color:#164d34;word-break:break-all;">${escapeHtml(inviteUrl)}</a>
           </p>
         </div>
         <p style="text-align:center;font-size:11px;color:#718b80;margin:0;">

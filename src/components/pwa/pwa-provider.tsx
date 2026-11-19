@@ -18,25 +18,28 @@ export function PwaProvider() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    // 1. Register Service Worker
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      const registerSw = () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((registration) => {
-            void registration.update().catch(() => undefined);
-          })
-          .catch((err) => {
-            console.warn("[PWA] Service Worker registration failed:", err);
-          });
-      };
+    let attachedLoadListener = false;
+    const registerSw = () => {
+      navigator.serviceWorker.register("/sw.js").catch((err) => {
+        console.warn("[PWA] Service Worker registration failed:", err);
+      });
+    };
 
+    // 1. Register Service Worker (browser handles update checks via /sw.js Cache-Control)
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       if (document.readyState === "complete") {
         registerSw();
       } else {
+        attachedLoadListener = true;
         window.addEventListener("load", registerSw, { once: true });
       }
     }
+
+    const cleanupLoad = () => {
+      if (attachedLoadListener) {
+        window.removeEventListener("load", registerSw);
+      }
+    };
 
     // 2. Check if already installed
     const isStandalone =
@@ -44,7 +47,7 @@ export function PwaProvider() {
       Boolean((navigator as unknown as { standalone?: boolean }).standalone);
 
     if (isStandalone) {
-      return;
+      return cleanupLoad;
     }
 
     // Check dismissal cookie/timestamp
@@ -52,7 +55,7 @@ export function PwaProvider() {
     if (dismissedAt) {
       const pastDays = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60 * 24);
       if (pastDays < 7) {
-        return; // Don't show if dismissed within past 7 days
+        return cleanupLoad; // Don't show if dismissed within past 7 days
       }
     }
 
@@ -66,6 +69,7 @@ export function PwaProvider() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     return () => {
+      cleanupLoad();
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
   }, []);

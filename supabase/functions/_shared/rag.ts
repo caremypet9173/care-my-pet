@@ -1,5 +1,16 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 
+const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
+const MODEL_NAME_PATTERN = /^gemini-[a-z0-9.-]+$/;
+
+export function getEmbeddingModel(): string {
+  const envModel = Deno.env.get("GEMINI_EMBEDDING_MODEL")?.trim();
+  if (envModel && MODEL_NAME_PATTERN.test(envModel)) {
+    return envModel;
+  }
+  return DEFAULT_EMBEDDING_MODEL;
+}
+
 function getServiceClient(): SupabaseClient | null {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -7,6 +18,21 @@ function getServiceClient(): SupabaseClient | null {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(input),
+  );
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function isAbortOrTimeoutError(err: unknown): boolean {
+  return (
+    err instanceof DOMException &&
+    (err.name === "TimeoutError" || err.name === "AbortError")
+  );
 }
 
 async function logEmbeddingUsage(
@@ -48,123 +74,169 @@ export async function indexPetKnowledgeChunk(
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) return;
 
+  const normalizedTitle = params.title.trim().slice(0, 200);
   const text = params.content.trim().slice(0, 10000);
   if (!text) return;
 
-  const modelsToTry = ["gemini-embedding-2", "gemini-embedding-001"];
-  for (const model of modelsToTry) {
-    const startedAt = performance.now();
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": key,
-          },
-          signal: AbortSignal.timeout(25000),
-          body: JSON.stringify({
-            content: {
-              parts: [{ text: `${params.title}\n${text}` }],
-            },
-            outputDimensionality: 768,
-          }),
+  const model = getEmbeddingModel();
+  const hashPayload = `${params.eventDate}\n${normalizedTitle}\n${text}`;
+  const contentHash = await sha256Hex(hashPayload);
+
+  // Skip re-embedding when the indexed chunk is already up to date for the current model
+  const { data: existing } = await client
+    .from("pet_knowledge_chunk")
+    .select("content_sha256,embedding_model")
+    .eq("source_type", params.sourceType)
+    .eq("source_id", params.sourceId)
+    .maybeSingle();
+
+  if (
+    existing &&
+    existing.content_sha256 === contentHash &&
+    existing.embedding_model === model
+  ) {
+    return;
+  }
+
+  const byteLength = new TextEncoder().encode(text).byteLength;
+  const startedAt = performance.now();
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": key,
         },
-      );
-      const durationMs = Math.round(performance.now() - startedAt);
-
-      if (!response.ok) {
-        if (model === modelsToTry[0] && (response.status === 404 || response.status === 400)) {
-          continue;
-        }
-        await logEmbeddingUsage(
-          client,
-          {
-            p_pet_id: params.petId,
-            p_feature: "embedding",
-            p_model: model,
-            p_mime_type: "text/plain",
-            p_file_size_bytes: new TextEncoder().encode(text).byteLength,
-            p_prompt_tokens: 0,
-            p_output_tokens: 0,
-            p_thoughts_tokens: 0,
-            p_total_tokens: 0,
-            p_duration_ms: durationMs,
-            p_status: "http_error",
-            p_http_status: response.status,
+        signal: AbortSignal.timeout(25000),
+        body: JSON.stringify({
+          taskType: "RETRIEVAL_DOCUMENT",
+          title: normalizedTitle || undefined,
+          content: {
+            parts: [{ text: `${normalizedTitle}\n${text}` }],
           },
-          params.userId,
-        );
-        return;
-      }
-
-      const result = await response.json();
-      const rawValues: number[] | undefined =
-        result?.embedding?.values ?? result?.embeddings?.[0]?.values;
-
-      if (!Array.isArray(rawValues) || rawValues.length !== 768) {
-        await logEmbeddingUsage(
-          client,
-          {
-            p_pet_id: params.petId,
-            p_feature: "embedding",
-            p_model: model,
-            p_mime_type: "text/plain",
-            p_file_size_bytes: new TextEncoder().encode(text).byteLength,
-            p_prompt_tokens: 0,
-            p_output_tokens: 0,
-            p_thoughts_tokens: 0,
-            p_total_tokens: 0,
-            p_duration_ms: durationMs,
-            p_status: "invalid_output",
-            p_http_status: 200,
-          },
-          params.userId,
-        );
-        return;
-      }
-
-      const vector = normalizeVector(rawValues);
-      const vectorLiteral = `[${vector.join(",")}]`;
-      const estimatedTokens = Math.max(
-        1,
-        Math.ceil((params.title.length + text.length) / 4),
-      );
-
-      await Promise.all([
-        client.rpc("upsert_pet_knowledge_chunk", {
-          p_pet_id: params.petId,
-          p_source_type: params.sourceType,
-          p_source_id: params.sourceId,
-          p_event_date: params.eventDate,
-          p_title: params.title,
-          p_content: text,
-          p_embedding: vectorLiteral,
+          outputDimensionality: 768,
         }),
-        logEmbeddingUsage(
-          client,
-          {
-            p_pet_id: params.petId,
-            p_feature: "embedding",
-            p_model: model,
-            p_mime_type: "text/plain",
-            p_file_size_bytes: new TextEncoder().encode(text).byteLength,
-            p_prompt_tokens: estimatedTokens,
-            p_output_tokens: 0,
-            p_thoughts_tokens: 0,
-            p_total_tokens: estimatedTokens,
-            p_duration_ms: durationMs,
-            p_status: "ok",
-            p_http_status: 200,
-          },
-          params.userId,
-        ),
-      ]);
+      },
+    );
+    const durationMs = Math.round(performance.now() - startedAt);
+
+    if (!response.ok) {
+      console.error("rag_index_http_error", model, response.status);
+      await logEmbeddingUsage(
+        client,
+        {
+          p_pet_id: params.petId,
+          p_feature: "embedding",
+          p_model: model,
+          p_mime_type: "text/plain",
+          p_file_size_bytes: byteLength,
+          p_prompt_tokens: 0,
+          p_output_tokens: 0,
+          p_thoughts_tokens: 0,
+          p_total_tokens: 0,
+          p_duration_ms: durationMs,
+          p_status: "http_error",
+          p_http_status: response.status,
+        },
+        params.userId,
+      );
       return;
-    } catch (err) {
-      console.error("rag_embedding_failed", model, err);
     }
+
+    const result = await response.json();
+    const rawValues: number[] | undefined =
+      result?.embedding?.values ?? result?.embeddings?.[0]?.values;
+
+    if (!Array.isArray(rawValues) || rawValues.length !== 768) {
+      console.error("rag_index_invalid_output", model);
+      await logEmbeddingUsage(
+        client,
+        {
+          p_pet_id: params.petId,
+          p_feature: "embedding",
+          p_model: model,
+          p_mime_type: "text/plain",
+          p_file_size_bytes: byteLength,
+          p_prompt_tokens: 0,
+          p_output_tokens: 0,
+          p_thoughts_tokens: 0,
+          p_total_tokens: 0,
+          p_duration_ms: durationMs,
+          p_status: "invalid_output",
+          p_http_status: 200,
+        },
+        params.userId,
+      );
+      return;
+    }
+
+    const vector = normalizeVector(rawValues);
+    const vectorLiteral = `[${vector.join(",")}]`;
+    // Polish medical prose averages ~3 chars/token in SentencePiece/BPE tokenizers
+    const estimatedTokens = Math.max(
+      1,
+      Math.ceil((normalizedTitle.length + text.length) / 3),
+    );
+
+    const [upsertRes] = await Promise.all([
+      client.rpc("upsert_pet_knowledge_chunk", {
+        p_pet_id: params.petId,
+        p_source_type: params.sourceType,
+        p_source_id: params.sourceId,
+        p_event_date: params.eventDate,
+        p_title: normalizedTitle,
+        p_content: text,
+        p_embedding: vectorLiteral,
+        p_embedding_model: model,
+        p_content_sha256: contentHash,
+      }),
+      logEmbeddingUsage(
+        client,
+        {
+          p_pet_id: params.petId,
+          p_feature: "embedding",
+          p_model: model,
+          p_mime_type: "text/plain",
+          p_file_size_bytes: byteLength,
+          p_prompt_tokens: estimatedTokens,
+          p_output_tokens: 0,
+          p_thoughts_tokens: 0,
+          p_total_tokens: estimatedTokens,
+          p_duration_ms: durationMs,
+          p_status: "ok",
+          p_http_status: 200,
+        },
+        params.userId,
+      ),
+    ]);
+
+    if (upsertRes.error) {
+      console.error("rag_upsert_chunk_failed", upsertRes.error);
+    }
+  } catch (err) {
+    const durationMs = Math.round(performance.now() - startedAt);
+    const isTimeout = isAbortOrTimeoutError(err);
+    console.error("rag_embedding_failed", model, err);
+    await logEmbeddingUsage(
+      client,
+      {
+        p_pet_id: params.petId,
+        p_feature: "embedding",
+        p_model: model,
+        p_mime_type: "text/plain",
+        p_file_size_bytes: byteLength,
+        p_prompt_tokens: 0,
+        p_output_tokens: 0,
+        p_thoughts_tokens: 0,
+        p_total_tokens: 0,
+        p_duration_ms: durationMs,
+        p_status: isTimeout ? "timeout" : "http_error",
+        p_http_status: isTimeout ? 504 : 502,
+      },
+      params.userId,
+    );
   }
 }
 
@@ -180,46 +252,32 @@ export async function embedTextQuery(
   const query = text.trim().slice(0, 1000);
   if (!query) return null;
 
-  const modelsToTry = ["gemini-embedding-2", "gemini-embedding-001"];
-  for (const model of modelsToTry) {
-    const startedAt = performance.now();
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": key,
-          },
-          signal: AbortSignal.timeout(15000),
-          body: JSON.stringify({
-            content: {
-              parts: [{ text: query }],
-            },
-            outputDimensionality: 768,
-          }),
+  const model = getEmbeddingModel();
+  const byteLength = new TextEncoder().encode(query).byteLength;
+  const startedAt = performance.now();
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": key,
         },
-      );
-      const durationMs = Math.round(performance.now() - startedAt);
+        signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({
+          taskType: "RETRIEVAL_QUERY",
+          content: {
+            parts: [{ text: query }],
+          },
+          outputDimensionality: 768,
+        }),
+      },
+    );
+    const durationMs = Math.round(performance.now() - startedAt);
 
-      if (!response.ok) {
-        if (model === modelsToTry[0] && (response.status === 404 || response.status === 400)) {
-          continue;
-        }
-        return null;
-      }
-
-      const result = await response.json();
-      const rawValues: number[] | undefined =
-        result?.embedding?.values ?? result?.embeddings?.[0]?.values;
-
-      if (!Array.isArray(rawValues) || rawValues.length !== 768) {
-        return null;
-      }
-
-      const vector = normalizeVector(rawValues);
-      const estimatedTokens = Math.max(1, Math.ceil(query.length / 4));
+    if (!response.ok) {
+      console.error("rag_query_http_error", model, response.status);
       await logEmbeddingUsage(
         client,
         {
@@ -227,24 +285,93 @@ export async function embedTextQuery(
           p_feature: "embedding",
           p_model: model,
           p_mime_type: "text/plain",
-          p_file_size_bytes: new TextEncoder().encode(query).byteLength,
-          p_prompt_tokens: estimatedTokens,
+          p_file_size_bytes: byteLength,
+          p_prompt_tokens: 0,
           p_output_tokens: 0,
           p_thoughts_tokens: 0,
-          p_total_tokens: estimatedTokens,
+          p_total_tokens: 0,
           p_duration_ms: durationMs,
-          p_status: "ok",
+          p_status: "http_error",
+          p_http_status: response.status,
+        },
+        userId,
+      );
+      return null;
+    }
+
+    const result = await response.json();
+    const rawValues: number[] | undefined =
+      result?.embedding?.values ?? result?.embeddings?.[0]?.values;
+
+    if (!Array.isArray(rawValues) || rawValues.length !== 768) {
+      console.error("rag_query_invalid_output", model);
+      await logEmbeddingUsage(
+        client,
+        {
+          p_pet_id: petId,
+          p_feature: "embedding",
+          p_model: model,
+          p_mime_type: "text/plain",
+          p_file_size_bytes: byteLength,
+          p_prompt_tokens: 0,
+          p_output_tokens: 0,
+          p_thoughts_tokens: 0,
+          p_total_tokens: 0,
+          p_duration_ms: durationMs,
+          p_status: "invalid_output",
           p_http_status: 200,
         },
         userId,
       );
-
-      return `[${vector.join(",")}]`;
-    } catch {
-      // Fallback to next embedding model or keyword context
+      return null;
     }
+
+    const vector = normalizeVector(rawValues);
+    const estimatedTokens = Math.max(1, Math.ceil(query.length / 3));
+    await logEmbeddingUsage(
+      client,
+      {
+        p_pet_id: petId,
+        p_feature: "embedding",
+        p_model: model,
+        p_mime_type: "text/plain",
+        p_file_size_bytes: byteLength,
+        p_prompt_tokens: estimatedTokens,
+        p_output_tokens: 0,
+        p_thoughts_tokens: 0,
+        p_total_tokens: estimatedTokens,
+        p_duration_ms: durationMs,
+        p_status: "ok",
+        p_http_status: 200,
+      },
+      userId,
+    );
+
+    return `[${vector.join(",")}]`;
+  } catch (err) {
+    const durationMs = Math.round(performance.now() - startedAt);
+    const isTimeout = isAbortOrTimeoutError(err);
+    console.error("rag_query_embedding_failed", model, err);
+    await logEmbeddingUsage(
+      client,
+      {
+        p_pet_id: petId,
+        p_feature: "embedding",
+        p_model: model,
+        p_mime_type: "text/plain",
+        p_file_size_bytes: byteLength,
+        p_prompt_tokens: 0,
+        p_output_tokens: 0,
+        p_thoughts_tokens: 0,
+        p_total_tokens: 0,
+        p_duration_ms: durationMs,
+        p_status: isTimeout ? "timeout" : "http_error",
+        p_http_status: isTimeout ? 504 : 502,
+      },
+      userId,
+    );
+    return null;
   }
-  return null;
 }
 
 export function formatReportKnowledgeContent(report: {

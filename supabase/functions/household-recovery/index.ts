@@ -14,6 +14,7 @@ import {
   escapeHtml,
 } from "../_shared/recovery-crypto.mjs";
 import { renderEmailCard, sendSmtpEmail } from "../_shared/recovery-email.ts";
+import { resolveSafeOrigin } from "../_shared/safe-origin.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -29,12 +30,7 @@ const reply = (body: unknown, status = 200) =>
 const tokenPattern = /^[A-Za-z0-9_-]{24,80}$/;
 
 function resolveOrigin(req: Request): string {
-  const reqOrigin = req.headers.get("origin");
-  if (reqOrigin && /^https?:\/\/.+/.test(reqOrigin)) {
-    return reqOrigin.replace(/\/$/, "");
-  }
-  const envOrigin = Deno.env.get("SITE_URL") || Deno.env.get("APP_URL") || "https://caremypet.app";
-  return envOrigin.replace(/\/$/, "");
+  return resolveSafeOrigin(req);
 }
 
 function getClaimStatus(claim: {

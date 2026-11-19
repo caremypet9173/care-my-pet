@@ -29,15 +29,17 @@ export async function listAssistantMessages(
     .from("pet_assistant_message")
     .select("*")
     .eq("pet_id", petId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(300);
 
   if (error) return [];
-  return (data ?? []).map((row) => ({
-    ...row,
-    sources: Array.isArray(row.sources) ? row.sources : [],
-    follow_ups: Array.isArray(row.follow_ups) ? row.follow_ups : [],
-  })) as AssistantMessage[];
+  return (data ?? [])
+    .reverse()
+    .map((row) => ({
+      ...row,
+      sources: Array.isArray(row.sources) ? row.sources : [],
+      follow_ups: Array.isArray(row.follow_ups) ? row.follow_ups : [],
+    })) as AssistantMessage[];
 }
 
 export async function getAssistantQuotaUsed(): Promise<number> {

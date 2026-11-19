@@ -1,22 +1,62 @@
 /* Care My Pet - Service Worker (PWA) */
 
-const CACHE_NAME = "caremypet-v2";
+const PUBLIC_CACHE = "caremypet-public-v3";
+const STATIC_CACHE = "caremypet-static-v3";
+const ACTIVE_CACHES = new Set([PUBLIC_CACHE, STATIC_CACHE]);
+const MAX_STATIC_ENTRIES = 120;
+const MAX_PUBLIC_ENTRIES = 40;
+
 const IS_LOCALHOST =
   self.location.hostname === "127.0.0.1" ||
   self.location.hostname === "localhost";
 
+// Minimal shell precache (no authenticated routes, no heavy 500 KB icons)
 const PRECACHE_ASSETS = [
-  "/",
   "/manifest.webmanifest",
   "/brand/favicon.png",
-  "/brand/apple-touch-icon.png",
   "/brand/mark.png",
-  "/brand/icon-192.png",
-  "/brand/icon-512.png",
-  "/brand/icon-maskable.png",
 ];
 
-// Install: precache static shell assets (skip precache on localhost dev server)
+// Private, tokenized, and auth routes MUST NEVER be stored in or served from Cache Storage
+const PRIVATE_NAV_PATTERN =
+  /^\/(?:pl|en)\/(?:app|udostepnione|archiwum|odzyskaj|zaproszenie|login|register|auth)(?:\/|$)/;
+
+const OFFLINE_HTML =
+  "<!DOCTYPE html><html lang='pl'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Care My Pet — Offline</title><style>body{font-family:system-ui,-apple-system,sans-serif;background:#fbf9f4;color:#1f241f;margin:0;padding:2rem;display:grid;place-items:center;min-height:100vh}main{max-width:28rem;background:#fff;border:1px solid #dfd7c8;border-radius:16px;padding:1.5rem}h1{color:#164d34;font-size:1.25rem;margin-top:0}p{color:#526462;line-height:1.5}</style></head><body><main><h1>Brak połączenia z internetem</h1><p>Aplikacja Care My Pet wymaga połączenia z siecią, aby bezpiecznie wyświetlić prywatną kartotekę zdrowia pupila. Wróć, gdy odzyskasz połączenie.</p></main></body></html>";
+
+function offlineResponse() {
+  return new Response(OFFLINE_HTML, {
+    status: 503,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+async function trimCache(cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  if (keys.length <= maxEntries) return;
+  const excess = keys.slice(0, keys.length - maxEntries);
+  await Promise.all(excess.map((req) => cache.delete(req)));
+}
+
+function isCacheablePublicHtml(response) {
+  if (!response || response.status !== 200 || response.type !== "basic") {
+    return false;
+  }
+  if (response.redirected) {
+    return false;
+  }
+  const cc = (response.headers.get("Cache-Control") || "").toLowerCase();
+  if (cc.includes("no-store") || cc.includes("private")) {
+    return false;
+  }
+  return true;
+}
+
+// Install: precache minimal public assets (skip precache on localhost dev server)
 self.addEventListener("install", (event) => {
   if (IS_LOCALHOST) {
     event.waitUntil(self.skipWaiting());
@@ -24,7 +64,7 @@ self.addEventListener("install", (event) => {
   }
   event.waitUntil(
     caches
-      .open(CACHE_NAME)
+      .open(PUBLIC_CACHE)
       .then((cache) => cache.addAll(PRECACHE_ASSETS))
       .then(() => self.skipWaiting())
       .catch((err) => {
@@ -33,7 +73,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate: clean up outdated caches (and all caches on localhost)
+// Activate: purge outdated caches (including legacy caremypet-v2 with cached HTML)
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -41,7 +81,7 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) =>
         Promise.all(
           cacheNames.map((name) => {
-            if (IS_LOCALHOST || name !== CACHE_NAME) {
+            if (IS_LOCALHOST || !ACTIVE_CACHES.has(name)) {
               return caches.delete(name);
             }
           })
@@ -51,101 +91,125 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Fetch: bypass completely on localhost dev server; Network-First for HTML, Cache-First/SWR for production static assets
+// Fetch: strict same-origin & privacy boundary
 self.addEventListener("fetch", (event) => {
   if (IS_LOCALHOST) {
     return;
   }
 
   const { request } = event;
-
-  // Only handle GET requests
   if (request.method !== "GET") {
     return;
   }
 
   const url = new URL(request.url);
-
-  // Skip browser extensions or cross-origin API calls (like Supabase storage / auth endpoints)
-  if (!url.protocol.startsWith("http")) {
+  if (url.origin !== self.location.origin) {
     return;
   }
 
-  // Bypass service worker for Supabase API & Auth requests to prevent stale security tokens
-  if (url.pathname.includes("/auth/") || url.hostname.includes("supabase")) {
+  if (
+    url.pathname === "/sw.js" ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname.includes("/auth/")
+  ) {
     return;
   }
 
-  // Navigation requests (HTML pages) -> Network first, fallback to cache
+  // Navigation requests (HTML documents)
   if (request.mode === "navigate") {
+    // Private, tokenized & auth pages: strictly Network-Only (never cached on device)
+    if (PRIVATE_NAV_PATTERN.test(url.pathname)) {
+      event.respondWith(fetch(request).catch(() => offlineResponse()));
+      return;
+    }
+
+    // Public marketing/legal pages: Network-First with bounded public cache
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response && response.status === 200) {
+          if (isCacheablePublicHtml(response)) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, copy);
-            });
+            event.waitUntil(
+              caches
+                .open(PUBLIC_CACHE)
+                .then((cache) => cache.put(request, copy))
+                .then(() => trimCache(PUBLIC_CACHE, MAX_PUBLIC_ENTRIES))
+                .catch(() => undefined)
+            );
           }
           return response;
         })
         .catch(async () => {
-          // Offline fallback
-          const cachedResponse = await caches.match(request);
+          const publicCache = await caches.open(PUBLIC_CACHE);
+          const cachedResponse = await publicCache.match(request);
           if (cachedResponse) {
             return cachedResponse;
           }
-          const fallbackShell = await caches.match("/");
-          if (fallbackShell) {
-            return fallbackShell;
-          }
-          return new Response(
-            "<!DOCTYPE html><html lang='pl'><head><meta charset='utf-8'><title>Care My Pet — Offline</title></head><body><h1>Brak połączenia z internetem</h1><p>Aplikacja Care My Pet działa w trybie offline. Wróć, gdy odzyskasz połączenie z siecią.</p></body></html>",
-            {
-              headers: { "Content-Type": "text/html; charset=utf-8" },
-            }
-          );
+          return offlineResponse();
         })
     );
     return;
   }
 
-  // Static assets (Next.js chunks, brand images, fonts, styles) -> Cache first / Stale-While-Revalidate
-  const isStaticAsset =
+  // Immutable hashed/versioned static assets: pure Cache-First (no redundant background refetch)
+  const isImmutableAsset =
     url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/pdf-worker/") ||
+    url.pathname.startsWith("/fonts/");
+
+  if (isImmutableAsset) {
+    event.respondWith(
+      caches.open(STATIC_CACHE).then((cache) =>
+        cache.match(request).then((cached) => {
+          if (cached) {
+            return cached;
+          }
+          return fetch(request).then((fresh) => {
+            if (fresh && fresh.status === 200 && fresh.type === "basic") {
+              const copy = fresh.clone();
+              event.waitUntil(
+                cache
+                  .put(request, copy)
+                  .then(() => trimCache(STATIC_CACHE, MAX_STATIC_ENTRIES))
+                  .catch(() => undefined)
+              );
+            }
+            return fresh;
+          });
+        })
+      )
+    );
+    return;
+  }
+
+  // Public same-origin brand/media assets: Stale-While-Revalidate with bounded cache
+  const isPublicMediaAsset =
     url.pathname.startsWith("/brand/") ||
     url.pathname.startsWith("/media/") ||
-    url.pathname.endsWith(".png") ||
-    url.pathname.endsWith(".jpg") ||
-    url.pathname.endsWith(".webp") ||
-    url.pathname.endsWith(".svg") ||
-    url.pathname.endsWith(".woff2") ||
-    url.pathname.endsWith(".css") ||
-    url.pathname.endsWith(".js");
+    url.pathname === "/manifest.webmanifest";
 
-  if (isStaticAsset) {
+  if (isPublicMediaAsset) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) {
-          // Revalidate in background
-          fetch(request)
+      caches.open(PUBLIC_CACHE).then((cache) =>
+        cache.match(request).then((cached) => {
+          const networkFetch = fetch(request)
             .then((fresh) => {
-              if (fresh && fresh.status === 200) {
-                caches.open(CACHE_NAME).then((cache) => cache.put(request, fresh));
+              if (fresh && fresh.status === 200 && fresh.type === "basic") {
+                const copy = fresh.clone();
+                event.waitUntil(
+                  cache
+                    .put(request, copy)
+                    .then(() => trimCache(PUBLIC_CACHE, MAX_PUBLIC_ENTRIES))
+                    .catch(() => undefined)
+                );
               }
+              return fresh;
             })
-            .catch(() => undefined);
-          return cached;
-        }
+            .catch(() => cached);
 
-        return fetch(request).then((fresh) => {
-          if (fresh && fresh.status === 200) {
-            const copy = fresh.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return fresh;
-        });
-      })
+          return cached || networkFetch;
+        })
+      )
     );
   }
 });
@@ -158,7 +222,9 @@ self.addEventListener("push", (event) => {
   } catch {
     payload = {
       title: "Care My Pet",
-      body: event.data ? event.data.text() : "Nowe przypomnienie z kartoteki zdrowia pupila.",
+      body: event.data
+        ? event.data.text()
+        : "Nowe przypomnienie z kartoteki zdrowia pupila.",
     };
   }
 
@@ -183,15 +249,17 @@ self.addEventListener("notificationclick", (event) => {
   const targetUrl = event.notification.data?.url || "/app";
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes(targetUrl) && "focus" in client) {
-          return client.focus();
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes(targetUrl) && "focus" in client) {
+            return client.focus();
+          }
         }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-    })
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
   );
 });

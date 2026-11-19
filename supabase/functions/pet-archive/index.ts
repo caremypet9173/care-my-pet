@@ -18,6 +18,7 @@ import {
   verifyAccessCode,
   verifyArchiveSession,
 } from "./helpers.mjs";
+import { resolveSafeOrigin } from "../_shared/safe-origin.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -749,11 +750,7 @@ Deno.serve(async (req) => {
       return reply({ error: "create_failed" }, 500);
     }
 
-    const reqOrigin = req.headers.get("origin");
-    const origin =
-      reqOrigin && /^https?:\/\/.+/.test(reqOrigin)
-        ? reqOrigin.replace(/\/$/, "")
-        : Deno.env.get("APP_URL") || "https://caremypet.app";
+    const origin = resolveSafeOrigin(req);
     const archiveUrl = `${origin}/${locale}/archiwum/${token}`;
 
     const sent = await sendArchiveEmail({

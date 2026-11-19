@@ -254,9 +254,13 @@ export function HistoryDialog({
               ? pl
                 ? 'Odczyt AI jest chwilowo niedostępny (limit rozliczeniowy dostawcy). Wypełnij pola ręcznie.'
                 : 'AI reading is temporarily unavailable (provider billing limit). Fill in the fields manually.'
-              : pl
-                ? 'Nie udało się automatycznie odczytać dokumentu. Możesz wpisać dane ręcznie — plik nadal zostanie zapisany jako załącznik.'
-                : 'Could not automatically read the document. You can enter the details manually — the file will still be attached.',
+              : code === 'page_limit_exceeded'
+                ? pl
+                  ? 'Dokument PDF ma ponad 10 stron. Odczyt AI obsługuje maksymalnie 10 stron — użyj importu wielostronicowego wypisu z kliniki lub wypełnij pola ręcznie.'
+                  : 'This PDF has more than 10 pages. AI reading supports up to 10 pages — use the multi-page clinical import or fill in the fields manually.'
+                : pl
+                  ? 'Nie udało się automatycznie odczytać dokumentu. Możesz wpisać dane ręcznie — plik nadal zostanie zapisany jako załącznik.'
+                  : 'Could not automatically read the document. You can enter the details manually — the file will still be attached.',
         );
         return;
       }
