@@ -12,7 +12,7 @@ przyjaciele. Publiczny launch, blog i kampania nie blokują pilotażu.
 
 ## P1 — Podstawy i własne użycie
 
-### Zrealizowane w kodzie i Supabase (`2026-10-18` – `2026-11-19`, 57 migracji, 12 Edge Functions)
+### Zrealizowane w kodzie i Supabase (`2026-10-18` – `2026-11-20`, 58 migracji, 12 Edge Functions)
 - **Auth i kontrola dostępu:** rejestracja/logowanie e-mail/hasło (Gmail SMTP)
   i Google OAuth (`docs/AUTH.md`), bramka pilotażu (`pilot_whitelist`),
   tabela `waitlist`, bezpieczna walidacja przekierowań (`sanitizeRelativePath`)

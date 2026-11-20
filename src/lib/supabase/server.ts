@@ -27,3 +27,25 @@ export const getCurrentUser = cache(async () => {
   const { data, error } = await client.auth.getUser();
   return { user: data.user ?? null, error };
 });
+
+/**
+ * Cryptographically verifies the session JWT via JWKS (in-memory, ~0-1 ms for
+ * asymmetric keys) without a network round-trip to /auth/v1/user. Use for read-only
+ * SSR views where PostgreSQL RLS already enforces authorization on every query.
+ */
+export const getCurrentUserClaims = cache(async () => {
+  const client = await createClient();
+  if (!client) return { user: null, error: null };
+  const { data, error } = await client.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) {
+    return { user: null, error };
+  }
+  return {
+    user: {
+      id: String(claims.sub),
+      email: typeof claims.email === "string" ? claims.email : null,
+    },
+    error: null,
+  };
+});

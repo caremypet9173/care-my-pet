@@ -16,10 +16,10 @@ poza MVP.
 
 ## Źródło prawdy
 
-**Aktualny etap (2026-11-19):** zaawansowane przygotowanie cichego pilotażu (po pełnym
+**Aktualny etap (2026-11-20):** zaawansowane przygotowanie cichego pilotażu (po pełnym
 audycie bezpieczeństwa, wydajności, AI/RAG i UX/A11y — Pakiety 1–4) — cztery koty
 Wojtka i ich rzeczywista dokumentacja, przed szerszym udostępnieniem zaproszonym
-znajomym. W projekcie Supabase `lrlnqmciarjvngvquchu` wdrożono **57 migracji SQL**
+znajomym. W projekcie Supabase `lrlnqmciarjvngvquchu` wdrożono **58 migracji SQL**
 i **12 Edge Functions** (`household`, `household-recovery`, `medical-reports`,
 `pet-archive`, `pet-assistant`, `pet-history`, `pet-medications`, `pet-schedule`,
 `pet-share`, `pet-weight`, `pets`, `schedule-notifications` + `_shared/{rag,recovery-crypto,recovery-email,safe-origin}`).

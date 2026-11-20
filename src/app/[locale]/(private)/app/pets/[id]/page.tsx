@@ -1,22 +1,16 @@
-import {listWeights} from "@/features/weight/data";
-import {listVitalMeasurements} from "@/features/measurements/data";
-import {listFluidTherapies} from "@/features/fluid-therapy/data";
-import {HealthMeasurementsPanel} from "@/features/measurements/health-measurements-panel";
-import {listHealthEvents} from "@/features/history/data";
-import {HistoryPanel} from "@/features/history/history-panel";
-import {getHouseholdNotificationSettings, listPetScheduleItems} from "@/features/schedule/data";
-import {HouseholdSchedule} from "@/features/schedule/household-schedule";
-import {listPetMedicationLogs, listPetMedicationSchedules} from "@/features/medications/data";
-import {listAssistantThreads, listAssistantMessages, getAssistantQuotaUsed} from "@/features/assistant/data";
-import {AssistantPanel} from "@/features/assistant/assistant-panel";
-import {ShareRecordButton} from "@/features/share/share-record-dialog";
-import {ArchiveLinkButton} from "@/features/archive/archive-link-dialog";
+import { HealthMeasurementsPanel } from "@/features/measurements/health-measurements-panel";
+import { HistoryPanel } from "@/features/history/history-panel";
+import { HouseholdSchedule } from "@/features/schedule/household-schedule";
+import { listAssistantThreads, listAssistantMessages, getAssistantQuotaUsed } from "@/features/assistant/data";
+import { AssistantPanel } from "@/features/assistant/assistant-panel";
+import { ShareRecordButton } from "@/features/share/share-record-dialog";
+import { ArchiveLinkButton } from "@/features/archive/archive-link-dialog";
 import { getLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/container";
 import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
-import { getPet, listPetSwitcherPets } from "@/features/pets/data";
+import { getPetRecordBundle } from "@/features/pets/record-bundle";
 import { PetHeroCover } from "@/features/pets/pet-hero-cover";
 import { PetSwitcher } from "@/features/pets/pet-switcher";
 import { petMessages } from "@/features/pets/messages";
@@ -26,7 +20,6 @@ import { PetArchivedBanner } from "@/features/pets/pet-archived-notice";
 import { RecordSections } from "@/features/pets/record-sections";
 import type { Locale } from "@/i18n/types";
 import { IconCalendar, IconScale, IconFlask, IconHeart, IconHistory, IconStethoscope, IconVaccine, IconPill } from "@tabler/icons-react";
-import "@/styles/pets.css";
 import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
 import { listReports } from "@/features/medical/data";
@@ -38,18 +31,20 @@ import {
 } from "@/features/pets/pet-quick-actions";
 import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
 import { DailyCareCard } from "@/features/pets/daily-care-card";
-import { getHouseholdDetails } from "@/features/household/data";
-import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
+import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import type { Metadata } from "next";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const locale = await getLocale();
-  const { id } = await params;
-  const pet = await getPet(id);
+  const [locale, { id }] = await Promise.all([getLocale(), params]);
+  const bundle = await getPetRecordBundle(id);
+  const pet = bundle?.pet ?? null;
   const pl = locale === "pl";
 
   if (!pet) {
@@ -67,12 +62,17 @@ export async function generateMetadata({
 }
 
 export default async function PetPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{tab?:string;report?:string;document?:string;filter?:string;prompt?:string}> }) {
-  const locale = await getLocale();
+  const [locale, resolvedParams, resolvedSearch] = await Promise.all([
+    getLocale(),
+    params,
+    searchParams,
+  ]);
+  const petId = resolvedParams.id;
+  if (!UUID_RE.test(petId)) {
+    notFound();
+  }
   const t = petMessages[locale];
   const d = dashboardMessages[locale];
-  const pet = await getPet((await params).id);
-  if (!pet) notFound();
-  const resolvedSearch = await searchParams;
   const requestedReport = resolvedSearch.report ?? resolvedSearch.document;
   const requestedPrompt = resolvedSearch.prompt;
   const tab = resolvedSearch.tab;
@@ -86,23 +86,42 @@ export default async function PetPage({ params, searchParams }: { params: Promis
           ? "assistant"
           : null;
   const isAssistantTab = initialTab === 5;
-  const isArchived = Boolean(pet.archived_at);
-  const [reports,weights,vitalMeasurements,fluids,healthEvents,scheduleItems,notificationSettings,assistantThreads,assistantMessages,assistantQuotaUsed,medicationSchedules,medicationLogs,householdDetails,switcherPets] = await Promise.all([
-    listReports(pet.id, requestedReport),
-    listWeights(pet.id),
-    listVitalMeasurements(pet.id),
-    listFluidTherapies(pet.id),
-    listHealthEvents(pet.id),
-    listPetScheduleItems(pet.id),
-    getHouseholdNotificationSettings(pet.gospodarstwo_id),
-    isAssistantTab ? listAssistantThreads(pet.id) : Promise.resolve(undefined),
-    isAssistantTab ? listAssistantMessages(pet.id) : Promise.resolve(undefined),
+
+  // Single-round-trip RPC bundle (shared via React.cache with generateMetadata),
+  // run in parallel with assistant queries only when the Assistant tab is active.
+  const [
+    bundle,
+    assistantThreads,
+    assistantMessages,
+    assistantQuotaUsed,
+  ] = await Promise.all([
+    getPetRecordBundle(petId),
+    isAssistantTab ? listAssistantThreads(petId) : Promise.resolve(undefined),
+    isAssistantTab ? listAssistantMessages(petId) : Promise.resolve(undefined),
     isAssistantTab ? getAssistantQuotaUsed() : Promise.resolve(undefined),
-    listPetMedicationSchedules(pet.id),
-    listPetMedicationLogs(pet.id),
-    getHouseholdDetails(pet.gospodarstwo_id),
-    isArchived ? Promise.resolve([]) : listPetSwitcherPets(pet.gospodarstwo_id)
   ]);
+
+  if (!bundle) notFound();
+  const {
+    pet,
+    householdDetails,
+    switcherPets,
+    notificationSettings,
+    weights,
+    vitalMeasurements,
+    fluids,
+    healthEvents,
+    scheduleItems,
+    medicationSchedules,
+    medicationLogs,
+  } = bundle;
+  const reports =
+    requestedReport &&
+    UUID_RE.test(requestedReport) &&
+    !bundle.reports.some((r) => r.id === requestedReport)
+      ? await listReports(petId, requestedReport)
+      : bundle.reports;
+  const isArchived = Boolean(pet.archived_at);
   const isOwner = Boolean(
     householdDetails?.household?.is_owner ?? householdDetails?.owner?.is_self,
   );

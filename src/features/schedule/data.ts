@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CalendarReportSummary,
@@ -44,9 +45,9 @@ export async function listHouseholdScheduleItems(
   return (data ?? []) as ScheduleItem[];
 }
 
-export async function listPetScheduleItems(
+export const listPetScheduleItems = cache(async (
   petId: string,
-): Promise<ScheduleItem[]> {
+): Promise<ScheduleItem[]> => {
   const client = await createClient();
   if (!client) return [];
   const { data, error } = await client
@@ -58,11 +59,11 @@ export async function listPetScheduleItems(
     .limit(200);
   if (error) return [];
   return (data ?? []) as ScheduleItem[];
-}
+});
 
-export async function getHouseholdNotificationSettings(
+export const getHouseholdNotificationSettings = cache(async (
   householdId?: string | null,
-): Promise<HouseholdNotificationSettings> {
+): Promise<HouseholdNotificationSettings> => {
   const fallback: HouseholdNotificationSettings = {
     email_enabled: true,
     notify_7_days_before: true,
@@ -91,4 +92,4 @@ export async function getHouseholdNotificationSettings(
     notify_day_of: Boolean(data.notify_day_of),
     custom_email: String(data.custom_email ?? ""),
   };
-}
+});

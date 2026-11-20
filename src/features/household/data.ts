@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { createClient, getCurrentUser, getCurrentUserClaims } from "@/lib/supabase/server";
 import type {
   AvailableHouseholdItem,
   HouseholdDetailsResponse,
@@ -39,35 +39,52 @@ export const getActiveHouseholdId = cache(async (): Promise<string | null> => {
 });
 
 /**
- * Lightweight household resolver (2 DB queries: owned + memberships),
- * deduplicated per request with React.cache().
+ * Base household membership fetch (2 DB queries), cached per request with zero args
+ * so calls from layout (no selectedHouseholdId) and child pages share the exact result.
+ */
+const fetchUserHouseholds = cache(async () => {
+  const client = await createClient();
+  if (!client) return null;
+
+  const { user } = await getCurrentUser();
+  if (!user) return null;
+
+  const [{ data: ownedHomes }, { data: memberHomes }] = await Promise.all([
+    client
+      .from("gospodarstwo")
+      .select(
+        "id, nazwa, owner_id, created_at, recovery_email, recovery_key_hint, recovery_key_set_at",
+      )
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: true }),
+    client
+      .from("czlonek_gospodarstwa")
+      .select(
+        "gospodarstwo_id, rola, created_at, gospodarstwo(id, nazwa, owner_id, created_at, recovery_email, recovery_key_hint, recovery_key_set_at)",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  return {
+    client,
+    user,
+    ownedHomes: (ownedHomes ?? []) as HouseholdRow[],
+    memberHomes: memberHomes ?? [],
+  };
+});
+
+/**
+ * Lightweight household resolver (reuses fetchUserHouseholds per request).
  */
 const resolveActiveHousehold = cache(
   async (
     selectedHouseholdId?: string | null,
   ): Promise<ResolvedHouseholdState | null> => {
-    const client = await createClient();
-    if (!client) return null;
+    const base = await fetchUserHouseholds();
+    if (!base) return null;
 
-    const { user } = await getCurrentUser();
-    if (!user) return null;
-
-    const [{ data: ownedHomes }, { data: memberHomes }] = await Promise.all([
-      client
-        .from("gospodarstwo")
-        .select(
-          "id, nazwa, owner_id, created_at, recovery_email, recovery_key_hint, recovery_key_set_at",
-        )
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: true }),
-      client
-        .from("czlonek_gospodarstwa")
-        .select(
-          "gospodarstwo_id, rola, created_at, gospodarstwo(id, nazwa, owner_id, created_at, recovery_email, recovery_key_hint, recovery_key_set_at)",
-        )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true }),
-    ]);
+    const { client, user, ownedHomes, memberHomes } = base;
 
     const list: AvailableHouseholdItem[] = [];
     for (const ownedHome of (ownedHomes ?? []) as HouseholdRow[]) {
@@ -325,6 +342,83 @@ export const getActiveHouseholdContext = cache(
       canManage: resolved.canManage,
       hasRecoveryKey: resolved.householdInfo.has_recovery_key,
       availableHouseholds: resolved.availableHouseholds,
+    };
+  },
+);
+
+export interface PetPageHouseholdSummary {
+  household: {
+    id: string;
+    nazwa: string;
+    is_owner: boolean;
+    can_manage: boolean;
+    has_recovery_key: boolean;
+    recovery_email: string | null;
+  };
+  owner: {
+    user_id: string;
+    email: string | null;
+    is_self: boolean;
+  };
+  members: Array<{
+    user_id: string;
+    email: string | null;
+    rola: "member" | "admin";
+    is_self: boolean;
+  }>;
+}
+
+/**
+ * Fast, single-hop household summary for the Pet Record page (runs auth + 2 narrow
+ * queries in parallel — skips invitations, pets list, and admin_request).
+ */
+export const getPetPageHouseholdSummary = cache(
+  async (householdId: string): Promise<PetPageHouseholdSummary | null> => {
+    const client = await createClient();
+    if (!client) return null;
+
+    const [{ user }, householdRes, membersRes] = await Promise.all([
+      getCurrentUserClaims(),
+      client
+        .from("gospodarstwo")
+        .select("id, nazwa, owner_id, recovery_email, recovery_key_set_at")
+        .eq("id", householdId)
+        .maybeSingle(),
+      client
+        .from("czlonek_gospodarstwa")
+        .select("user_id, email, rola")
+        .eq("gospodarstwo_id", householdId)
+        .order("created_at"),
+    ]);
+
+    if (!user || !householdRes.data) return null;
+
+    const h = householdRes.data;
+    const isOwner = h.owner_id === user.id;
+    const members = (membersRes.data ?? []).map((m) => ({
+      user_id: m.user_id,
+      email: m.email,
+      rola: (m.rola === "admin" ? "admin" : "member") as "member" | "admin",
+      is_self: m.user_id === user.id,
+    }));
+    const myMembership = members.find((m) => m.is_self);
+    const canManage = isOwner || myMembership?.rola === "admin";
+
+    return {
+      household: {
+        id: h.id,
+        nazwa: h.nazwa,
+        is_owner: isOwner,
+        can_manage: canManage,
+        has_recovery_key: Boolean(h.recovery_key_set_at),
+        recovery_email: canManage ? h.recovery_email ?? null : null,
+      },
+      owner: {
+        user_id: h.owner_id,
+        email: isOwner ? (user.email ?? null) : null,
+        is_self: isOwner,
+      },
+      members,
     };
   },
 );
