@@ -19,6 +19,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
+import { trackAction } from "@/lib/telemetry";
 import { projectMedicationDoses } from "@/features/medications/projection";
 import type {
   MedicationLog,
@@ -222,6 +223,7 @@ export function DailyCareCard({
         setLogs((prev) =>
           prev.map((l) => (l.id === optimisticLogId ? (rpcData as MedicationLog) : l)),
         );
+        trackAction(status === "taken" ? "dose_taken" : "dose_skipped");
         router.refresh();
       } else {
         setLogs(previousLogs);

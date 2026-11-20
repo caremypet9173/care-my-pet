@@ -32,6 +32,7 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
+import { trackAction } from "@/lib/telemetry";
 import dynamic from "next/dynamic";
 import type { Pet } from "./types";
 import type { MetricType } from "@/features/measurements/types";
@@ -367,6 +368,7 @@ export function PetQuickAddProvider({
   );
 
   const openAction = useCallback((action: QuickAddAction) => {
+    trackAction("quick_add_select", { item: action });
     setActiveDialog(action);
   }, []);
 

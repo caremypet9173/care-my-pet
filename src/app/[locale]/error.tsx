@@ -7,6 +7,7 @@ import { Section } from "@/components/layout/section";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { PublicHeader } from "@/components/layout/public-header";
 import { PublicFooter } from "@/components/layout/public-footer";
+import { trackClientError } from "@/lib/telemetry";
 import { IconAlertTriangle, IconRefresh, IconHome } from "@tabler/icons-react";
 
 export default function GlobalError({
@@ -21,6 +22,7 @@ export default function GlobalError({
 
   useEffect(() => {
     console.error("CareMyPet Application Error:", error);
+    trackClientError("error_boundary", error);
   }, [error]);
 
   return (

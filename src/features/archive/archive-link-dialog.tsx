@@ -21,6 +21,7 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { trackAction } from "@/lib/telemetry";
 import type { Locale } from "@/i18n/types";
 import { archiveMessages } from "./messages";
 import type { PetArchiveLink } from "./types";
@@ -194,6 +195,7 @@ function ArchiveLinkDialog({
         email: created.recipient_email,
         url: buildArchiveUrl(created.token),
       });
+      trackAction("archive_link_created");
     } catch {
       setError(t.errors.generic);
     } finally {

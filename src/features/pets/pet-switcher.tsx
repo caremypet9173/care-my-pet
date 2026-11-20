@@ -11,6 +11,7 @@ import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/types";
 import { petMessages } from "./messages";
 import { usePetQuickAddOptional } from "./pet-quick-actions";
+import { trackAction } from "@/lib/telemetry";
 import type { Pet } from "./types";
 
 export type PetSwitcherItem = Pick<
@@ -132,6 +133,12 @@ function PetSwitcherMarkup({
                 href={buildPetHref(item.id, activeTab)}
                 className="pet-switcher-pill"
                 title={`${item.imie} (${t[item.gatunek]})`}
+                onClick={() =>
+                  trackAction("pet_switch", {
+                    via: "pill",
+                    tab: activeTab ?? "summary",
+                  })
+                }
               >
                 <PetMiniAvatar pet={item} size="sm" />
                 <span className="pet-switcher-pill-name">{item.imie}</span>
@@ -179,7 +186,15 @@ function PetSwitcherMarkup({
                       href={buildPetHref(item.id, activeTab)}
                       className={`pet-switcher-option${isActive ? " is-active" : ""}`}
                       aria-current={isActive ? "page" : undefined}
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => {
+                        setIsOpen(false);
+                        if (!isActive) {
+                          trackAction("pet_switch", {
+                            via: "dropdown",
+                            tab: activeTab ?? "summary",
+                          });
+                        }
+                      }}
                     >
                       <PetMiniAvatar pet={item} size="md" />
                       <span className="pet-switcher-option-text">

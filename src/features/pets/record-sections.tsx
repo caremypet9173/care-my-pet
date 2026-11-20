@@ -4,9 +4,19 @@ import { useLocale } from "next-intl";
 import { IconList, IconHistory, IconFlask, IconFiles, IconActivity, IconSparkles } from "@tabler/icons-react";
 import { dashboardMessages } from "./dashboard-messages";
 import { usePetQuickAddOptional } from "./pet-quick-actions";
+import { trackTabView } from "@/lib/telemetry";
 
 const TAB_QUERY_MAP: Record<number, string | null> = {
   0: null,
+  4: "weight",
+  1: "history",
+  2: "results",
+  3: "documents",
+  5: "assistant",
+};
+
+const TAB_TELEMETRY_NAME: Record<number, string> = {
+  0: "summary",
   4: "weight",
   1: "history",
   2: "results",
@@ -39,6 +49,15 @@ export function RecordSections({
   const [visited, setVisited] = useState<Set<number>>(() => new Set([initialTab]));
   const [prevNavSeq, setPrevNavSeq] = useState<number>(navTarget?.seq ?? 0);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const trackedInitialRef = useRef(false);
+
+  useEffect(() => {
+    if (trackedInitialRef.current) return;
+    trackedInitialRef.current = true;
+    trackTabView(TAB_TELEMETRY_NAME[initialTab] ?? "summary", {
+      source: "initial",
+    });
+  }, [initialTab]);
 
   if (navTarget && navTarget.seq !== prevNavSeq) {
     setPrevNavSeq(navTarget.seq);
@@ -78,6 +97,7 @@ export function RecordSections({
     const queryVal = TAB_QUERY_MAP[tabId] ?? null;
     setSelected(tabId);
     quickAdd?.setActiveTab(queryVal);
+    trackTabView(TAB_TELEMETRY_NAME[tabId] ?? "summary", { source: "click" });
     setVisited((prev) => {
       if (prev.has(tabId)) return prev;
       const next = new Set(prev);

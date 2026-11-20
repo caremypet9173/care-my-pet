@@ -18,6 +18,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { trackAction } from "@/lib/telemetry";
 import { FormattedMedicalText } from "@/features/medical/formatted-text";
 import type {
   AssistantMessage,
@@ -256,6 +257,7 @@ export function AssistantPanel({
       if (cachedSummary) {
         const { downloadAssistantSummaryPdf } = await import("./assistant-pdf");
         await downloadAssistantSummaryPdf(cachedSummary, pl ? "pl" : "en");
+        trackAction("assistant_pdf_export", { cached: true });
         return;
       }
 
@@ -319,6 +321,7 @@ export function AssistantPanel({
 
       const { downloadAssistantSummaryPdf } = await import("./assistant-pdf");
       await downloadAssistantSummaryPdf(generatedSummary, pl ? "pl" : "en");
+      trackAction("assistant_pdf_export", { cached: false });
     } catch {
       setError(
         pl
@@ -359,6 +362,7 @@ export function AssistantPanel({
     sendingRef.current = true;
     setError("");
     setSending(true);
+    trackAction("assistant_send");
 
     const tempThreadId = selectedThreadId ?? createTempId("temp-thread");
     const optimisticId = createTempId("temp");

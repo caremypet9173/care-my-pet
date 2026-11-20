@@ -19,6 +19,7 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { trackAction } from "@/lib/telemetry";
 import type { PetShareLink, PetShareOpenLog, ShareTtlHours } from "./types";
 
 export function ShareRecordButton({
@@ -198,6 +199,7 @@ function ShareRecordDialog({
       setLinks((prev) => [created, ...prev]);
       setSelectedLinkId(created.id);
       setLabel("");
+      trackAction("share_link_created", { ttl_hours: ttlHours });
     } finally {
       setCreating(false);
     }

@@ -107,7 +107,7 @@ Edge Function `pet-assistant`:
 
 ---
 
-## 4. Model danych (stan z 59 migracji SQL)
+## 4. Model danych (stan z 60 migracji SQL)
 
 - **Gospodarstwa, dostęp i odzyskiwanie:** `gospodarstwo`, `czlonek_gospodarstwa`,
   `zaproszenie_gospodarstwa`, `household_recovery_key`, `household_recovery_request`,

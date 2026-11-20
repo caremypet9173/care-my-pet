@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
 import { useLocale } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
+import { trackFlow } from "@/lib/telemetry";
 import {
   IconAlertCircle,
   IconAlertTriangle,
@@ -327,6 +328,7 @@ export function DischargeImportDialog({
 
     setError(null);
     setStep("analyzing");
+    trackFlow("discharge_import_start", { pages: selectedPages.length });
 
     try {
       const { sliceSelectedPdfPages } = await import("./pdf-page-utils");
@@ -339,6 +341,7 @@ export function DischargeImportDialog({
       setSha256(result.sha256);
       setStep("review");
     } catch (err) {
+      trackFlow("discharge_import_error", { stage: "extract" });
       const msg = err instanceof Error ? err.message : String(err);
       setError(
         msg ||
@@ -469,8 +472,10 @@ export function DischargeImportDialog({
 
       setSaveResult(res);
       setStep("success");
+      trackFlow("discharge_import_complete");
       onSuccess?.();
     } catch (err) {
+      trackFlow("discharge_import_error", { stage: "commit" });
       const msg = err instanceof Error ? err.message : String(err);
       setError(
         msg ||

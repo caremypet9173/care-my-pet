@@ -14,6 +14,7 @@ import { GlucoseView } from "./glucose-view";
 import { TemperatureView } from "./temperature-view";
 import { MeasurementTips } from "./measurement-tips";
 import { usePetQuickAddOptional } from "@/features/pets/pet-quick-actions";
+import { trackTabView } from "@/lib/telemetry";
 import type { WeightMeasurement } from "@/features/weight/types";
 import type { MetricType, VitalMeasurement } from "./types";
 import "@/styles/weight.css";
@@ -97,7 +98,10 @@ export function HealthMeasurementsPanel({
               type="button"
               aria-selected={isActive}
               className={`measurements-subtab-btn ${isActive ? "active" : ""}`}
-              onClick={() => setActiveType(id)}
+              onClick={() => {
+                setActiveType(id);
+                trackTabView(id, { source: "subtab" });
+              }}
             >
               <Icon size={18} aria-hidden="true" />
               <span>{label}</span>
