@@ -1,6 +1,8 @@
 @import "./tokens.css";
 @import "./themes.css";
 
+@layer theme, preflight, base, components, utilities;
+
 :root {
   --font-jakarta: var(--font-jakarta-latin), var(--font-jakarta-ext);
   --font-inter: var(--font-inter-latin), var(--font-inter-ext);

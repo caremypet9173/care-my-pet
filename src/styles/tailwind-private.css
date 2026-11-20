@@ -1,4 +1,7 @@
-@import "tailwindcss" source("../");
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(preflight);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "../";
 
 @theme inline {
   --font-sans: var(--font-jakarta), sans-serif;

@@ -5,6 +5,7 @@ export const jakarta = localFont({
   weight: "200 800",
   display: "swap",
   preload: true,
+  adjustFontFallback: false,
   variable: "--font-jakarta-latin",
   declarations: [
     {
@@ -35,6 +36,7 @@ export const inter = localFont({
   weight: "100 900",
   display: "swap",
   preload: true,
+  adjustFontFallback: false,
   variable: "--font-inter-latin",
   declarations: [
     {
