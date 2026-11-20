@@ -3,7 +3,8 @@ import { getLocale } from "next-intl/server";
 import { Container } from "@/components/layout/container";
 import { createClient } from "@/lib/supabase/server";
 import { RecoveryConfirmView } from "@/features/household/recovery-confirm-view";
-import "@/styles/pets.css";
+import "@/styles/portal-base.css";
+import "@/styles/recovery.css";
 
 export const dynamic = "force-dynamic";
 

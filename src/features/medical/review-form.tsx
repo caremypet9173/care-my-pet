@@ -1,4 +1,5 @@
 "use client";
+import "@/styles/medical-review.css";
 import {measurementValueType,validMeasurementValue} from "../../../supabase/functions/medical-reports/value-type.mjs";
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { useLocale } from "next-intl";

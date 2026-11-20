@@ -5,7 +5,7 @@ import { Container } from "@/components/layout/container";
 import { Link } from "@/i18n/navigation";
 import { getPet } from "@/features/pets/data";
 import { getHouseholdDetails } from "@/features/household/data";
-import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
+import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import { PetForm } from "@/features/pets/pet-form";
 import { PetArchiveSection } from "@/features/pets/pet-archive-controls";
 import { PetArchivedBlockedCard } from "@/features/pets/pet-archived-notice";

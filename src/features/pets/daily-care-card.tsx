@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/daily-care.css";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";

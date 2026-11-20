@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPet } from "@/features/pets/data";
 import { getHouseholdDetails } from "@/features/household/data";
-import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
+import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import { PetArchivedBlockedCard } from "@/features/pets/pet-archived-notice";
 import { ReviewForm } from "@/features/medical/review-form";
 import { Link } from "@/i18n/navigation";

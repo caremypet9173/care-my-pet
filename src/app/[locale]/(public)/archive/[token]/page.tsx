@@ -6,8 +6,9 @@ import { fetchPetArchiveMeta } from "@/features/archive/data";
 import { ArchivePortalView } from "@/features/archive/archive-portal-view";
 import { archiveMessages } from "@/features/archive/messages";
 import type { Locale } from "@/i18n/types";
-import "@/styles/pets.css";
-import "@/styles/medical.css";
+import "@/styles/portal-base.css";
+import "@/styles/share.css";
+import "@/styles/archive.css";
 
 export const dynamic = "force-dynamic";
 

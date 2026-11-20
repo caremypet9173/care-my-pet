@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/lab-matrix.css";
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import {

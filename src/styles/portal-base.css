@@ -1,0 +1,24 @@
+/* Shared lightweight workspace & portal primitives */
+.pets-page { padding-block: 2rem 4rem; }
+.pets-page h1 { font-size: clamp(1.5rem, 2.3vw, 1.875rem); line-height: 1.25; letter-spacing: -.035em; margin-block: .5rem; overflow-wrap: anywhere; }
+.pets-page h2 { font-size: 1.25rem; margin-bottom: .6rem; overflow-wrap: anywhere; }
+.pets-page p { color: var(--color-text-muted); }
+.pets-eyebrow { color: var(--color-primary); text-transform: uppercase; letter-spacing: .14em; font-size: .75rem; font-weight: 700; }
+.pet-panel { border: 1px solid var(--color-border); border-radius: var(--radius-panel); background: var(--color-surface-raised); padding: 2rem; box-shadow: var(--shadow-card); }
+.household-tag { display: inline-flex; align-items: center; background: var(--color-surface-sand); color: var(--color-text-muted); border: 1px solid var(--color-border); border-radius: 0.35rem; padding: 0.15rem 0.45rem; font-size: 0.6875rem; font-weight: 600; text-transform: none; overflow-wrap: anywhere; }
+.history-action-btn,.history-action-link{display:inline-flex;align-items:center;gap:.35rem;min-height:38px;padding:.35rem .75rem;border-radius:.55rem;font-size:.75rem;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);cursor:pointer;text-decoration:none;transition:background-color .15s,border-color .15s}
+.history-action-btn:hover,.history-action-link:hover{background:#ece8df;border-color:#718b80}
+.history-action-btn.is-danger{color:#a82424}
+.history-action-btn.is-danger:hover{background:#fff5f4;border-color:#a82424}
+.history-action-link.is-primary{background:#eef7f2;color:#164d34;border-color:#b8d4c5}
+.history-action-link.is-primary:hover{background:#dfeee6;border-color:#164d34}
+@media (max-width: 48rem) {
+  .pets-page { padding-block: 1.15rem 5rem; }
+}
+@media (max-width: 40rem) {
+  .pet-panel { padding: 1.25rem; }
+}
+@media (max-width: 640px) {
+.history-action-btn,.history-action-link{min-height:32px;padding:.22rem .5rem;font-size:.6875rem;gap:.25rem;border-radius:.45rem}
+  .history-action-btn svg,.history-action-link svg{width:13px;height:13px}
+}

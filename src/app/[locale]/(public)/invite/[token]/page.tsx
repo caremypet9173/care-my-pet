@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { Container } from "@/components/layout/container";
 import { createClient } from "@/lib/supabase/server";
 import { AcceptInvitation } from "@/features/household/accept-invitation";
-import "@/styles/pets.css";
+import "@/styles/portal-base.css";
+import "@/styles/household-invite.css";
 
 export const dynamic = "force-dynamic";
 

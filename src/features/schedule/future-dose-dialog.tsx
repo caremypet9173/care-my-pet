@@ -1,5 +1,7 @@
 "use client";
 
+import "@/styles/history-dialog.css";
+import "@/styles/weight.css";
 import { useEffect, useRef } from "react";
 import { useLocale } from "next-intl";
 import { IconClock, IconX } from "@tabler/icons-react";

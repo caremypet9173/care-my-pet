@@ -133,6 +133,7 @@
 .auth-form-panel .auth-legal a,
 .auth-form-panel .auth-content > p:last-child a,
 .auth-recovery-link a { display: inline-flex; align-items: center; min-height: 44px; padding-block: .25rem; }
+.auth-recovery-link a { gap: .3rem; font-size: .88rem; color: var(--color-primary); font-weight: 600; }
 .auth-form-panel .auth-content > p:last-child { font-size: .8125rem; color: var(--color-text-muted); }
 .auth-footer { font-size: .6875rem; color: var(--color-text-muted); border-top: 1px solid var(--color-border); }
 .auth-footer nav { display: flex; gap: 1.5rem; }

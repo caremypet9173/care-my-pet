@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/assistant.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import {

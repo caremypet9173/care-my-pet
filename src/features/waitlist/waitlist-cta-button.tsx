@@ -4,7 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale } from "next-intl";
 import { IconSparkles } from "@tabler/icons-react";
-import "@/styles/waitlist.css";
+import "@/styles/waitlist-cta.css";
 
 const WaitlistModal = dynamic(
   () => import("./waitlist-modal").then((m) => m.WaitlistModal),

@@ -1,5 +1,9 @@
 "use client";
 
+import "@/styles/share.css";
+import "@/styles/archive.css";
+import "@/styles/weight.css";
+import "@/styles/history-dialog.css";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useLocale } from "next-intl";
 import {

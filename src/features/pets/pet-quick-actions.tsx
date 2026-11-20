@@ -37,6 +37,7 @@ import type { Pet } from "./types";
 import type { MetricType } from "@/features/measurements/types";
 import "@/styles/weight.css";
 import "@/styles/measurements.css";
+import "@/styles/history-dialog.css";
 
 const HistoryDialog = dynamic(
   () => import("@/features/history/history-dialog").then((m) => m.HistoryDialog),

@@ -1,0 +1,62 @@
+/* Health History, Schedule & Medication Dialog Controls */
+.history-dialog.weight-dialog{width:min(44rem,calc(100% - 2rem));max-width:44rem}
+.history-dialog header{padding:1rem 1.35rem .75rem}
+.history-dialog .weight-dialog-icon{width:40px;height:40px}
+.history-dialog fieldset{padding:0 1.35rem;gap:.1rem}
+.history-dialog label{display:block;font-size:.75rem;font-weight:600;margin:.5rem 0 .25rem}
+.history-dialog input:not([type="checkbox"]):not([type="radio"]):not(.med-time-input),.history-dialog textarea{min-height:38px;padding:.45rem .7rem;font-size:.8125rem}
+.history-dialog input.med-time-input{min-height:unset;height:auto;padding:.15rem .3rem;font-size:.875rem}
+.history-dialog footer{padding:.9rem 1.35rem 1.1rem}
+.schedule-notify-box{display:grid;gap:.45rem;margin-top:.55rem;padding:.75rem .85rem;border-radius:.75rem;border:1px solid #e6e2da;background:#faf8f4}
+.schedule-notify-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.schedule-notify-head label{display:inline-flex;align-items:center;gap:.35rem;margin:0}
+.schedule-notify-count{font-size:.7rem;font-weight:700;padding:.1rem .48rem;border-radius:999px;background:#e8f3ed;color:#164d34}
+.schedule-notify-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.35rem}
+.schedule-notify-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:999px;background:#fff;border:1px solid #b8d4c5;font-size:.74rem;font-weight:600;color:#164d34}
+.schedule-notify-chip button{border:0;background:transparent;padding:0;display:inline-flex;align-items:center;color:#526462;cursor:pointer}
+.schedule-notify-chip button:hover{color:#a82424}
+.schedule-notify-row{display:flex;align-items:center;gap:.45rem}
+.schedule-notify-row input{flex:1;min-width:0}
+.schedule-notify-row .schedule-mini-btn{min-height:38px;padding:0 .75rem;flex-shrink:0}
+.schedule-notify-hint{font-size:.7rem;line-height:1.35;color:var(--color-text-muted)}
+.history-dialog-icon.is-vaccination{background:#eef2ff;color:#4338ca}
+.history-dialog-icon.is-prevention{background:#fffbeb;color:#b45309}
+.history-dialog-icon.is-fluid{background:#ecfeff;color:#0891b2}
+.history-category-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;margin-bottom:.15rem}
+.history-category-option{display:flex;align-items:center;justify-content:center;gap:.45rem;min-height:38px;padding:.35rem .6rem;border-radius:.65rem;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-muted);font-size:.8125rem;font-weight:600;cursor:pointer;transition:all .15s;text-align:center}
+.history-category-option:hover{border-color:#718b80;color:var(--color-text)}
+.history-category-option.is-active.is-visit{background:#eef7f2;border-color:#164d34;color:#164d34;box-shadow:0 0 0 1px #164d34}
+.history-category-option.is-active.is-vaccination{background:#eef2ff;border-color:#4338ca;color:#4338ca;box-shadow:0 0 0 1px #4338ca}
+.history-category-option.is-active.is-prevention{background:#fffbeb;border-color:#b45309;color:#b45309;box-shadow:0 0 0 1px #b45309}
+.history-dialog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;align-items:end}
+.history-dialog-grid > .full-width, .history-dialog-grid > .col-span-full{grid-column:1 / -1}
+
+.history-ai-box{display:grid;gap:.5rem;padding:.65rem .85rem;border-radius:.75rem;border:1px dashed #94b3a3;background:#f4faf6;margin-bottom:.1rem;transition:border-color .15s,background-color .15s,box-shadow .15s}
+.history-ai-box.is-dragging{border-color:#164d34;background:#e4f3ea;box-shadow:0 0 0 3px #164d3424}
+.history-ai-box.is-highlighted{border-style:solid;border-width:1.5px;border-color:#164d34;background:#eaf6ef;box-shadow:0 0 0 3px #164d341a}
+.history-ai-empty{display:flex;align-items:center;justify-content:space-between;gap:.85rem;flex-wrap:wrap}
+.history-ai-empty-text{display:grid;gap:.2rem;min-width:12rem;flex:1}
+.history-ai-empty-text strong{display:inline-flex;align-items:center;gap:.4rem;font-size:.8125rem;color:#164d34}
+.history-ai-empty-text small{font-size:.75rem;color:#526462;line-height:1.4}
+.history-ai-upload-btn{display:inline-flex;align-items:center;gap:.4rem;min-height:38px;padding:.4rem .85rem;border-radius:.6rem;border:1px solid #164d34;background:#fff;color:#164d34;font-size:.75rem;font-weight:600;cursor:pointer;flex-shrink:0;transition:background-color .15s}
+.history-ai-upload-btn:hover{background:#e7f3ec}
+.history-ai-selected{display:grid;gap:.65rem}
+.history-ai-file-row{display:flex;align-items:center;gap:.65rem;padding:.55rem .75rem;border-radius:.65rem;background:#fff;border:1px solid #cfe3d8}
+.history-ai-file-icon{width:2rem;height:2rem;border-radius:.5rem;display:grid;place-items:center;background:#eef7f2;color:#164d34;flex-shrink:0}
+.history-ai-file-meta{min-width:0;flex:1;display:grid;gap:.1rem}
+.history-ai-file-meta strong{font-size:.8125rem;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-ai-file-meta small{font-size:.6875rem;color:#526462}
+.history-ai-remove-btn{width:34px;height:34px;border-radius:.5rem;display:grid;place-items:center;color:#a82424;background:transparent;border:1px solid transparent;cursor:pointer;flex-shrink:0}
+.history-ai-remove-btn:hover{background:#fff5f4;border-color:#f5c2c2}
+.history-ai-actions{display:flex}
+.history-ai-extract-btn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:40px;padding:.5rem 1rem;border-radius:.65rem;border:1px solid #164d34;background:#164d34;color:#fff;font-size:.8125rem;font-weight:600;cursor:pointer;transition:background-color .15s}
+.history-ai-extract-btn:hover:not(:disabled){background:#1d6343}
+.history-ai-extract-btn:disabled{opacity:.7;cursor:wait}
+.history-ai-notice{display:flex;align-items:flex-start;gap:.45rem;margin:0;padding:.55rem .75rem;border-radius:.6rem;font-size:.75rem;line-height:1.45}
+.history-ai-notice svg{flex-shrink:0;margin-top:.1rem}
+.history-ai-notice.is-success{background:#e7f4ec;color:#164d34;border:1px solid #b8d4c5}
+.history-ai-notice.is-warning{background:#fff9eb;color:#92400e;border:1px solid #fde68a}
+@media(max-width:640px){
+.history-category-picker,.history-dialog-grid{grid-template-columns:minmax(0,1fr)}
+  .history-ai-upload-btn{width:100%;justify-content:center}
+}

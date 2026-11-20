@@ -14,13 +14,11 @@ import {
   listHouseholdMedicationSchedules,
 } from "@/features/medications/data";
 import { getActiveHouseholdContext } from "@/features/household/data";
-import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
+import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import { petMessages } from "@/features/pets/messages";
 import { HouseholdDashboard } from "@/features/pets/household-dashboard";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
 import { IconPlus, IconUpload, IconUsers } from "@tabler/icons-react";
-import "@/styles/pets.css";
-import "@/styles/weight.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();

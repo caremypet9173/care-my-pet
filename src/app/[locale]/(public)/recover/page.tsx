@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { Container } from "@/components/layout/container";
 import { RecoveryPortal } from "@/features/household/recovery-portal";
-import "@/styles/pets.css";
+import "@/styles/portal-base.css";
+import "@/styles/recovery.css";
 
 export const dynamic = "force-dynamic";
 

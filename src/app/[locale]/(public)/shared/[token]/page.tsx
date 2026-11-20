@@ -6,6 +6,7 @@ import { Container } from "@/components/layout/container";
 import { fetchSharedPetRecord } from "@/features/share/data";
 import { SharedVetRecordView } from "@/features/share/shared-vet-record-view";
 import "@/styles/pets.css";
+import "@/styles/share.css";
 import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
 

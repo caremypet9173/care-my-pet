@@ -1,4 +1,5 @@
 "use client";
+import "@/styles/medical-documents.css";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import {

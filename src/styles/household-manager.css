@@ -1,0 +1,470 @@
+/* Household Manager & Members */
+.household-manager-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+.household-switcher-box {
+  background: var(--color-surface-sand);
+  border: 1px solid var(--color-border);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.household-switcher-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.household-switcher-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.household-switcher-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.household-switcher-pill:hover {
+  border-color: var(--color-primary);
+}
+.household-switcher-pill.is-active {
+  background: #164d34;
+  color: #fff;
+  border-color: #164d34;
+}
+.household-switcher-pill.is-active svg {
+  color: #fff;
+}
+.household-switcher-pill.is-active .household-role-tag {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-color: transparent;
+}
+.household-create-own-card {
+  background: #f7faf9;
+  border: 1px dashed #b8ded6;
+}
+.household-create-own-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.household-create-own-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.75rem;
+  background: #e6f4f1;
+  color: #1e564d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.household-create-own-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #164d34;
+}
+.household-create-own-header p {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  margin: 0;
+  max-width: 65ch;
+}
+.household-create-own-form {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.household-create-own-form input {
+  flex: 1;
+  min-width: 240px;
+  max-width: 380px;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+.household-create-own-form input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(22, 77, 52, 0.15);
+}
+.household-create-own-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #a82424;
+  font-size: 0.8rem;
+  margin: 0.75rem 0 0;
+}
+.household-manager-card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.household-manager-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.household-manager-title-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.household-manager-home-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 0.75rem;
+  background: #e6f4f1;
+  color: #1e564d;
+  flex-shrink: 0;
+}
+.household-name-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.household-name-display h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+.household-edit-name-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 0.35rem;
+  border-radius: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.household-edit-name-btn:hover {
+  color: var(--color-primary);
+  background: var(--color-surface-sand);
+}
+.household-name-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.household-name-input {
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--color-primary);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-width: 220px;
+}
+.household-manager-meta {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 0.25rem;
+}
+.household-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-surface-sand);
+  color: var(--color-text);
+}
+.household-role-badge.is-owner {
+  background: #eef7f4;
+  color: #1a6354;
+  border: 1px solid #cce5dd;
+}
+.household-role-badge.is-member {
+  background: #f0f4f8;
+  color: #2b5278;
+  border: 1px solid #d0e0ed;
+}
+.household-manager-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+.household-manager-section-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+.household-manager-section-header p {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 0.25rem;
+  max-width: 60ch;
+}
+.household-members-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.household-member-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+.household-member-item.is-owner-item {
+  background: var(--color-surface-sand);
+}
+.household-member-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-surface-sand);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.household-member-item.is-owner-item .household-member-avatar {
+  background: #e6f4f1;
+  color: #1e564d;
+}
+.household-member-info {
+  flex: 1;
+  min-width: 0;
+}
+.household-member-title-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.household-member-title-line strong {
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.household-role-tag {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.35rem;
+  background: #eef4fa;
+  color: #2b5680;
+  border: 1px solid #d0e0ed;
+}
+.household-role-tag.is-owner {
+  background: #eef7f4;
+  color: #1a6354;
+  border-color: #cce5dd;
+}
+.household-member-info small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
+}
+.household-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.household-members-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+.household-invite-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.household-invite-input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.household-invite-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 260px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  color: var(--color-text-muted);
+}
+.household-invite-field input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  outline: none;
+}
+.household-invite-url-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  background: var(--color-surface);
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+}
+.household-invite-url-box input {
+  flex: 1;
+  font-size: 0.8rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: monospace;
+  outline: none;
+}
+.household-invitations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.household-invitation-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  flex-wrap: wrap;
+}
+.household-invitation-main {
+  min-width: 0;
+}
+.household-invitation-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.household-invitation-title strong {
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.household-invitation-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.25rem;
+}
+.household-invitation-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.household-invitation-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.household-pets-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+.household-pet-mini-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.household-pet-mini-card:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-sand);
+}
+.household-pet-mini-avatar {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.household-pet-mini-info strong {
+  display: block;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+}
+.household-pet-mini-info small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.household-pets-mini-empty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}

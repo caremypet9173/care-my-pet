@@ -1,0 +1,154 @@
+/* Clinical Extraction Review Form (Split-Screen 2) */
+.review-section-heading { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; padding-bottom: .7rem; border-bottom: 1px solid var(--color-border); margin-bottom: .8rem; }
+.review-section-heading h2 { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: .75rem; }
+.medical-metadata .review-section-heading h2 { text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); font-size: .65rem; }
+.review-section-heading > div { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
+.review-section-heading .button { padding: .3rem .4rem; font-size: .65rem; min-height: 44px; }
+.review-source-badge, .review-species { font-size: .6rem; padding: .25rem .4rem; border-radius: .3rem; }
+.review-source-badge { background: var(--color-surface-sage, #eaf0e8); color: var(--color-primary); }
+.review-species { background: var(--color-surface); color: var(--color-text-muted); }
+.medical-metadata .medical-fields { gap: .65rem; margin-bottom: 0; }
+.medical-metadata label { font-size: .65rem; font-weight: 600; gap: .3rem; }
+.medical-metadata input:not([type=checkbox]) { background: var(--color-surface); font-size: .8125rem; line-height: 1.2; padding: .35rem .65rem; border-color: var(--color-border); border-radius: .65rem; }
+.medical-review .review-patient-line { font-size: .65rem; margin-top: .65rem; }
+.review-attention { display: flex; align-items: flex-start; gap: .65rem; background: #fff8e6; border: 1px solid #ebcf88; border-radius: 1rem; padding: 1rem; margin-bottom: 1.25rem; color: #795016; }
+.review-attention > svg { flex-shrink: 0; }
+.review-attention strong { font-size: .75rem; }
+.review-attention p { font-size: .7rem; margin-top: .3rem; }
+.review-attention > span { font-size: .6rem; border-radius: 1rem; padding: .2rem .5rem; background: #f8e6b4; flex-shrink: 0; }
+.medical-edit .medical-parameter { padding: .45rem .65rem; border: 1px solid var(--color-border); border-radius: .55rem; background: var(--color-surface); margin: 0 0 .4rem; transition: border-color .15s, background-color .15s; }
+.medical-edit .medical-parameter--attention { background: #fffdf7; border: 1.5px solid #dcb556; padding: .45rem .65rem; }
+.medical-edit .medical-parameter:hover { border-color: #b2c9be; }
+.medical-edit .medical-parameter--attention:hover { border-color: #c99c30; }
+.review-parameter-line { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .3rem; }
+.review-parameter-identity { display: flex; align-items: center; gap: .45rem; min-width: 0; flex: 1; }
+.review-parameter-titles { display: flex; align-items: baseline; gap: .4rem; min-width: 0; flex-wrap: wrap; }
+.review-parameter-identity strong { display: inline-block; font-size: .8125rem; font-weight: 700; color: var(--color-text); overflow-wrap: anywhere; }
+.review-parameter-category { display: inline-block; font-size: .625rem; color: var(--color-text-muted); background: var(--color-surface-sand, #f0eee8); padding: .1rem .35rem; border-radius: .25rem; }
+.review-param-edit-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: .3rem; border: 1px solid transparent; background: transparent; color: var(--color-text-muted); cursor: pointer; padding: 0; transition: background-color .15s, color .15s, border-color .15s; }
+.review-param-edit-btn:hover { background: var(--color-surface-sand, #f0eee8); color: var(--color-text); border-color: var(--color-border); }
+.review-param-edit-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.review-dot { width: .45rem; height: .45rem; flex-shrink: 0; border-radius: 50%; background: var(--color-text-muted); }
+.review-dot--within { background: var(--color-primary); }
+.review-dot--above, .review-dot--below { background: #b47a13; }
+.review-parameter-meta { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+.review-parameter-meta .medical-status { font-size: .625rem; padding: .15rem .45rem; border-radius: .35rem; white-space: nowrap; }
+.review-parameter-meta .review-icon-button { width: 26px; height: 26px; min-height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); border: none; background: transparent; border-radius: .3rem; padding: 0; }
+.review-parameter-meta .review-icon-button:hover { background: #fde8e8; color: #a82424; }
+.review-parameter-identity-fields { margin: 0 0 .4rem; padding: .45rem .6rem; background: var(--color-surface-raised, #f8f7f4); border: 1px dashed var(--color-border); border-radius: .4rem; }
+.medical-parameter .medical-row-values { display: grid; border: 1px solid #e5e3dc; background: #fdfdfc; padding: .35rem .5rem; border-radius: .45rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: .45rem; }
+.medical-parameter--attention .medical-row-values { background: #fffcf4; border-color: #eedcb2; }
+.medical-parameter .medical-row-values label { display: flex; flex-direction: column; gap: .15rem; font-size: .575rem; text-transform: uppercase; letter-spacing: .03em; font-weight: 700; color: var(--color-text-muted); min-width: 0; }
+.medical-parameter .medical-row-values input { padding: .2rem .45rem; font-size: .8125rem; line-height: 1.2; text-align: center; border-radius: .35rem; border: 1px solid var(--color-border); background: #ffffff; height: 30px; }
+.medical-parameter--attention .medical-row-values label:first-child input { border-color: #cca23c; background: #fffbe8; font-weight: 700; color: #795016; }
+.medical-review .review-field-error { color:#a82424; font-size:.7rem; line-height:1.5; margin:.3rem 0 .15rem; }
+.review-duplicate{display:flex;align-items:flex-start;gap:1rem;margin-block:1rem;padding:1.25rem;border:1px solid #d9cbb4;border-radius:1rem;background:#fff9eb;color:#123e40}
+.review-duplicate>svg{flex-shrink:0}.review-duplicate h2{font-size:1rem}.review-duplicate p{font-size:.8rem;margin-top:.4rem}.review-duplicate-actions{display:flex;flex-wrap:wrap;align-items:center;gap:1rem;margin-top:1rem}.review-duplicate-actions a{background:#123e40;color:white;padding:.65rem 1rem;border-radius:.5rem;font-size:.8rem}.review-duplicate-actions button{font-size:.8rem;text-decoration:underline;min-height:44px;cursor:pointer}
+.medical-review input[aria-invalid=true] { border-color:#a82424; outline:1px solid #a82424; outline-offset:2px; background:#fff5f4; }
+.medical-edit .medical-parameter.has-validation-error { border-color:#a82424; }
+.medical-confirm:has(input[aria-invalid=true]),.medical-row-check label:has(input[aria-invalid=true]) { color:#a82424; }
+.medical-review .medical-confirm:has(input[aria-invalid=true]),.medical-row-check label:has(input[aria-invalid=true]){padding:.65rem;border:1px solid #a82424;border-radius:.5rem;background:#fff5f4}
+.review-validation-summary{margin:1rem 0;padding:1rem 1.25rem;border:1px solid #a82424;border-left:4px solid #a82424;border-radius:.65rem;background:#fff5f4;color:#8c2020;scroll-margin-block:2rem}
+.review-validation-summary h2{font-size:.9rem;font-weight:700}.review-validation-summary p{font-size:.75rem;margin-top:.5rem}.review-validation-summary ul{list-style:disc;padding-left:1.25rem;margin-top:.5rem}.review-validation-summary li{padding-block:.25rem}
+.review-validation-summary button{font-size:.8rem;line-height:1.6;text-align:left;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:.25rem 0}
+.review-validation-summary:focus,.review-validation-summary button:focus-visible{outline:2px solid #a82424;outline-offset:3px}
+.medical-parameter .medical-row-check .review-confirm-toggle{position:relative;display:inline-flex;align-items:center;gap:.6rem;min-height:44px;padding:.65rem .9rem;margin-top:.4rem;border:1px solid #718b80;border-radius:.6rem;background:white;color:#164d34;font-size:.8rem;font-weight:600;line-height:1.4;cursor:pointer}
+.review-confirm-toggle svg{flex-shrink:0}
+.medical-parameter .medical-row-check .review-confirm-toggle:has(:checked){background:#164d34;border-color:#164d34;color:white}
+.medical-parameter .medical-row-check .review-confirm-toggle:has([aria-invalid=true]){background:#fff5f4;border-color:#a82424;color:#a82424}
+.medical-parameter .medical-row-check .review-confirm-toggle:hover{box-shadow:0 0 0 2px #164d3426}
+.medical-parameter .medical-row-check .review-confirm-toggle:has(:focus-visible){outline:3px solid #32766c;outline-offset:3px}
+.medical-parameter .medical-row-check .review-confirm-toggle:has(:disabled){opacity:.6;cursor:wait}
+.medical-parameter .medical-row-check .review-confirm-toggle input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:inherit}
+.review-source-notes { border: 1px solid var(--color-border); border-left: 3px solid var(--color-primary); border-radius: .7rem; padding: .75rem; background: var(--color-surface-raised); }
+.review-source-notes summary { display: flex; align-items: center; gap: .5rem; font-size: .7rem; font-weight: 600; min-height: 32px; cursor: pointer; }
+.review-source-notes textarea { margin-top: .5rem; font-size: .8125rem; line-height: 1.55; }
+.review-source-notes.is-descriptive { padding: 1rem; box-shadow: var(--shadow-card); }
+.review-source-notes.is-descriptive summary { font-size: .8rem; color: var(--color-primary); }
+.review-descriptive-empty { margin: 0; padding: .75rem .9rem; border-radius: .65rem; background: #f4faf6; border: 1px dashed #94b3a3; color: #164d34 !important; font-size: .75rem !important; line-height: 1.5 !important; }
+.review-notes-toolbar { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-top: .55rem; padding-bottom: .45rem; border-bottom: 1px solid var(--color-border); }
+.review-md-btn { display: inline-flex; align-items: center; gap: .3rem; min-height: 32px; padding: .25rem .6rem; border-radius: .45rem; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-size: .7rem; font-weight: 600; cursor: pointer; transition: background-color .15s, border-color .15s; }
+.review-md-btn:hover:not(:disabled) { background: #e8f1ec; border-color: #718b80; }
+.review-md-btn:disabled { opacity: .45; cursor: not-allowed; }
+.review-md-btn.is-preview { margin-left: auto; }
+.review-md-btn.is-preview.is-active { background: #164d34; border-color: #164d34; color: #fff; }
+.review-notes-preview-box { margin-top: .5rem; padding: .85rem 1rem; border-radius: .6rem; border: 1px solid var(--color-border); background: var(--color-surface); min-height: 6rem; }
+.review-md-hint { display: block; margin-top: .4rem; font-size: .65rem; color: var(--color-text-muted); }
+.medical-review .medical-confirm { font-size: .7rem; margin-top: 1rem; }
+.review-save-note { display: flex; align-items: center; gap: .5rem; background: var(--color-surface-sand); border-radius: .5rem; padding: .6rem; margin-top: .7rem; font-size: .65rem !important; }
+.review-save-note svg { flex-shrink: 0; }
+.medical-confirm-bar { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; background: var(--color-surface-raised); border: 1px solid var(--color-border); border-radius: .7rem; padding: .75rem; }
+.medical-confirm-bar .button { width: auto; font-size: .7rem; }
+@media(max-width:767px) {
+.medical-review { padding: 1rem; }
+  .medical-split { grid-template-columns: minmax(0,1fr); gap: 1rem; }
+  .medical-original { position: static; }
+  .medical-original iframe, .medical-image-scroll { height: 400px; max-height: 55vh; }
+  .medical-process-header { flex-wrap: wrap; }
+  .medical-process-header > div { flex-wrap: wrap; gap: .5rem; }
+  .medical-row-values, .medical-fields { grid-template-columns: minmax(0,1fr); }
+  .review-attention { flex-wrap: wrap; }
+  .review-attention > div { flex: 1; min-width: 8rem; }
+  .medical-metadata .medical-fields { grid-template-columns: minmax(0,1fr); }
+  .medical-parameter .medical-row-values { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: .35rem; }
+  @media(max-width:340px) { .medical-parameter .medical-row-values { grid-template-columns: minmax(0,1fr); } }
+  .review-parameter-identity { flex-basis: calc(100% - 5rem); }
+  .review-parameter-actions { margin-left: auto; }
+  .medical-confirm-bar .button { width: 100%; }
+}
+/* Review form AI section */
+.review-ai-section {
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, #f4faf6 0%, #ffffff 100%);
+  border: 1px solid #a8d5c2;
+  border-left: 4px solid #164d34;
+  border-radius: .85rem;
+  padding: 1rem 1.2rem;
+}
+.review-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.review-ai-title {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.review-ai-title h3 {
+  margin: 0;
+  font-size: .85rem;
+  font-weight: 700;
+  color: #113826;
+}
+.review-ai-title p {
+  margin: .1rem 0 0;
+  font-size: .7rem;
+  color: #4a6357;
+}
+.review-ai-actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.review-ai-preview-box {
+  padding: .85rem 1rem;
+  border-radius: .6rem;
+  border: 1px solid #c8e0d4;
+  background: var(--color-surface);
+  min-height: 5rem;
+  margin-bottom: .4rem;
+}
+.review-ai-section textarea {
+  width: 100%;
+  margin-top: .4rem;
+  font-size: .8125rem;
+  line-height: 1.55;
+  border: 1px solid #c8e0d4;
+  border-radius: .6rem;
+  padding: .6rem;
+  background: #ffffff;
+  color: var(--color-text);
+}

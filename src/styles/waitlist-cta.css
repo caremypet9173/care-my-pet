@@ -1,0 +1,29 @@
+.waitlist-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.85rem 1.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-action-accent);
+  color: var(--color-on-action);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(174 79 44 / 0.25);
+  transition: all 0.15s ease;
+}
+
+.waitlist-submit-btn:hover:not(:disabled) {
+  background: var(--color-action-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(174 79 44 / 0.35);
+}
+
+.waitlist-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

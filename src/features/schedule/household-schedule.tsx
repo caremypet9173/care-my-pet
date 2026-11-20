@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/schedule.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";

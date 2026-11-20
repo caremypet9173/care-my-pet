@@ -1,5 +1,8 @@
 "use client";
 
+import "@/styles/household-manager.css";
+import "@/styles/household-invite.css";
+import "@/styles/recovery.css";
 import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 import {

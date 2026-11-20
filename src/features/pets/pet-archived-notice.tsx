@@ -1,3 +1,4 @@
+import "@/styles/pet-archive.css";
 import { IconHeartHandshake, IconLock } from "@tabler/icons-react";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/types";

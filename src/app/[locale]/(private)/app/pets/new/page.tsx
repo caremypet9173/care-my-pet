@@ -7,7 +7,7 @@ import { PetForm } from "@/features/pets/pet-form";
 import { petMessages } from "@/features/pets/messages";
 import { petFormMessages } from "@/features/pets/form-messages";
 import { getActiveHouseholdContext } from "@/features/household/data";
-import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
+import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import "@/styles/pets.css";
 
 export async function generateMetadata(): Promise<Metadata> {

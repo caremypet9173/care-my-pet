@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/pet-archive.css";
 import { useId, useRef, useState, type FormEvent } from "react";
 import { useLocale } from "next-intl";
 import {

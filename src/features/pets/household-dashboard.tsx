@@ -1,3 +1,4 @@
+import "@/styles/pet-archive.css";
 import {
   IconArchive,
   IconArrowRight,

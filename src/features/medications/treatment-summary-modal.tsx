@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/weight.css";
 import { useEffect, useRef } from "react";
 import { useLocale } from "next-intl";
 import {

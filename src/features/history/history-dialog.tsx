@@ -1,5 +1,7 @@
 "use client";
 
+import "@/styles/history-dialog.css";
+import "@/styles/weight.css";
 import {useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent} from 'react';
 import {useLocale} from 'next-intl';
 import {
