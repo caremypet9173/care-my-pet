@@ -1,8 +1,5 @@
-import { HealthMeasurementsPanel } from "@/features/measurements/health-measurements-panel";
-import { HistoryPanel } from "@/features/history/history-panel";
 import { HouseholdSchedule } from "@/features/schedule/household-schedule";
 import { listAssistantThreads, listAssistantMessages, getAssistantQuotaUsed } from "@/features/assistant/data";
-import { AssistantPanel } from "@/features/assistant/assistant-panel";
 import { ShareRecordButton } from "@/features/share/share-record-dialog";
 import { ArchiveLinkButton } from "@/features/archive/archive-link-dialog";
 import { getLocale } from "next-intl/server";
@@ -18,13 +15,18 @@ import { dashboardMessages } from "@/features/pets/dashboard-messages";
 import { petArchiveMessages } from "@/features/pets/archive-messages";
 import { PetArchivedBanner } from "@/features/pets/pet-archived-notice";
 import { RecordSections } from "@/features/pets/record-sections";
+import {
+  LazyAssistantPanel,
+  LazyHealthMeasurementsPanel,
+  LazyHistoryPanel,
+  LazyMedicalDocuments,
+  LazyMedicalResults,
+} from "@/features/pets/record-tab-panels";
 import type { Locale } from "@/i18n/types";
 import { IconCalendar, IconScale, IconFlask, IconHeart, IconHistory, IconStethoscope, IconVaccine, IconPill } from "@tabler/icons-react";
 import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
 import { listReports } from "@/features/medical/data";
-import { MedicalResults } from "@/features/medical/results";
-import { MedicalDocuments } from "@/features/medical/documents";
 import {
   PetQuickAddProvider,
   PetQuickAddToolbarButton,
@@ -165,7 +167,8 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     [t.plec, t[pet.plec]], [t.kastracja, pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no],
     [t.identyfikacja, t[pet.identyfikacja]], ...(pet.numer_id ? [[t.numer_id, pet.numer_id]] : []),
   ];
-  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions">{!isReadOnly && <PetQuickAddToolbarButton />}<ShareRecordButton petId={pet.id} petName={pet.imie} />{canManage && <ArchiveLinkButton petId={pet.id} petName={pet.imie} />}{!isReadOnly && <ButtonLink size="sm" variant="secondary" href={`/app/pets/${pet.id}/edit`}>{t.edit}</ButtonLink>}</div></div>
+  const tabSyncKey = `${pet.id}:${initialTabQuery ?? ""}:${requestedReport ?? ""}:${resolvedSearch.filter ?? ""}:${requestedPrompt ?? ""}`;
+  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id} initialTab={initialTabQuery} tabSyncKey={tabSyncKey}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions">{!isReadOnly && <PetQuickAddToolbarButton />}<ShareRecordButton petId={pet.id} petName={pet.imie} />{canManage && <ArchiveLinkButton petId={pet.id} petName={pet.imie} />}{!isReadOnly && <ButtonLink size="sm" variant="secondary" href={`/app/pets/${pet.id}/edit`}>{t.edit}</ButtonLink>}</div></div>
     <PetHeroCover
       pet={pet}
       locale={locale}
@@ -184,7 +187,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       />
     )}
     <PetArchivedBanner pet={pet} locale={locale as Locale} isOwner={canManage} />
-    <RecordSections key={`${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<HistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<HealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<MedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<MedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<AssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><div className="household-record-stats">{[
+    <RecordSections key={`${pet.id}-${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<LazyHistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<LazyHealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<LazyMedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<LazyMedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<LazyAssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><div className="household-record-stats">{[
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
       { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },

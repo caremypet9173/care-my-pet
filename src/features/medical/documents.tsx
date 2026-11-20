@@ -22,10 +22,15 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { HealthEvent } from "@/features/history/types";
+import dynamic from "next/dynamic";
 import { FormattedMedicalText } from "./formatted-text";
-import { PdfPreview } from "./pdf-preview";
 import { DischargeImportButton } from "./discharge-import-button";
 import type { MedicalReport } from "./types";
+
+const PdfPreview = dynamic(
+  () => import("./pdf-preview").then((m) => m.PdfPreview),
+  { ssr: false },
+);
 
 type UnifiedDocument = {
   id: string;

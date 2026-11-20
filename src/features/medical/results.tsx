@@ -9,13 +9,20 @@ import { createClient } from "@/lib/supabase/client";
 import { medicalMessages } from "./messages";
 import { numeric, rangeStatus, sameParameter } from "./comparison";
 import type { MedicalReport, Measurement, MeasurementCorrection } from "./types";
+import dynamic from "next/dynamic";
 import {TrendParameterPicker} from "./trend-parameter-picker";
 import { DischargeImportButton } from "./discharge-import-button";
 import { LabComparisonMatrix } from "./lab-comparison-matrix";
-import { PdfPreview } from "./pdf-preview";
-import {EditParameterDialog} from "./edit-parameter-dialog";
 import { FormattedMedicalText } from "./formatted-text";
-import "@/styles/medical-edit-dialog.css";
+
+const PdfPreview = dynamic(
+  () => import("./pdf-preview").then((m) => m.PdfPreview),
+  { ssr: false },
+);
+const EditParameterDialog = dynamic(
+  () => import("./edit-parameter-dialog").then((m) => m.EditParameterDialog),
+  { ssr: false },
+);
 export function MedicalResults({
   petId,
   householdId,

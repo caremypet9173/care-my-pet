@@ -121,6 +121,17 @@ type PetQuickAddContextValue = {
   openAction: (action: QuickAddAction) => void;
   navTarget: QuickNavTarget | null;
   navigateTo: (tab: number, metric?: MetricType) => void;
+  activeTab: string | null;
+  setActiveTab: (tab: string | null) => void;
+};
+
+const QUICK_TAB_QUERY_MAP: Record<number, string | null> = {
+  0: null,
+  1: "history",
+  2: "results",
+  3: "documents",
+  4: "weight",
+  5: "assistant",
 };
 
 type MenuIcon = ComponentType<{
@@ -302,10 +313,14 @@ function buildQuickMenuGroups(petId: string, pl: boolean): {
 export function PetQuickAddProvider({
   pet,
   householdId,
+  initialTab = null,
+  tabSyncKey,
   children,
 }: {
   pet: Pick<Pet, "id" | "imie"> & { gospodarstwo_id?: string };
   householdId: string;
+  initialTab?: string | null;
+  tabSyncKey?: string;
   children: ReactNode;
 }) {
   const pl = useLocale() === "pl";
@@ -313,6 +328,13 @@ export function PetQuickAddProvider({
   const [activeDialog, setActiveDialog] = useState<QuickAddAction | null>(null);
   const [navTarget, setNavTarget] = useState<QuickNavTarget | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const effectiveSyncKey = tabSyncKey ?? `${pet.id}:${initialTab ?? ""}`;
+  const [prevSyncKey, setPrevSyncKey] = useState(effectiveSyncKey);
+  const [activeTab, setActiveTab] = useState<string | null>(initialTab ?? null);
+  if (effectiveSyncKey !== prevSyncKey) {
+    setPrevSyncKey(effectiveSyncKey);
+    setActiveTab(initialTab ?? null);
+  }
 
   useEffect(() => {
     if (!toast) return;
@@ -321,6 +343,7 @@ export function PetQuickAddProvider({
   }, [toast]);
 
   const navigateTo = useCallback((tab: number, metric?: MetricType) => {
+    setActiveTab(QUICK_TAB_QUERY_MAP[tab] ?? null);
     setNavTarget((prev) => ({
       tab,
       metric,
@@ -357,6 +380,8 @@ export function PetQuickAddProvider({
         openAction,
         navTarget,
         navigateTo,
+        activeTab,
+        setActiveTab,
       }}
     >
       {children}

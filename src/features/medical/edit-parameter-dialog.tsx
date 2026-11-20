@@ -1,4 +1,5 @@
 "use client";
+import "@/styles/medical-edit-dialog.css";
 import {useEffect,useRef,useState} from "react";
 import {useLocale} from "next-intl";
 import {IconX,IconScan,IconAlertTriangle,IconDeviceFloppy,IconRestore} from "@tabler/icons-react";

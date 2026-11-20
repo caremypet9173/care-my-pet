@@ -61,7 +61,7 @@ export function RecordSections({
       } else {
         url.searchParams.delete("tab");
       }
-      window.history.replaceState(null, "", url.pathname + url.search);
+      window.history.replaceState(window.history.state, "", url.pathname + url.search);
     } catch {}
   }, [navTarget]);
 
@@ -75,7 +75,9 @@ export function RecordSections({
   tabs.splice(1, 0, { id: 4, label: locale === "pl" ? "Pomiary zdrowia" : "Health measurements", icon: IconActivity, text: "" });
 
   function selectTab(tabId: number) {
+    const queryVal = TAB_QUERY_MAP[tabId] ?? null;
     setSelected(tabId);
+    quickAdd?.setActiveTab(queryVal);
     setVisited((prev) => {
       if (prev.has(tabId)) return prev;
       const next = new Set(prev);
@@ -86,7 +88,6 @@ export function RecordSections({
     if (typeof window !== "undefined") {
       try {
         const url = new URL(window.location.href);
-        const queryVal = TAB_QUERY_MAP[tabId];
         if (queryVal) {
           url.searchParams.set("tab", queryVal);
         } else {
@@ -95,7 +96,7 @@ export function RecordSections({
         if (tabId !== 1) {
           url.searchParams.delete("filter");
         }
-        window.history.replaceState(null, "", url.pathname + url.search);
+        window.history.replaceState(window.history.state, "", url.pathname + url.search);
       } catch {}
     }
   }

@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   IconCat,
   IconCheck,
@@ -11,6 +10,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/types";
 import { petMessages } from "./messages";
+import { usePetQuickAddOptional } from "./pet-quick-actions";
 import type { Pet } from "./types";
 
 export type PetSwitcherItem = Pick<
@@ -19,14 +19,6 @@ export type PetSwitcherItem = Pick<
 >;
 
 const MAX_PILL_PETS = 5;
-const ALLOWED_TABS = new Set([
-  "weight",
-  "measurements",
-  "history",
-  "results",
-  "documents",
-  "assistant",
-]);
 
 function buildPetHref(petId: string, tab: string | null): string {
   return tab ? `/app/pets/${petId}?tab=${encodeURIComponent(tab)}` : `/app/pets/${petId}`;
@@ -216,38 +208,6 @@ function PetSwitcherMarkup({
   );
 }
 
-function PetSwitcherWithSearchParams({
-  pets,
-  currentPetId,
-  locale,
-  initialTab,
-}: {
-  pets: PetSwitcherItem[];
-  currentPetId: string;
-  locale: Locale;
-  initialTab: string | null;
-}) {
-  const searchParams = useSearchParams();
-  const tab = searchParams.get("tab");
-  const activeTab =
-    tab && ALLOWED_TABS.has(tab)
-      ? tab
-      : !tab && searchParams.has("document")
-        ? "documents"
-        : !tab && searchParams.has("prompt")
-          ? "assistant"
-          : initialTab;
-
-  return (
-    <PetSwitcherMarkup
-      pets={pets}
-      currentPetId={currentPetId}
-      locale={locale}
-      activeTab={activeTab}
-    />
-  );
-}
-
 export function PetSwitcher({
   pets,
   currentPetId,
@@ -259,25 +219,17 @@ export function PetSwitcher({
   locale: Locale;
   initialTab?: string | null;
 }) {
+  const quickAdd = usePetQuickAddOptional();
   if (pets.length <= 1) return null;
 
+  const activeTab = quickAdd ? quickAdd.activeTab : initialTab;
+
   return (
-    <Suspense
-      fallback={
-        <PetSwitcherMarkup
-          pets={pets}
-          currentPetId={currentPetId}
-          locale={locale}
-          activeTab={initialTab}
-        />
-      }
-    >
-      <PetSwitcherWithSearchParams
-        pets={pets}
-        currentPetId={currentPetId}
-        locale={locale}
-        initialTab={initialTab}
-      />
-    </Suspense>
+    <PetSwitcherMarkup
+      pets={pets}
+      currentPetId={currentPetId}
+      locale={locale}
+      activeTab={activeTab}
+    />
   );
 }
