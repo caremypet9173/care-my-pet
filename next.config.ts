@@ -81,6 +81,9 @@ const config: NextConfig = {
   },
   agentRules: false,
   turbopack: { root: process.cwd() },
+  experimental: {
+    optimizePackageImports: ["@tabler/icons-react"],
+  },
   images: { formats: ["image/avif", "image/webp"] },
   async headers() {
     return [
@@ -117,6 +120,24 @@ const config: NextConfig = {
       },
       {
         source: "/manifest.webmanifest",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
+        source: "/brand/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
+        source: "/media/:path*",
         headers: [
           {
             key: "Cache-Control",

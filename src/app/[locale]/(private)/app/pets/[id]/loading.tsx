@@ -2,7 +2,6 @@
 
 import { useLocale } from "next-intl";
 import { Container } from "@/components/layout/container";
-import "@/styles/pets.css";
 import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
 

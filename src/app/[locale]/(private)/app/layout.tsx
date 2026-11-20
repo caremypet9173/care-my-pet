@@ -1,6 +1,6 @@
 import { Link, redirect } from "@/i18n/navigation";
 import { getLocale } from "next-intl/server";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUserClaims } from "@/lib/supabase/server";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LanguageSwitch } from "@/components/layout/language-switch";
 import { PublicFooter } from "@/components/layout/public-footer";
@@ -18,13 +18,16 @@ export const dynamic = "force-dynamic";
 export const metadata = { robots: { index: false, follow: false } };
 
 export default async function PrivateLayout({ children }: { children: React.ReactNode }) {
-  const locale = await getLocale();
-  const { user, error } = await getCurrentUser();
+  const [locale, { user, error }, householdContext] = await Promise.all([
+    getLocale(),
+    getCurrentUserClaims(),
+    getActiveHouseholdContext(),
+  ]);
   if (!user || error) return redirect({ href: "/login", locale });
   const t = authMessages[locale];
   const pl = locale === "pl";
 
-  const { activeHousehold, availableHouseholds } = await getActiveHouseholdContext();
+  const { activeHousehold, availableHouseholds } = householdContext;
 
   return (
     <div className="household-shell">

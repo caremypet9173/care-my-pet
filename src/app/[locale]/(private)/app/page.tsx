@@ -2,19 +2,9 @@ import { getLocale } from "next-intl/server";
 import type { Metadata } from "next";
 import { Container } from "@/components/layout/container";
 import { ButtonLink } from "@/components/ui/button";
-import { listPets } from "@/features/pets/data";
-import { listHouseholdHealthEvents } from "@/features/history/data";
-import {
-  getHouseholdNotificationSettings,
-  listHouseholdReportsSummary,
-  listHouseholdScheduleItems,
-} from "@/features/schedule/data";
-import {
-  listHouseholdMedicationLogs,
-  listHouseholdMedicationSchedules,
-} from "@/features/medications/data";
-import { getActiveHouseholdContext } from "@/features/household/data";
+import { getActiveHouseholdId } from "@/features/household/data";
 import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
+import { getHouseholdDashboardBundle } from "@/features/pets/dashboard-bundle";
 import { petMessages } from "@/features/pets/messages";
 import { HouseholdDashboard } from "@/features/pets/household-dashboard";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
@@ -32,17 +22,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AppPage() {
-  const locale = await getLocale();
+  const [locale, cookieHouseholdId] = await Promise.all([
+    getLocale(),
+    getActiveHouseholdId(),
+  ]);
   const t = petMessages[locale];
   const {
     activeHousehold,
     isOwner,
     canManage,
     hasRecoveryKey,
-  } = await getActiveHouseholdContext();
-  const householdId = activeHousehold?.id ?? null;
-
-  const [
+    ownerEmail,
     pets,
     healthEvents,
     scheduleItems,
@@ -50,15 +40,7 @@ export default async function AppPage() {
     reportsSummary,
     medicationSchedules,
     medicationLogs,
-  ] = await Promise.all([
-    listPets(householdId),
-    listHouseholdHealthEvents(householdId),
-    listHouseholdScheduleItems(householdId),
-    getHouseholdNotificationSettings(householdId),
-    listHouseholdReportsSummary(householdId),
-    listHouseholdMedicationSchedules(householdId),
-    listHouseholdMedicationLogs(householdId),
-  ]);
+  } = await getHouseholdDashboardBundle(cookieHouseholdId);
   const d = dashboardMessages[locale];
   const activePets = (pets ?? []).filter((pet) => !pet.archived_at);
   const empty = pets?.length === 0;
@@ -122,7 +104,7 @@ export default async function AppPage() {
         <HouseholdRecoveryBanner
           householdId={activeHousehold.id}
           householdName={activeHousehold.nazwa}
-          ownerEmail=""
+          ownerEmail={ownerEmail}
           recoveryEmail={activeHousehold.recovery_email}
           canManage={isOwner}
           hasRecoveryKey={hasRecoveryKey}

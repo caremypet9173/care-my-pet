@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { createClient, getCurrentUser, getCurrentUserClaims } from "@/lib/supabase/server";
+import { createClient, getCurrentUserClaims } from "@/lib/supabase/server";
 import type {
   AvailableHouseholdItem,
   HouseholdDetailsResponse,
@@ -46,7 +46,7 @@ const fetchUserHouseholds = cache(async () => {
   const client = await createClient();
   if (!client) return null;
 
-  const { user } = await getCurrentUser();
+  const { user } = await getCurrentUserClaims();
   if (!user) return null;
 
   const [{ data: ownedHomes }, { data: memberHomes }] = await Promise.all([
@@ -246,7 +246,7 @@ const resolveActiveHousehold = cache(
 export const isHouseholdOwner = cache(async (): Promise<boolean> => {
   const client = await createClient();
   if (!client) return false;
-  const { user } = await getCurrentUser();
+  const { user } = await getCurrentUserClaims();
   if (!user) return false;
 
   const { data } = await client
@@ -262,7 +262,7 @@ export const isPetHouseholdOwner = cache(
   async (householdId: string): Promise<boolean> => {
     const client = await createClient();
     if (!client) return false;
-    const { user } = await getCurrentUser();
+    const { user } = await getCurrentUserClaims();
     if (!user) return false;
 
     const { data } = await client
@@ -288,7 +288,7 @@ export const getPetHouseholdAccess = cache(
     if (!client) {
       return { isOwner: false, canManage: false, hasRecoveryKey: false };
     }
-    const { user } = await getCurrentUser();
+    const { user } = await getCurrentUserClaims();
     if (!user) {
       return { isOwner: false, canManage: false, hasRecoveryKey: false };
     }
