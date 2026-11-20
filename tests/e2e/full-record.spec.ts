@@ -10,7 +10,7 @@ test("full profile navigation supports direct links, history and source document
   ).toBeVisible();
   const nav = page.getByRole("navigation", { name: "Kartoteka Luny" });
   await nav.getByRole("link", { name: "Historia", exact: true }).click();
-  await expect(page).toHaveURL(/\/historia$/);
+  await expect(page).toHaveURL(/\/history$/);
   await page.getByRole("button", { name: "Badania", exact: true }).click();
   await expect(page.locator(".timeline-item")).toHaveCount(1);
   await page.getByText("Szczegóły wpisu", { exact: true }).click();
@@ -18,7 +18,7 @@ test("full profile navigation supports direct links, history and source document
     page.getByText(/Wyniki zostały omówione podczas wizyty/),
   ).toBeVisible();
   await page.getByRole("link", { name: "Zobacz pełne wyniki" }).click();
-  await expect(page).toHaveURL(/\/wyniki$/);
+  await expect(page).toHaveURL(/\/results$/);
   await page
     .getByRole("button", { name: "Profil nerkowy", exact: true })
     .click();
@@ -31,7 +31,7 @@ test("full profile navigation supports direct links, history and source document
   await expect(page.getByRole("dialog")).toContainText("Przykładowy opiekun");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(page).toHaveURL(/\/dokumenty$/);
+  await expect(page).toHaveURL(/\/documents$/);
   await page.reload();
   await expect(
     nav.getByRole("link", { name: "Dokumenty", exact: true }),
@@ -41,7 +41,7 @@ test("full profile navigation supports direct links, history and source document
 test("document filters, modal keyboard focus and empty states work", async ({
   page,
 }) => {
-  await page.goto("/demo/luna/dokumenty");
+  await page.goto("/demo/luna/documents");
   await page.getByRole("button", { name: "Rachunki (1)", exact: true }).click();
   await expect(page.locator(".document-list .document-row")).toHaveCount(1);
   const trigger = page.getByRole("link", { name: /Podgląd: Rachunek/ });
@@ -73,10 +73,10 @@ test("all record screens and open document pass automated accessibility", async 
 }) => {
   for (const path of [
     "/demo/luna",
-    "/demo/luna/historia",
-    "/demo/luna/wyniki",
-    "/demo/luna/dokumenty",
-    "/demo/luna/dokumenty?plik=badania",
+    "/demo/luna/history",
+    "/demo/luna/results",
+    "/demo/luna/documents",
+    "/demo/luna/documents?plik=badania",
   ]) {
     await page.goto(path);
     if (path.includes("?"))
@@ -101,8 +101,8 @@ test("record remains readable at 320px and document links share stable URLs", as
   await page.setViewportSize({ width: 320, height: 740 });
   for (const path of [
     "/demo/luna",
-    "/demo/luna/wyniki",
-    "/demo/luna/dokumenty?plik=wizyta",
+    "/demo/luna/results",
+    "/demo/luna/documents?plik=wizyta",
   ]) {
     await page.goto(path);
     if (path.includes("?")) {

@@ -6,7 +6,7 @@ test("sanitizeRelativePath allows safe relative paths and strips leading locale 
   assert.equal(sanitizeRelativePath("/app"), "/app");
   assert.equal(sanitizeRelativePath("/app/pets/123?tab=labs"), "/app/pets/123?tab=labs");
   assert.equal(sanitizeRelativePath("/pl/app/pets/123"), "/app/pets/123");
-  assert.equal(sanitizeRelativePath("/en/zaproszenie/abc"), "/zaproszenie/abc");
+  assert.equal(sanitizeRelativePath("/en/invite/abc"), "/invite/abc");
   assert.equal(sanitizeRelativePath("/pl"), "/");
   assert.equal(sanitizeRelativePath("/en/"), "/");
   assert.equal(sanitizeRelativePath("  /app/schedule  "), "/app/schedule");

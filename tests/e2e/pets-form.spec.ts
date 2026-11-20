@@ -11,7 +11,7 @@ test("pet form validation and local photo adjustment do not save before submissi
   await page.getByRole("button", { name: "Zaloguj się", exact: true }).click();
   await expect(page).toHaveURL(/\/pl\/app$/);
   await page.getByRole("button", { name: "Rozumiem", exact: true }).click();
-  await page.goto("/pl/app/zwierzeta/nowe");
+  await page.goto("/pl/app/pets/new");
   let writes = 0;
   await page.route("**/functions/v1/pets", async route => { writes++; await route.abort(); });
   await page.route("**/storage/v1/object/pet-avatars/**", async route => { writes++; await route.abort(); });

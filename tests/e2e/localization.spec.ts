@@ -21,8 +21,8 @@ test("catalogs cover the same messages and legacy links default to Polish", asyn
   page,
 }) => {
   expect(Object.keys(en.copy).sort()).toEqual(Object.keys(pl.copy).sort());
-  await page.goto("/demo/luna/dokumenty?plik=badania");
-  await expect(page).toHaveURL(/\/pl\/demo\/luna\/dokumenty\?plik=badania$/);
+  await page.goto("/demo/luna/documents?plik=badania");
+  await expect(page).toHaveURL(/\/pl\/demo\/luna\/documents\?plik=badania$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "pl");
   await page.goto("/en/app");
   await expect(page).toHaveURL(/\/en\/login$/);
@@ -36,23 +36,23 @@ test("catalogs cover the same messages and legacy links default to Polish", asyn
 test("language switch retains page, fragment and selected document", async ({
   page,
 }) => {
-  await page.goto("/pl/demo/luna/historia#badania");
+  await page.goto("/pl/demo/luna/history#badania");
   await chooseLanguage(page, "English");
-  await expect(page).toHaveURL(/\/en\/demo\/luna\/historia#badania$/);
+  await expect(page).toHaveURL(/\/en\/demo\/luna\/history#badania$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(
     page.getByRole("heading", { name: "Luna’s health history" }),
   ).toBeVisible();
-  await page.goto("/en/demo/luna/dokumenty?plik=rachunek");
+  await page.goto("/en/demo/luna/documents?plik=rachunek");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("PLN 245.00");
   await chooseLanguage(page, "Polski");
-  await expect(page).toHaveURL(/\/pl\/demo\/luna\/dokumenty\?plik=rachunek$/);
+  await expect(page).toHaveURL(/\/pl\/demo\/luna\/documents\?plik=rachunek$/);
   await expect(dialog).toContainText("245,00 zł");
   await chooseLanguage(page, "English");
   await expect(dialog).toContainText("does not translate original attachments");
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/en\/demo\/luna\/dokumenty$/);
+  await expect(page).toHaveURL(/\/en\/demo\/luna\/documents$/);
 });
 
 test("all public English pages render translated content and titles", async ({
@@ -65,27 +65,27 @@ test("all public English pages render translated content and titles", async ({
   });
   const pages = [
     ["", "More moments together. Less searching for results."],
-    ["/mozliwosci", "Less searching. More peace of mind."],
-    ["/jak-to-dziala", "You decide what to save."],
-    ["/prywatnosc", "Your data privacy"],
-    ["/regulamin", "Terms of use"],
+    ["/features", "Less searching. More peace of mind."],
+    ["/how-it-works", "You decide what to save."],
+    ["/privacy", "Your data privacy"],
+    ["/terms", "Terms of use"],
     ["/login", "Welcome back"],
   ];
   for (const [path, heading] of pages) {
     expect((await page.goto(`/en${path}`))?.status()).toBe(200);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
-    if (path === "/prywatnosc" || path === "/regulamin") {
+    if (path === "/privacy" || path === "/terms") {
       const article = page.locator("article.legal-content");
       await expect(article).toHaveAttribute("lang", "en");
       await expect(article.getByRole("heading", { level: 2 })).toHaveText(
-        path === "/prywatnosc"
+        path === "/privacy"
           ? "Privacy Policy for the Care My Pet Application"
           : "Terms and Conditions for the Provision of Electronic Services",
       );
       await expect(article).toContainText("caremypet9173@gmail.com");
       await expect(article).toContainText(
-        path === "/prywatnosc"
+        path === "/privacy"
           ? "9. Changes to the Privacy Policy and a change of Controller"
           : "Section 12. Final provisions",
       );
@@ -108,7 +108,7 @@ test("all public English pages render translated content and titles", async ({
 test("English record localises numbers, dates, search and labels without changing units", async ({
   page,
 }) => {
-  await page.goto("/en/demo/luna/historia");
+  await page.goto("/en/demo/luna/history");
   await page
     .getByRole("searchbox", { name: "Search history", exact: true })
     .fill("vaccination");
@@ -140,8 +140,8 @@ test("English layouts remain accessible and fit small screens", async ({
   for (const path of [
     "",
     "/demo/luna",
-    "/demo/luna/wyniki",
-    "/demo/luna/dokumenty?plik=badania",
+    "/demo/luna/results",
+    "/demo/luna/documents?plik=badania",
   ]) {
     await page.goto(`/en${path}`);
     if (path.includes("?"))

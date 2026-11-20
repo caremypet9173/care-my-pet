@@ -751,7 +751,7 @@ Deno.serve(async (req) => {
     }
 
     const origin = resolveSafeOrigin(req);
-    const archiveUrl = `${origin}/${locale}/archiwum/${token}`;
+    const archiveUrl = `${origin}/${locale}/archive/${token}`;
 
     const sent = await sendArchiveEmail({
       to: recipientEmail,

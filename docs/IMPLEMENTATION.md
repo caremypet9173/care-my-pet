@@ -88,8 +88,8 @@ Nie należy odblokowywać `/app` samym sprawdzeniem stanu po stronie klienta.
 ## Pełna kartoteka demonstracyjna — 2026-10-01
 
 Skrócony podgląd pozostaje na stronie głównej. `/demo/luna` prezentuje pełną
-kartotekę, a nawigacja prowadzi do osobnych stron: `/historia`, `/wyniki`,
-`/dokumenty` pod tym adresem. Działają odnośniki bezpośrednie, odświeżanie i historia
+kartotekę, a nawigacja prowadzi do osobnych stron: `/history`, `/results`,
+`/documents` pod tym adresem. Działają odnośniki bezpośrednie, odświeżanie i historia
 przeglądarki. Aktywna strona ma `aria-current`; nie udajemy zakładek ARIA przy
 nawigacji między osobnymi adresami.
 

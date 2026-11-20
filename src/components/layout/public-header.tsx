@@ -13,8 +13,8 @@ import { AccountLink } from "@/features/auth/account-link";
 
 function getLinks(t: Translator) {
   return [
-    { href: "/mozliwosci", label: t("features") },
-    { href: "/jak-to-dziala", label: t("howItWorks") },
+    { href: "/features", label: t("features") },
+    { href: "/how-it-works", label: t("howItWorks") },
   ];
 }
 

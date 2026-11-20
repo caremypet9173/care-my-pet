@@ -129,7 +129,7 @@ function ShareRecordDialog({
   function buildShareUrl(token: string): string {
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/${locale}/udostepnione/${token}`;
+    return `${origin}/${locale}/shared/${token}`;
   }
 
   const selectedLink =

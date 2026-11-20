@@ -32,7 +32,7 @@ test('identical renamed file is detected before AI and concurrent saves are dedu
  const other=await client.functions.invoke('medical-reports',{body:{action:'check_duplicate',pet_id:pet.id,sha256:createHash('sha256').update('different bytes').digest('hex')}});expect(other.data.duplicate).toBeNull();
  await page.goto('/pl/login');await page.getByLabel('Adres e-mail').fill(credentials.email);await page.getByLabel('Hasło',{exact:true}).fill(credentials.password);await page.getByRole('button',{name:'Zaloguj się',exact:true}).click();await expect(page).toHaveURL(/\/pl\/app$/,{timeout:20000});await page.getByRole('button',{name:'Rozumiem',exact:true}).click();
  let aiCalls=0;page.on('request',r=>{if(r.url().includes('/functions/v1/medical-reports')&&r.method()==='POST'&&r.postDataJSON()?.action==='extract')aiCalls++;});
- await page.goto(`/pl/app/zwierzeta/${pet.id}/badania/nowe`);
+ await page.goto(`/pl/app/pets/${pet.id}/results/new`);
  await page.route('**/functions/v1/medical-reports',route=>{
   if(route.request().postDataJSON()?.action==='check_duplicate')return route.fulfill({status:503,json:{error:'unavailable'}});
   return route.continue();

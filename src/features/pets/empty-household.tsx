@@ -58,7 +58,7 @@ export function EmptyHousehold({ locale, canAddPet = true }: { locale: Locale; c
       <div className="empty-household-mark"><Image src={assets.brand} width={48} height={48} alt="" /></div>
       <span className="empty-household-badge">{t.start}</span>
       <h3 id="empty-household-title">{t.title}</h3><p className="empty-household-intro">{t.intro}</p>
-      <div className="empty-household-actions">{canAddPet && <ButtonLink size="sm" href="/app/zwierzeta/nowe"><IconPlus size={16} aria-hidden="true" />{t.create}</ButtonLink>}<Link href="/demo/luna">{t.demo} →</Link></div>
+      <div className="empty-household-actions">{canAddPet && <ButtonLink size="sm" href="/app/pets/new"><IconPlus size={16} aria-hidden="true" />{t.create}</ButtonLink>}<Link href="/demo/luna">{t.demo} →</Link></div>
       <div className="empty-household-features">{features.map(({ icon: Icon, title, text }) => <div key={title}><span><Icon size={17} aria-hidden="true" /></span><h4>{title}</h4><p>{text}</p></div>)}</div>
       <p className="empty-household-planned">{t.planned}</p>
     </div></section>

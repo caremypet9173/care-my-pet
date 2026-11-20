@@ -75,7 +75,7 @@ test("navigation works and the private app stays closed", async ({
     await page.getByRole("button", { name: "Otwórz menu" }).click();
   }
   await page.getByRole("link", { name: "Jak to działa", exact: true }).click();
-  await expect(page).toHaveURL(/jak-to-dziala$/);
+  await expect(page).toHaveURL(/how-it-works$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Ty decydujesz, co zapisujesz.",
   );
@@ -96,9 +96,9 @@ test("navigation works and the private app stays closed", async ({
 
 test("public routes have no broken destination", async ({ page }) => {
   for (const path of [
-    "/mozliwosci",
-    "/prywatnosc",
-    "/regulamin",
+    "/features",
+    "/privacy",
+    "/terms",
     "/login",
     "/demo/luna",
   ]) {

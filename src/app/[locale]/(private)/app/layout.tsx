@@ -45,7 +45,7 @@ export default async function PrivateLayout({ children }: { children: React.Reac
               locale={locale}
             />
             <Link
-              href="/app/gospodarstwo"
+              href="/app/household"
               className="household-nav-link"
               title={pl ? "Konta rodzinne i współdzielenie" : "Family accounts & sharing"}
             >

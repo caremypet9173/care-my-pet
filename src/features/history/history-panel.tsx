@@ -395,7 +395,7 @@ export function HistoryPanel({
                 <ButtonLink
                   size="sm"
                   variant="secondary"
-                  href={`/app/zwierzeta/${petId}/plynoterapia/nowa`}
+                  href={`/app/pets/${petId}/fluid-therapy/new`}
                 >
                   <IconDroplet size={16} aria-hidden="true" />
                   {pl ? 'Dodaj kroplówkę' : 'Add infusion'}
@@ -585,7 +585,7 @@ export function HistoryPanel({
                               {ev.source_path && (
                                 <Link
                                   className="history-action-link is-primary"
-                                  href={`/app/zwierzeta/${petId}?tab=documents&document=${ev.id}`}
+                                  href={`/app/pets/${petId}?tab=documents&document=${ev.id}`}
                                 >
                                   <IconFileText size={15} aria-hidden="true" />
                                   {pl ? 'Dokument źródłowy' : 'Source document'}
@@ -725,7 +725,7 @@ export function HistoryPanel({
                             {!readOnly && (
                               <div className="history-card-actions">
                                 <Link
-                                  href={`/app/zwierzeta/${petId}/plynoterapia/${fl.id}/edytuj`}
+                                  href={`/app/pets/${petId}/fluid-therapy/${fl.id}/edit`}
                                   className="history-action-btn"
                                   aria-label={pl ? 'Edytuj wpis płynoterapii' : 'Edit fluid therapy'}
                                 >
@@ -884,7 +884,7 @@ export function HistoryPanel({
                             {rep.source_path && (
                               <Link
                                 className="history-action-link"
-                                href={`/app/zwierzeta/${petId}?tab=documents&document=${rep.id}`}
+                                href={`/app/pets/${petId}?tab=documents&document=${rep.id}`}
                               >
                                 <IconFileText size={15} aria-hidden="true" />
                                 {pl ? 'Dokument źródłowy' : 'Source document'}
@@ -892,7 +892,7 @@ export function HistoryPanel({
                             )}
                             <Link
                               className="history-action-link is-primary"
-                              href={`/app/zwierzeta/${petId}?tab=results&report=${rep.id}`}
+                              href={`/app/pets/${petId}?tab=results&report=${rep.id}`}
                             >
                               <IconFlask size={15} aria-hidden="true" />
                               {isDescriptive

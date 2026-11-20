@@ -80,7 +80,7 @@ export default function PrivateNotFound() {
           </ButtonLink>
           <ButtonLink
             variant="secondary"
-            href="/app/gospodarstwo"
+            href="/app/household"
             style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
           >
             <IconUsers size={18} aria-hidden="true" />

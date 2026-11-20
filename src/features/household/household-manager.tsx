@@ -146,7 +146,7 @@ export function HouseholdManager({
     if (targetId === household.id) return;
     notifyHouseholdChange(targetId);
     await switchActiveHousehold(targetId);
-    router.push(`/app/gospodarstwo?id=${targetId}`);
+    router.push(`/app/household?id=${targetId}`);
     router.refresh();
   }
 
@@ -176,7 +176,7 @@ export function HouseholdManager({
       const newId = data.household.id;
       notifyHouseholdChange(newId);
       await switchActiveHousehold(newId);
-      router.push(`/app/gospodarstwo?id=${newId}`);
+      router.push(`/app/household?id=${newId}`);
       router.refresh();
     } catch {
       setCreateHomeError(
@@ -266,7 +266,7 @@ export function HouseholdManager({
       const invite = data.invitation as HouseholdInvitation;
       const inviteUrl =
         data.invite_url ||
-        `${window.location.origin}/pl/zaproszenie/${invite.token}`;
+        `${window.location.origin}/pl/invite/${invite.token}`;
 
       setInvitations((prev) => [
         invite,
@@ -1065,7 +1065,7 @@ export function HouseholdManager({
                     : "Only the household owner can rotate an active recovery key."}
                 </small>
               )}
-              <Link href="/odzyskaj" className="history-action-link">
+              <Link href="/recover" className="history-action-link">
                 {pl ? "Publiczny formularz odzyskania →" : "Public recovery portal →"}
               </Link>
             </div>
@@ -1257,7 +1257,7 @@ export function HouseholdManager({
                 typeof window !== "undefined"
                   ? window.location.origin
                   : "https://caremypet.app";
-              const inviteUrl = `${origin}/pl/zaproszenie/${invite.token}`;
+              const inviteUrl = `${origin}/pl/invite/${invite.token}`;
               const isCopied = copiedToken === invite.token;
 
               return (
@@ -1349,7 +1349,7 @@ export function HouseholdManager({
           {initialData.pets.map((pet) => (
             <Link
               key={pet.id}
-              href={`/app/zwierzeta/${pet.id}`}
+              href={`/app/pets/${pet.id}`}
               className="household-pet-mini-card"
             >
               <div className="household-pet-mini-avatar">

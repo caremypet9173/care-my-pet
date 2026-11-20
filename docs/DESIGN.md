@@ -110,11 +110,11 @@ Sam pilotaż nadal jest zamknięty; zmienia się wyłącznie komunikacja publicz
 
 ### Podstrony publiczne
 
-- `/mozliwosci` — możliwości produktu przedstawione na przykładach kartoteki,
+- `/features` — możliwości produktu przedstawione na przykładach kartoteki,
   historii wizyt, wyników, wagi, terminów i odczytu dokumentów.
-- `/jak-to-dziala` — dodanie dokumentu, porównanie odczytu z oryginałem,
+- `/how-it-works` — dodanie dokumentu, porównanie odczytu z oryginałem,
   zatwierdzenie wpisu; ilustracje z objaśnieniami i krótkie FAQ.
-- `/prywatnosc` — szablon dokumentu ze spisem sekcji i czytelną kolumną tekstu.
+- `/privacy` — szablon dokumentu ze spisem sekcji i czytelną kolumną tekstu.
   Treść robocza wymaga uzupełnienia rzeczywistych danych administratora, kontaktu,
   podstaw przetwarzania, dostawców, retencji oraz używanych technologii przed publikacją.
 

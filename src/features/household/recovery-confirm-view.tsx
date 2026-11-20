@@ -110,7 +110,7 @@ export function RecoveryConfirmView({
     setConfirmedSuccess(true);
     await switchActiveHousehold(householdId);
     setTimeout(() => {
-      router.push("/app/gospodarstwo");
+      router.push("/app/household");
       router.refresh();
     }, 1200);
   }
@@ -293,7 +293,7 @@ export function RecoveryConfirmView({
           <span>{errorMsg}</span>
         </div>
         <div className="recovery-portal-actions">
-          <Link href="/odzyskaj" className="btn btn-secondary">
+          <Link href="/recover" className="btn btn-secondary">
             {pl ? "Rozpocznij od nowa" : "Start again"}
           </Link>
         </div>
@@ -319,7 +319,7 @@ export function RecoveryConfirmView({
             : "The one-time recovery key has been consumed and the previous owner removed. Generate a new recovery key in household settings to unlock edits."}
         </p>
         <div className="recovery-portal-actions">
-          <Link href="/app/gospodarstwo" className="btn btn-primary">
+          <Link href="/app/household" className="btn btn-primary">
             <IconArrowRight size={16} aria-hidden="true" />
             {pl ? "Przejdź do ustawień domostwa" : "Open household settings"}
           </Link>
@@ -344,7 +344,7 @@ export function RecoveryConfirmView({
           </span>
         </div>
         <div className="recovery-portal-actions">
-          <Link href="/odzyskaj" className="btn btn-secondary">
+          <Link href="/recover" className="btn btn-secondary">
             {pl ? "Wróć do formularza odzyskania" : "Back to recovery form"}
           </Link>
         </div>
@@ -355,7 +355,7 @@ export function RecoveryConfirmView({
   const normalizedTarget = details.claim.target_email.toLowerCase();
   const normalizedCurrent = currentUserEmail?.toLowerCase() ?? "";
   const isMatchingSignedInUser = Boolean(normalizedCurrent && normalizedCurrent === normalizedTarget);
-  const returnToPath = `/${locale}/odzyskaj/potwierdz/${token}`;
+  const returnToPath = `/${locale}/recover/confirm/${token}`;
 
   return (
     <section className="recovery-portal-card">

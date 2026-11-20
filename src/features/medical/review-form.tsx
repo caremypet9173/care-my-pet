@@ -76,7 +76,7 @@ export function ReviewForm({pet}:{pet:Pet}) {
     update("notes",nextValue.slice(0,12000));
     requestAnimationFrame(()=>{el.focus();const pos=Math.min(start+cursorOffset,12000);el.setSelectionRange(pos,pos);});
   }
-  const back=`/app/zwierzeta/${pet.id}?tab=results`;
+  const back=`/app/pets/${pet.id}?tab=results`;
   useEffect(()=>{
     const notice=duplicate?duplicateNotice.current:error&&error!==t.validation?feedback.current:busy==='check'?checkingNotice.current:null;
     notice?.focus({preventScroll:true});notice?.scrollIntoView({behavior:'smooth',block:'center'});

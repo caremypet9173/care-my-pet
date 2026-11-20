@@ -98,7 +98,7 @@ export default async function AppPage() {
             <ButtonLink
               variant={empty ? "primary" : "secondary"}
               size="sm"
-              href="/app/zwierzeta/nowe"
+              href="/app/pets/new"
             >
               <IconPlus size={16} aria-hidden="true" />
               {empty ? firstPet : t.add}
@@ -108,13 +108,13 @@ export default async function AppPage() {
             <ButtonLink
               variant="secondary"
               size="sm"
-              href={`/app/zwierzeta/${primaryPet.id}/badania/nowe`}
+              href={`/app/pets/${primaryPet.id}/results/new`}
             >
               <IconUpload size={16} aria-hidden="true" />
               {d.upload}
             </ButtonLink>
           )}
-          <ButtonLink variant="secondary" size="sm" href="/app/gospodarstwo">
+          <ButtonLink variant="secondary" size="sm" href="/app/household">
             <IconUsers size={16} aria-hidden="true" />
             {locale === "pl" ? "Gospodarstwo" : "Household"}
           </ButtonLink>

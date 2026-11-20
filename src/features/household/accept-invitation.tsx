@@ -705,7 +705,7 @@ export function AcceptInvitation({
 
           <div className="household-invite-fallback">
             <Link
-              href={`/login?returnTo=/zaproszenie/${token}`}
+              href={`/login?returnTo=/invite/${token}`}
               className="household-invite-fallback-link"
             >
               <span>

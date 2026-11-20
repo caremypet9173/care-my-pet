@@ -15,8 +15,8 @@ Projekt Stitch `1963478756572071889`:
 Kartoteka → zakładka Wyniki badań → Dodaj badanie → wybór PDF/JPG/PNG →
 odczyt Gemini lub ręczne wpisanie → porównanie z oryginałem → sprawdzenie każdego
 parametru i potwierdzenie danych → zapis → lista z oryginałem.
-Trasa formularza: `/pl/app/zwierzeta/[id]/badania/nowe` (także `/en`).
-Powrót do wyników: `/app/zwierzeta/[id]?tab=results`.
+Trasa formularza: `/pl/app/pets/[id]/results/new` (także `/en`).
+Powrót do wyników: `/app/pets/[id]?tab=results`.
 
 Odczytane wartości pozostają wyłącznie w pamięci formularza; nie zapisujemy
 szkiców medycznych w DB ani localStorage. Plik trafia do Storage dopiero przy
@@ -182,7 +182,7 @@ równoczesnych zapisów, retry i otwieranie istniejącego badania na desktop/mob
 
 # Badania obrazowe i opisowe (USG, TK, RTG, ECHO) — 2026-10-20
 
-Wdrożono **Opcję A — obsługa w zakładce „Wyniki badań” (`/badania/nowe` + `MedicalResults`) z automatyczną widocznością w „Historii” i „Dokumentach”**:
+Wdrożono **Opcję A — obsługa w zakładce „Wyniki badań” (`/results/new` + `MedicalResults`) z automatyczną widocznością w „Historii” i „Dokumentach”**:
 
 1. **Prompt, walidacja i baza danych (`supabase/functions/medical-reports/index.ts`, `validation.mjs`, migracja `20261020150000_increase_medical_report_notes_limit.sql`)**:
    - Zwiększono limit długości pola `wynik_badania.notes` z `4000` do `12000` znaków (w bazie danych, walidacji backendu oraz formularzu frontendu), aby pomieścić wielostronicowe opisy badań TK/USG.

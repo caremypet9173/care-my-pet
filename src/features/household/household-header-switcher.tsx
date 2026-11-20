@@ -128,8 +128,8 @@ export function HouseholdHeaderSwitcher({
 
     await switchActiveHousehold(householdId);
 
-    if (pathname?.includes("/app/gospodarstwo")) {
-      router.push(`/app/gospodarstwo?id=${householdId}`);
+    if (pathname?.includes("/app/household")) {
+      router.push(`/app/household?id=${householdId}`);
     }
     router.refresh();
   };
@@ -219,7 +219,7 @@ export function HouseholdHeaderSwitcher({
 
           <div className="household-header-dropdown-footer">
             <Link
-              href="/app/gospodarstwo"
+              href="/app/household"
               className="household-header-dropdown-manage-link"
               onClick={() => setIsOpen(false)}
             >

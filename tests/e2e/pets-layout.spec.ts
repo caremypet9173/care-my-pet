@@ -17,7 +17,7 @@ test("household layout and profile tabs match the workspace structure", async ({
     await expect(page.getByRole("heading", { name: "Twoje domostwo nie ma jeszcze żadnego podopiecznego" })).toBeVisible();
     await expect(page.locator(".empty-household-features > div")).toHaveCount(3);
     await expect(page.locator(".pet-card--add")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Utwórz kartotekę pupila" })).toHaveAttribute("href", "/pl/app/zwierzeta/nowe");
+    await expect(page.getByRole("link", { name: "Utwórz kartotekę pupila" })).toHaveAttribute("href", "/pl/app/pets/new");
     await expect(page.getByRole("link", { name: /demonstracyjny profil Luny/ })).toHaveAttribute("href", "/pl/demo/luna");
   }
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

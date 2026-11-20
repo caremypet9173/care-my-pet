@@ -20,12 +20,12 @@ przyjaciele. Publiczny launch, blog i kampania nie blokują pilotażu.
 - **Gospodarstwa, konta rodzinne i odzyskiwanie:** 3 role (`owner`, `admin`,
   `member` z ścisłą izolacją operacji właściciela), zaproszenia, przełącznik
   gospodarstwa w nagłówku, pełne RLS (zoptymalizowane do InitPlan) oraz
-  **Klucz Odzyskiwania** (`/odzyskaj`, `household-recovery`).
+  **Klucz Odzyskiwania** (`/recover`, `household-recovery`).
 - **Profile i archiwizacja pupili:** formularz z lokalnym kadrowaniem prywatnego
   awatara i przybliżoną datą urodzenia (`docs/PETS.md`), system tagów
   opiekuńczo-zdrowotnych (`tagi` ze słownikiem podpowiedzi), kompaktowe hero z
   przyciskiem/modalem „O mnie”, szybki przełącznik kartotek `PetSwitcher` oraz
-  archiwizacja pupila z zabezpieczonymi linkami archiwalnymi (`/archiwum/[token]`,
+  archiwizacja pupila z zabezpieczonymi linkami archiwalnymi (`/archive/[token]`,
   `pet-archive`, kod PBKDF2 100k + raport PDF i oryginały załączników).
 - **Wyniki badań i dokumenty:** odczyt PDF/JPG/PNG do 12 MB przez Gemini
   (`gemini-3.5-flash-lite`, transfer przez Storage + limit 10 stron po stronie
@@ -79,7 +79,7 @@ przyjaciele. Publiczny launch, blog i kampania nie blokują pilotażu.
 - Zakres publicznego MVP na podstawie danych o użyciu i kosztach.
 - Prepaid i Stripe przed uruchomieniem płatnych usług (`MONETIZATION.md`).
 - Szersza kampania, ewentualny blog z Sanity i SEO (`TECH.md` §8).
-- Dopasowanie dokumentów prawnych (`/prywatnosc`, `/regulamin`) do docelowych
+- Dopasowanie dokumentów prawnych (`/privacy`, `/terms`) do docelowych
   dostawców i operacji przed otwartą rejestracją.
 
 ## Mapowanie wcześniejszych kamieni milowych

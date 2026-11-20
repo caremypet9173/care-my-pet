@@ -12,9 +12,9 @@ import {
 function getItems(t: Translator) {
   return [
     { href: "/demo/luna", label: t("summary"), icon: IconLayoutDashboard },
-    { href: "/demo/luna/historia", label: t("history"), icon: IconHistory },
-    { href: "/demo/luna/wyniki", label: t("testResults"), icon: IconFlask },
-    { href: "/demo/luna/dokumenty", label: t("documents"), icon: IconFiles },
+    { href: "/demo/luna/history", label: t("history"), icon: IconHistory },
+    { href: "/demo/luna/results", label: t("testResults"), icon: IconFlask },
+    { href: "/demo/luna/documents", label: t("documents"), icon: IconFiles },
   ];
 }
 export function ProfileNavigation() {

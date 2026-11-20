@@ -276,7 +276,7 @@ export function HouseholdDashboard({
 
               <Link
                 className="button button--primary button--sm household-card-link"
-                href={`/app/zwierzeta/${pet.id}`}
+                href={`/app/pets/${pet.id}`}
               >
                 {d.record} <span className="sr-only">{pet.imie}</span>
                 <IconArrowRight size={16} aria-hidden="true" />
@@ -286,7 +286,7 @@ export function HouseholdDashboard({
         })}
 
         {canAddPet && (
-          <Link className="pet-card pet-card--add" href="/app/zwierzeta/nowe">
+          <Link className="pet-card pet-card--add" href="/app/pets/new">
             <span className="add-pet-icon">
               <IconPlus size={26} aria-hidden="true" />
             </span>
@@ -343,7 +343,7 @@ export function HouseholdDashboard({
                   </div>
                   <Link
                     className="button button--secondary button--sm"
-                    href={`/app/zwierzeta/${pet.id}`}
+                    href={`/app/pets/${pet.id}`}
                   >
                     {am.dashboardOpenArchived}
                   </Link>

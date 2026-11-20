@@ -43,7 +43,7 @@ export function CookieNotice() {
         <p>{t("cookieNoticeBody")}</p>
       </div>
       <div className="cookie-notice-actions">
-        <Link href="/prywatnosc#cookies">{t("cookieNoticeDetails")}</Link>
+        <Link href="/privacy#cookies">{t("cookieNoticeDetails")}</Link>
         <Button onClick={dismiss} size="sm">{t("cookieNoticeDismiss")}</Button>
       </div>
     </aside>

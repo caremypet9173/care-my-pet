@@ -41,7 +41,7 @@ export default async function EditPetPage({ params }: { params: Promise<{ id: st
   const hasRecoveryKey = Boolean(details?.household?.has_recovery_key);
   return (
     <Container width="demo" className="pets-page">
-      <Link href={`/app/zwierzeta/${pet.id}`}>← {pet.imie}</Link>
+      <Link href={`/app/pets/${pet.id}`}>← {pet.imie}</Link>
       <h1>{t.edit}</h1>
       {pet.archived_at ? (
         <PetArchivedBlockedCard pet={pet} locale={locale} isOwner={canManage} />

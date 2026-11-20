@@ -44,7 +44,7 @@ export default async function NewReportPage({params}:{params:Promise<{id:string}
   if (!hasRecoveryKey && details?.household) {
     return (
       <div className="pets-page" style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem 1rem" }}>
-        <Link href={`/app/zwierzeta/${pet.id}`}>← {pet.imie}</Link>
+        <Link href={`/app/pets/${pet.id}`}>← {pet.imie}</Link>
         <HouseholdRecoveryBanner
           householdId={details.household.id}
           householdName={details.household.nazwa}

@@ -29,7 +29,7 @@ const ALLOWED_TABS = new Set([
 ]);
 
 function buildPetHref(petId: string, tab: string | null): string {
-  return tab ? `/app/zwierzeta/${petId}?tab=${encodeURIComponent(tab)}` : `/app/zwierzeta/${petId}`;
+  return tab ? `/app/pets/${petId}?tab=${encodeURIComponent(tab)}` : `/app/pets/${petId}`;
 }
 
 function PetMiniAvatar({

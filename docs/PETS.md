@@ -13,8 +13,8 @@ Paleta i typografia: Signature (`b19e91a73daf435ba4c3d28e4130e215`).
 Dodawanie: „Poznajmy Twojego pupila” — Desktop, Mobile i Dopasowanie zdjęcia.
 Identyfikatory sześciu ekranów i ich role: `stitch/DESIGN.md`.
 
-Trasy pod `/pl` i `/en`: `/app`, `/app/zwierzeta/nowe`,
-`/app/zwierzeta/[id]`, `/app/zwierzeta/[id]/edytuj`.
+Trasy pod `/pl` i `/en`: `/app`, `/app/pets/new`,
+`/app/pets/[id]`, `/app/pets/[id]/edit`.
 Po korekcie zgodności ze Stitch panel zachowuje pasek podsumowania,
 zwarte karty, sekcję terminarza, okładkę profilu, zakładki i kolumnę boczną.
 Specyfikacja odwzorowania: `stitch/DESIGN.md`. Karty, puste stany i formularz
@@ -127,7 +127,7 @@ zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
   tekstowego w hero wyświetla się przycisk „O mnie” otwierający `<dialog>` z pełnym
   opisem; przy pustym polu przycisk nie jest renderowany. To samo hero współdzieli
   widok udostępniony weterynarzowi (`SharedVetRecordView`, bez akcji edycji).
-- **Szybki przełącznik pupili (`PetSwitcher`):** na trasie `/app/zwierzeta/[id]`
+- **Szybki przełącznik pupili (`PetSwitcher`):** na trasie `/app/pets/[id]`
   przy `2–5` pupilach na desktopie (`> 960 px`) renderuje się pasek pigułek obok
   `← Wszystkie zwierzaki`, a powyżej `5` pupili oraz na węższych ekranach (`≤ 960 px`)
   rozwijany przycisk dropdown; przełączenie zachowuje aktywną zakładkę (`?tab=...`).
@@ -167,7 +167,7 @@ zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
   - `medical-reports`, `pet-history`, `pet-medications`, `pet-schedule`, `pet-weight`:
     blokują mutacje zarchiwizowanych kartotek odpowiedzią HTTP `423` (`pet_archived`).
 - **Interfejs (`src/features/pets/`, `src/app/[locale]/(private)/app/`):**
-  - Na `/app/zwierzeta/[id]/edytuj` właściciel ma sekcję „Zamknięcie kartoteki”
+  - Na `/app/pets/[id]/edit` właściciel ma sekcję „Zamknięcie kartoteki”
     (`PetArchiveSection` z wyborem powodu, opcjonalną datą pożegnania przy `deceased`
     i notatką); po zamknięciu wszystkie podstrony edycji/dodawania pokazują blokadę
     `PetArchivedBlockedCard`.
@@ -176,7 +176,7 @@ zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
   - `PetHeroCover` wyświetla stonowany tryb pamięci (`W pamięci` + lata/data) lub
     `Kartoteka zamknięta` (także w `SharedVetRecordView` przy ręcznym udostępnieniu),
     `PetArchivedBanner` daje właścicielowi akcję „Przywróć kartotekę” (`PetRestoreButton`),
-    a wszystkie panele na `/app/zwierzeta/[id]` otrzymują `readOnly={isArchived}`.
+    a wszystkie panele na `/app/pets/[id]` otrzymują `readOnly={isArchived}`.
 
 ## Aktualizacja 2026-11-18 — Archiwum danych do pobrania (7 dni, kod na e-mail, raport PDF + pliki)
 
@@ -196,10 +196,10 @@ zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
     30-minutowy token sesji HMAC oraz dane kliniczne i listę załączników (bez czatów
     Asystenta AI, logów domowników i prywatnej notatki zamykającej); pliki z
     `medical-documents` pobierane są bezpośrednio na żądanie przez `signedUrl`.
-- **Interfejs i raport PDF (`src/features/archive/`, `/archiwum/[token]`):**
+- **Interfejs i raport PDF (`src/features/archive/`, `/archive/[token]`):**
   - Przycisk `ArchiveLinkButton` na widoku kartoteki (zarówno aktywnej, jak i zamkniętej)
     obok `ShareRecordButton`, widoczny wyłącznie dla właściciela (`isOwner`).
-  - Publiczna strona `src/app/[locale]/(public)/archiwum/[token]/page.tsx` +
+  - Publiczna strona `src/app/[locale]/(public)/archive/[token]/page.tsx` +
     `ArchivePortalView`: bramka z kodem dostępu, statystyki kartoteki, generator
     wielostronicowego raportu A4 PDF po stronie przeglądarki (`buildPetArchivePdf` w `pdf-lib`
     z osadzoną czcionką `Inter`) oraz pobieranie oryginalnych załączników badań.
@@ -233,10 +233,10 @@ zaproszenia, wizyty i pomiary masy pozostają do wdrożenia.
     obsługa kodu `PT428` (`HTTP 428 recovery_key_required`) oraz dostęp współadministratorów w `pet-archive`.
   - `schedule-notifications`: automatyczne zatwierdzanie przeterminowanych wniosków `household_admin_request`
     w cronie z powiadomieniem e-mail.
-- **Interfejs (`src/features/household/`, `/odzyskaj`, `/odzyskaj/potwierdz/[token]`):**
+- **Interfejs (`src/features/household/`, `/recover`, `/recover/confirm/[token]`):**
   - `HouseholdRecoveryBanner` + `RecoveryKeyDialog` + generator karty A4 PDF (`buildRecoveryKeyPdf`
     w `recovery-key-pdf.ts`) na pulpicie `/app`, kartotekach i formularzach.
-  - Publiczny portal odzyskania `/odzyskaj` oraz potwierdzenia przejęcia `/odzyskaj/potwierdz/[token]`
+  - Publiczny portal odzyskania `/recover` oraz potwierdzenia przejęcia `/recover/confirm/[token]`
     z bezpośrednią rejestracją lub logowaniem docelowego adresu e-mail.
   - Sekcja bezpieczeństwa, zarządzania e-mailem pomocniczym, awansowania na `Współadministratora`
-    oraz obsługi 14-dniowych wniosków ciągłości w `/app/gospodarstwo`.
+    oraz obsługi 14-dniowych wniosków ciągłości w `/app/household`.

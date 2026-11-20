@@ -150,7 +150,7 @@ export function RecoveryKeyDialog({
         recoveryKey: generated.recovery_key,
         keyHint: generated.recovery_key_hint,
         createdAtIso: generated.recovery_key_set_at,
-        recoveryUrl: `${origin}/${locale}/odzyskaj`,
+        recoveryUrl: `${origin}/${locale}/recover`,
         locale,
       });
 
@@ -484,7 +484,7 @@ export function HouseholdRecoveryBanner({
               {pl ? "Wygeneruj klucz odzyskania" : "Generate recovery key"}
             </Button>
           ) : (
-            <Link href="/app/gospodarstwo" className="btn btn-secondary btn-sm">
+            <Link href="/app/household" className="btn btn-secondary btn-sm">
               {pl ? "Ustawienia domostwa" : "Household settings"}
             </Link>
           )}

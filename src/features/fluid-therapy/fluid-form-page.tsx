@@ -240,7 +240,7 @@ export function FluidFormPage({
           });
         }
 
-        router.push(`/app/zwierzeta/${pet.id}?tab=overview`);
+        router.push(`/app/pets/${pet.id}?tab=overview`);
         router.refresh();
         return;
       }
@@ -288,7 +288,7 @@ export function FluidFormPage({
         });
       }
 
-      router.push(`/app/zwierzeta/${pet.id}?tab=history`);
+      router.push(`/app/pets/${pet.id}?tab=history`);
       router.refresh();
     } catch {
       setError(
@@ -320,7 +320,7 @@ export function FluidFormPage({
       }
 
       setShowDeleteModal(false);
-      router.push(`/app/zwierzeta/${pet.id}?tab=history`);
+      router.push(`/app/pets/${pet.id}?tab=history`);
       router.refresh();
     } catch {
       setError(pl ? "Wystąpił nieoczekiwany błąd podczas usuwania." : "An error occurred during deletion.");
@@ -347,7 +347,7 @@ export function FluidFormPage({
     pl ? "Zmieniony opatrunek" : "Dressing changed",
   ];
 
-  const backUrl = `/app/zwierzeta/${pet.id}?tab=history`;
+  const backUrl = `/app/pets/${pet.id}?tab=history`;
 
   return (
     <Container width="demo" className="pets-page fluid-page-shell">

@@ -102,12 +102,12 @@ test("email normalization, masking, token, and constantTimeEqualHex behave safel
 
 test("buildRecoveryQrUrl puts owner and key strictly inside URL hash fragment", () => {
   const url = buildRecoveryQrUrl({
-    recoveryUrl: "https://caremypet.app/pl/odzyskaj",
+    recoveryUrl: "https://caremypet.app/pl/recover",
     ownerEmail: "owner+pet@example.pl",
     recoveryKey: "CMP-AAAA-BBBB-CCCC-DDDD-EEEE",
   });
   const parsed = new URL(url);
-  assert.equal(parsed.origin + parsed.pathname, "https://caremypet.app/pl/odzyskaj");
+  assert.equal(parsed.origin + parsed.pathname, "https://caremypet.app/pl/recover");
   assert.equal(parsed.search, "");
   const hashParams = new URLSearchParams(parsed.hash.slice(1));
   assert.equal(hashParams.get("owner"), "owner+pet@example.pl");
@@ -124,7 +124,7 @@ test("buildRecoveryKeyPdfWithAssets renders a 1-page A4 PDF with Polish diacriti
       recoveryKey: key,
       keyHint: formatRecoveryKeyHint(key),
       createdAtIso: "2026-11-18T14:00:00.000Z",
-      recoveryUrl: "https://caremypet.app/pl/odzyskaj",
+      recoveryUrl: "https://caremypet.app/pl/recover",
       locale: "pl",
     },
     {

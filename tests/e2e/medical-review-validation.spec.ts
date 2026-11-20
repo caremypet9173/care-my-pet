@@ -20,7 +20,7 @@ test('review aligns results and identifies missing data and confirmations',async
   if(body?.action==='extract')return route.fulfill({json:{patient_name:'TEST CAT',report:{title:'',test_date:'',laboratory:'Test',doctor:'',notes:'',rows:[{name:'Glucose',value:'6',unit:'mmol/L',reference:'4.11 - 8.83',category:'blood'},{name:'Creatinine',value:'194.48',unit:'µmol/L',reference:'70.72 - 212.16',category:'renal'},{name:'BUN: Creatinine Ratio',value:'9',unit:'',reference:'',category:'renal'}]}}});
   return route.abort();
  });
- await page.goto(`/pl/app/zwierzeta/${pet.id}?tab=results`);await page.getByRole('link',{name:'Dodaj badanie',exact:true}).click();
+ await page.goto(`/pl/app/pets/${pet.id}?tab=results`);await page.getByRole('link',{name:'Dodaj badanie',exact:true}).click();
  await page.getByLabel('Wybierz dokument',{exact:true}).setInputFiles({name:'synthetic.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=','base64')});
  await page.getByRole('button',{name:'Odczytaj z Gemini'}).click();await expect(page.locator('.medical-parameter')).toHaveCount(3);
  const inputs=page.locator('.medical-row-values label:first-child input');const boxes=await inputs.evaluateAll(elements=>elements.map(el=>({x:el.getBoundingClientRect().x,width:el.getBoundingClientRect().width})));

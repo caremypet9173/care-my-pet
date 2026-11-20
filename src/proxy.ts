@@ -8,9 +8,9 @@ const internationalize = createMiddleware(routing);
 
 const AUTH_ROUTE_PATTERN = /^\/(?:pl|en)\/(?:app|login|register|auth)(?:\/|$)/;
 const TOKEN_ROUTE_PATTERN =
-  /^\/(?:pl|en)\/(?:udostepnione|archiwum|odzyskaj|zaproszenie)(?:\/|$)/;
+  /^\/(?:pl|en)\/(?:shared|archive|recover|invite)(?:\/|$)/;
 const TOKEN_SESSION_ROUTE_PATTERN =
-  /^\/(?:pl|en)\/(?:odzyskaj|zaproszenie)(?:\/|$)/;
+  /^\/(?:pl|en)\/(?:recover|invite)(?:\/|$)/;
 
 function applySensitiveHeaders(headers: Headers, isTokenRoute: boolean) {
   headers.set("Cache-Control", "private, no-store");

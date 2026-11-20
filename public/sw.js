@@ -1,7 +1,7 @@
 /* Care My Pet - Service Worker (PWA) */
 
-const PUBLIC_CACHE = "caremypet-public-v3";
-const STATIC_CACHE = "caremypet-static-v3";
+const PUBLIC_CACHE = "caremypet-public-v4";
+const STATIC_CACHE = "caremypet-static-v4";
 const ACTIVE_CACHES = new Set([PUBLIC_CACHE, STATIC_CACHE]);
 const MAX_STATIC_ENTRIES = 120;
 const MAX_PUBLIC_ENTRIES = 40;
@@ -19,7 +19,7 @@ const PRECACHE_ASSETS = [
 
 // Private, tokenized, and auth routes MUST NEVER be stored in or served from Cache Storage
 const PRIVATE_NAV_PATTERN =
-  /^\/(?:pl|en)\/(?:app|udostepnione|archiwum|odzyskaj|zaproszenie|login|register|auth)(?:\/|$)/;
+  /^\/(?:pl|en)\/(?:app|shared|archive|recover|invite|login|register|auth)(?:\/|$)/;
 
 const OFFLINE_HTML =
   "<!DOCTYPE html><html lang='pl'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Care My Pet — Offline</title><style>body{font-family:system-ui,-apple-system,sans-serif;background:#fbf9f4;color:#1f241f;margin:0;padding:2rem;display:grid;place-items:center;min-height:100vh}main{max-width:28rem;background:#fff;border:1px solid #dfd7c8;border-radius:16px;padding:1.5rem}h1{color:#164d34;font-size:1.25rem;margin-top:0}p{color:#526462;line-height:1.5}</style></head><body><main><h1>Brak połączenia z internetem</h1><p>Aplikacja Care My Pet wymaga połączenia z siecią, aby bezpiecznie wyświetlić prywatną kartotekę zdrowia pupila. Wróć, gdy odzyskasz połączenie.</p></main></body></html>";

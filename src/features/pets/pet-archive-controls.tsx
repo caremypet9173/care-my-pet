@@ -118,7 +118,7 @@ export function PetArchiveSection({ pet }: { pet: Pet }) {
       }
 
       dialogRef.current?.close();
-      router.push(`/app/zwierzeta/${pet.id}`);
+      router.push(`/app/pets/${pet.id}`);
       router.refresh();
     } catch {
       setError(m.errors.generic);

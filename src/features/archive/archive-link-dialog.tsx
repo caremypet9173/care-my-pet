@@ -131,7 +131,7 @@ function ArchiveLinkDialog({
 
   function buildArchiveUrl(token: string): string {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/${locale}/archiwum/${token}`;
+    return `${origin}/${locale}/archive/${token}`;
   }
 
   function mapErrorMessage(code?: string): string {

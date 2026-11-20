@@ -114,7 +114,7 @@ export function PetForm({ pet, householdId }: { pet?: Pet; householdId?: string 
       saved = true;
       setIsDirty(false);
       if (pet?.avatar_path && pet.avatar_path !== avatarPath) await client.storage.from("pet-avatars").remove([pet.avatar_path]).catch(() => undefined);
-      router.push(`/app/zwierzeta/${data.pet.id}`); router.refresh();
+      router.push(`/app/pets/${data.pet.id}`); router.refresh();
     } catch { setError(t.failed); }
     finally {
       if (!saved && uploaded) await client.storage.from("pet-avatars").remove([uploaded]).catch(() => undefined);
@@ -177,7 +177,7 @@ export function PetForm({ pet, householdId }: { pet?: Pet; householdId?: string 
         </div>
       </fieldset>
       {error && <p className="pet-error" role="alert">{error}</p>}
-      <div className="pet-registration-actions"><small>{d.requiredHint}</small>{busy ? <Button variant="ghost" disabled>{t.cancel}</Button> : <ButtonLink variant="ghost" href={pet ? `/app/zwierzeta/${pet.id}` : "/app"} onClick={event => { if (isDirty && !window.confirm(d.cancelWarning)) event.preventDefault(); }}>{t.cancel}</ButtonLink>}<Button type="submit" loading={busy}>{pet ? t.save : d.create}<IconArrowRight size={17} aria-hidden="true" /></Button></div>
+      <div className="pet-registration-actions"><small>{d.requiredHint}</small>{busy ? <Button variant="ghost" disabled>{t.cancel}</Button> : <ButtonLink variant="ghost" href={pet ? `/app/pets/${pet.id}` : "/app"} onClick={event => { if (isDirty && !window.confirm(d.cancelWarning)) event.preventDefault(); }}>{t.cancel}</ButtonLink>}<Button type="submit" loading={busy}>{pet ? t.save : d.create}<IconArrowRight size={17} aria-hidden="true" /></Button></div>
     </form>
     {cropFile && <PhotoCropDialog file={cropFile} onCancel={() => setCropFile(null)} onSave={acceptPhoto} />}
   </>;

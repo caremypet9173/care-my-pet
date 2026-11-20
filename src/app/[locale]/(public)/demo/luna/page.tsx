@@ -24,7 +24,7 @@ export default function DemoPage() {
       <h2 className="sr-only">{t("lunasRecordSummary")}</h2>
       <div className="profile-stats">
         <Link
-          href="/demo/luna/historia#kontrola"
+          href="/demo/luna/history#kontrola"
           className="stat-card stat-card--primary"
         >
           <div>
@@ -43,7 +43,7 @@ export default function DemoPage() {
           <p>{t("unchangedSinceAugust3Measurements")}</p>
         </Link>
         <Link
-          href="/demo/luna/wyniki"
+          href="/demo/luna/results"
           className="stat-card stat-card--lavender"
         >
           <div>
@@ -72,7 +72,7 @@ export default function DemoPage() {
                 <h2>{t("recentEvents")}</h2>
                 <p>{t("aChronologicalOverviewOfRecentEntries")}</p>
               </div>
-              <Link href="/demo/luna/historia">
+              <Link href="/demo/luna/history">
                 {t("fullHistory")}{" "}
                 <IconArrowRight size={16} aria-hidden="true" />
               </Link>
@@ -95,7 +95,7 @@ export default function DemoPage() {
                       </div>
                       <p>{event.description}</p>
                       <Link
-                        href={`/demo/luna/historia#${event.id}`}
+                        href={`/demo/luna/history#${event.id}`}
                         className="text-link"
                       >
                         {t("viewEntry")}{" "}
@@ -112,7 +112,7 @@ export default function DemoPage() {
                 <h2>{t("latestTests")}</h2>
                 <p>{t("selectedParametersFromTheLatestDocument")}</p>
               </div>
-              <Link href="/demo/luna/wyniki">
+              <Link href="/demo/luna/results">
                 {t("allResults")}
                 {getLuna(t).report.results.length})
               </Link>
@@ -161,7 +161,7 @@ export default function DemoPage() {
                   <DocumentRow key={document.id} document={document} compact />
                 ))}
             </div>
-            <Link className="text-link" href="/demo/luna/dokumenty">
+            <Link className="text-link" href="/demo/luna/documents">
               {t("allFiles")}
               {getLunaDocuments(t).length}){" "}
               <IconArrowRight size={16} aria-hidden="true" />

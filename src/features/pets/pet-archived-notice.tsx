@@ -72,7 +72,7 @@ export function PetArchivedBlockedCard({
       </h2>
       <p>{m.subpageBlockedBody}</p>
       <div className="pet-archived-blocked-actions">
-        <Link className="button button--primary" href={`/app/zwierzeta/${pet.id}`}>
+        <Link className="button button--primary" href={`/app/pets/${pet.id}`}>
           ← {m.backToRecord}
         </Link>
         {isOwner && <PetRestoreButton petId={pet.id} petName={pet.imie} />}

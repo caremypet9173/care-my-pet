@@ -43,7 +43,7 @@ export function DocumentDialog({
       previousFocus.current?.focus();
     };
   }, [isOpen]);
-  const close = () => router.replace("/demo/luna/dokumenty", { scroll: false });
+  const close = () => router.replace("/demo/luna/documents", { scroll: false });
   const index = document
     ? documents.findIndex((item) => item.id === document.id)
     : -1;
@@ -134,7 +134,7 @@ export function DocumentDialog({
               {document.relatedEventId ? (
                 <Link
                   className="text-link"
-                  href={`/demo/luna/historia#${document.relatedEventId}`}
+                  href={`/demo/luna/history#${document.relatedEventId}`}
                 >
                   {t("goToTheHistoryEntry")}
                 </Link>
@@ -147,7 +147,7 @@ export function DocumentDialog({
           <footer className="document-dialog-footer">
             {index > 0 ? (
               <Link
-                href={`/demo/luna/dokumenty?plik=${documents[index - 1].id}`}
+                href={`/demo/luna/documents?plik=${documents[index - 1].id}`}
                 scroll={false}
               >
                 <IconChevronLeft size={18} aria-hidden="true" />
@@ -161,7 +161,7 @@ export function DocumentDialog({
             </span>
             {index < documents.length - 1 ? (
               <Link
-                href={`/demo/luna/dokumenty?plik=${documents[index + 1].id}`}
+                href={`/demo/luna/documents?plik=${documents[index + 1].id}`}
                 scroll={false}
               >
                 {t("nextDocument")}

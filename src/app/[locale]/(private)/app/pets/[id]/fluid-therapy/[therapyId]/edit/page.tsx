@@ -5,6 +5,7 @@ import { getPet } from "@/features/pets/data";
 import { getHouseholdDetails } from "@/features/household/data";
 import { HouseholdRecoveryBanner } from "@/features/household/recovery-key-controls";
 import { PetArchivedBlockedCard } from "@/features/pets/pet-archived-notice";
+import { getFluidTherapy } from "@/features/fluid-therapy/data";
 import { FluidFormPage } from "@/features/fluid-therapy/fluid-form-page";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/types";
@@ -14,7 +15,7 @@ import "@/styles/fluid-form.css";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; therapyId: string }>;
 }): Promise<Metadata> {
   const locale = await getLocale();
   const { id } = await params;
@@ -23,19 +24,19 @@ export async function generateMetadata({
 
   return {
     title: pet
-      ? `${pl ? "Nowa płynoterapia / kroplówka dla" : "New fluid therapy for"}: ${pet.imie}`
+      ? `${pl ? "Edycja płynoterapii dla" : "Edit fluid therapy for"}: ${pet.imie}`
       : pl
-        ? "Nowa płynoterapia / kroplówka"
-        : "New fluid therapy",
+        ? "Edycja płynoterapii"
+        : "Edit fluid therapy",
   };
 }
 
-export default async function NewFluidTherapyPage({
+export default async function EditFluidTherapyPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; therapyId: string }>;
 }) {
-  const { id } = await params;
+  const { id, therapyId } = await params;
   const pet = await getPet(id);
   if (!pet) notFound();
   const locale = (await getLocale()) as Locale;
@@ -51,7 +52,7 @@ export default async function NewFluidTherapyPage({
   if (!hasRecoveryKey && details?.household) {
     return (
       <div className="pets-page" style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem 1rem" }}>
-        <Link href={`/app/zwierzeta/${pet.id}`}>← {pet.imie}</Link>
+        <Link href={`/app/pets/${pet.id}`}>← {pet.imie}</Link>
         <HouseholdRecoveryBanner
           householdId={details.household.id}
           householdName={details.household.nazwa}
@@ -64,5 +65,8 @@ export default async function NewFluidTherapyPage({
     );
   }
 
-  return <FluidFormPage pet={pet} therapy={null} />;
+  const therapy = await getFluidTherapy(id, therapyId);
+  if (!therapy) notFound();
+
+  return <FluidFormPage pet={pet} therapy={therapy} />;
 }

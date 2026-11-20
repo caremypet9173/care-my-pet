@@ -754,7 +754,7 @@ Deno.serve(async (req) => {
             ],
             cta: {
               label: "Otwórz Care My Pet",
-              url: `${appOrigin}/pl/app/gospodarstwo`,
+              url: `${appOrigin}/pl/app/household`,
             },
           }),
         });
@@ -1149,7 +1149,7 @@ Deno.serve(async (req) => {
           const res = await sendWebPush(sub, {
             title: pushTitle,
             body: pushBody,
-            url: `/app/zwierzeta/${first.petId}`,
+            url: `/app/pets/${first.petId}`,
             tag: `due-${first.dueDate}-${first.sourceId}`,
           });
 

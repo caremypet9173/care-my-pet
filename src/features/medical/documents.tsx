@@ -193,7 +193,7 @@ export function MedicalDocuments({
         badgeText: r.rows.length
           ? `${t.parameters}: ${r.rows.length}`
           : t.descriptive,
-        targetHref: `/app/zwierzeta/${petId}?tab=results&report=${r.id}`,
+        targetHref: `/app/pets/${petId}?tab=results&report=${r.id}`,
         targetButtonLabel: t.openReport,
         targetLinkLabel: t.goToReport,
         parameterCount: r.rows.length,
@@ -222,7 +222,7 @@ export function MedicalDocuments({
             : ev.category === "prevention"
               ? t.preventionTag
               : t.visitTag,
-        targetHref: `/app/zwierzeta/${petId}?tab=history`,
+        targetHref: `/app/pets/${petId}?tab=history`,
         targetButtonLabel: t.openHistory,
         targetLinkLabel: t.goToHistory,
       }));
@@ -375,7 +375,7 @@ export function MedicalDocuments({
                 pet={{ id: petId, imie: petName || "", gospodarstwo_id: householdId }}
                 householdId={householdId}
               />
-              <ButtonLink href={`/app/zwierzeta/${petId}/badania/nowe`} variant="secondary">
+              <ButtonLink href={`/app/pets/${petId}/results/new`} variant="secondary">
                 <IconPlus size={18} aria-hidden="true" />
                 {t.add}
               </ButtonLink>
@@ -635,7 +635,7 @@ export function MedicalDocuments({
                   <div style={{ marginTop: ".75rem" }}>
                     <Link
                       className="medical-ask-assistant-btn"
-                      href={`/app/zwierzeta/${petId}?tab=assistant&prompt=${encodeURIComponent(
+                      href={`/app/pets/${petId}?tab=assistant&prompt=${encodeURIComponent(
                         locale === "pl"
                           ? `Co wynika z dokumentu "${activeDocument.title}" z dnia ${activeDocument.date}? Pomóż zinterpretować opis i zalecenia.`
                           : `What are the key findings from document "${activeDocument.title}" dated ${activeDocument.date}? Help me interpret the summary and recommendations.`,

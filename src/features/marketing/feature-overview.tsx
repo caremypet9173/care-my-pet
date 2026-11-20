@@ -25,7 +25,7 @@ export function FeatureOverview() {
               <IconCircleCheck size={24} aria-hidden="true" />
             </span>
             <p>{t("aResultByEmailAPhotoOn")}</p>
-            <Link href="/mozliwosci#dokumenty" className="text-link">
+            <Link href="/features#dokumenty" className="text-link">
               {t("organisedDocuments")}{" "}
               <IconChevronRight size={16} aria-hidden="true" />
             </Link>
@@ -35,7 +35,7 @@ export function FeatureOverview() {
               <IconUsers size={24} aria-hidden="true" />
             </span>
             <p>{t("shareCareMoreEasilyWithYourPartner")}</p>
-            <Link href="/mozliwosci#wspolna-opieka" className="text-link">
+            <Link href="/features#wspolna-opieka" className="text-link">
               {t("sharedCare")}{" "}
               <IconChevronRight size={16} aria-hidden="true" />
             </Link>

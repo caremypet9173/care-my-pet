@@ -104,13 +104,13 @@ export function RecordHistory({ events }: { events: readonly RecordEvent[] }) {
                   <div className="timeline-actions">
                     {event.documentId ? (
                       <Link
-                        href={`/demo/luna/dokumenty?plik=${event.documentId}`}
+                        href={`/demo/luna/documents?plik=${event.documentId}`}
                       >
                         {t("openRelatedDocument")}
                       </Link>
                     ) : null}
                     {event.category === "lab" ? (
-                      <Link href="/demo/luna/wyniki">
+                      <Link href="/demo/luna/results">
                         {t("viewFullResults")}
                       </Link>
                     ) : null}

@@ -16,7 +16,7 @@ test("pet create, edit, conflict and persistence", async ({ page }, testInfo) =>
   await expect(page).toHaveURL(/\/pl\/app$/);
   await page.getByRole("button", { name: "Rozumiem", exact: true }).click();
   await expect(page.locator(".household-account")).toContainText(credentials.email);
-  await page.locator('a[href="/pl/app/zwierzeta/nowe"]').first().click();
+  await page.locator('a[href="/pl/app/pets/new"]').first().click();
   await page.getByRole("button", { name: "Utwórz kartotekę" }).click();
   await expect(page.locator(".pet-validation-summary")).toContainText("Wybierz kota lub psa");
   await expect(page.locator(".pet-validation-summary")).toContainText("Podaj imię pupila");
@@ -50,7 +50,7 @@ test("pet create, edit, conflict and persistence", async ({ page }, testInfo) =>
   await writeFile(`tmp/pets-test-${testInfo.project.name}.json`, JSON.stringify({ id: created.id, gospodarstwo_id: created.gospodarstwo_id, avatar_path: created.avatar_path }));
   expect(created.avatar_path).toMatch(/\.jpg$/);
   expect(created.data_urodzenia_przyblizona).toBe(true);
-  await expect(page).toHaveURL(new RegExp(`/app/zwierzeta/${created.id}$`));
+  await expect(page).toHaveURL(new RegExp(`/app/pets/${created.id}$`));
   await page.getByRole("link", { name: "Edytuj profil" }).click();
   await page.locator(".pet-additional summary").click();
   await page.getByRole("button", { name: "nerkowiec", exact: true }).click();
@@ -82,7 +82,7 @@ test("pet create, edit, conflict and persistence", async ({ page }, testInfo) =>
   await expect(page.getByRole("link").filter({ hasText: `TEST AUTOMATYCZNY ${testInfo.project.name}` })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `tmp/pets-list-${testInfo.project.name}.png`, fullPage: true });
-  await page.goto(`/pl/app/zwierzeta/${created.id}/edytuj`);
+  await page.goto(`/pl/app/pets/${created.id}/edit`);
   await page.getByRole("button", { name: "Usuń", exact: true }).click();
   await page.getByRole("button", { name: "Zapisz profil" }).click();
   await expect(page.getByText("Brak zdjęcia", { exact: true })).toBeVisible();

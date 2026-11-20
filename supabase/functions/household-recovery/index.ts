@@ -89,7 +89,7 @@ async function sendCompletionEmail(params: {
         ],
     cta: {
       label: pl ? "Przejdź do ustawień domostwa" : "Open household settings",
-      url: `${params.appUrl}/${params.locale}/app/gospodarstwo`,
+      url: `${params.appUrl}/${params.locale}/app/household`,
     },
     footerNote: pl
       ? "Wiadomość wysłana automatycznie przez Care My Pet."
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
       return reply({ error: "recovery_failed" }, 500);
     }
 
-    const confirmUrl = `${origin}/${locale}/odzyskaj/potwierdz/${token}`;
+    const confirmUrl = `${origin}/${locale}/recover/confirm/${token}`;
     const formattedExpiry = new Intl.DateTimeFormat(
       locale === "pl" ? "pl-PL" : "en-GB",
       { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Warsaw" },
@@ -335,7 +335,7 @@ Deno.serve(async (req) => {
               ],
         cta: {
           label: locale === "pl" ? "Przejdź do ustawień i unieważnij" : "Open settings to revoke",
-          url: `${origin}/${locale}/app/gospodarstwo`,
+          url: `${origin}/${locale}/app/household`,
         },
       });
 

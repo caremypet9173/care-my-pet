@@ -1400,7 +1400,7 @@ export function HouseholdSchedule({
               <strong>{entry.title}</strong>
               {petName && !fixedPetId && (
                 <Link
-                  href={`/app/zwierzeta/${entry.petId}`}
+                  href={`/app/pets/${entry.petId}`}
                   className="household-tag schedule-pet-tag"
                 >
                   {petName}
@@ -1644,7 +1644,7 @@ export function HouseholdSchedule({
 
             {(entry.kind === "due_event" || entry.kind === "history_event") && (
               <Link
-                href={`/app/zwierzeta/${entry.petId}?tab=history`}
+                href={`/app/pets/${entry.petId}?tab=history`}
                 className="schedule-mini-btn"
                 title={pl ? "Zobacz w historii zdrowia" : "View in health history"}
               >
@@ -1654,7 +1654,7 @@ export function HouseholdSchedule({
 
             {entry.kind === "medical_report" && (
               <Link
-                href={`/app/zwierzeta/${entry.petId}?tab=results&report=${entry.report.id}`}
+                href={`/app/pets/${entry.petId}?tab=results&report=${entry.report.id}`}
                 className="schedule-mini-btn is-primary"
                 title={pl ? "Otwórz wyniki badania" : "Open lab report"}
               >
@@ -1756,7 +1756,7 @@ export function HouseholdSchedule({
             <div className="schedule-day-card-tags">
               {petName && !fixedPetId && (
                 <Link
-                  href={`/app/zwierzeta/${entry.petId}`}
+                  href={`/app/pets/${entry.petId}`}
                   className="household-tag schedule-pet-tag"
                 >
                   {petName}
@@ -1985,7 +1985,7 @@ export function HouseholdSchedule({
 
             {entry.kind === "medical_report" && (
               <Link
-                href={`/app/zwierzeta/${entry.petId}?tab=results&report=${entry.report.id}`}
+                href={`/app/pets/${entry.petId}?tab=results&report=${entry.report.id}`}
                 className="history-action-btn is-primary"
               >
                 <IconFlask size={15} aria-hidden="true" />
@@ -2105,7 +2105,7 @@ export function HouseholdSchedule({
 
             {(entry.kind === "due_event" || entry.kind === "history_event") && (
               <Link
-                href={`/app/zwierzeta/${entry.petId}?tab=history`}
+                href={`/app/pets/${entry.petId}?tab=history`}
                 className="history-action-btn"
               >
                 <span>

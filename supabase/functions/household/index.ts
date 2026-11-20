@@ -706,7 +706,7 @@ Deno.serve(async (req) => {
     // Budowanie URL zaproszenia
     const inviteOrigin = origin.replace(/\/$/, "");
     const locale = body.locale === "en" ? "en" : "pl";
-    const inviteUrl = `${inviteOrigin}/${locale}/zaproszenie/${token}`;
+    const inviteUrl = `${inviteOrigin}/${locale}/invite/${token}`;
 
     // Wysłanie wiadomości e-mail z zaproszeniem
     const inviterName = user.email || "Właściciel gospodarstwa";
@@ -903,7 +903,7 @@ Deno.serve(async (req) => {
         },
         cta: {
           label: locale === "pl" ? "Formularz odzyskania dostępu" : "Recovery portal",
-          url: `${origin.replace(/\/$/, "")}/${locale}/odzyskaj`,
+          url: `${origin.replace(/\/$/, "")}/${locale}/recover`,
         },
         footerNote:
           locale === "pl"
@@ -958,7 +958,7 @@ Deno.serve(async (req) => {
             locale === "pl"
               ? "Zarządzaj bezpieczeństwem domostwa →"
               : "Manage household security →",
-          url: `${origin.replace(/\/$/, "")}/${locale}/app/gospodarstwo`,
+          url: `${origin.replace(/\/$/, "")}/${locale}/app/household`,
         },
         footerNote:
           locale === "pl"
@@ -1166,7 +1166,7 @@ Deno.serve(async (req) => {
               ],
         cta: {
           label: locale === "pl" ? "Zatwierdź lub odrzuć wniosek" : "Review request",
-          url: `${origin.replace(/\/$/, "")}/${locale}/app/gospodarstwo`,
+          url: `${origin.replace(/\/$/, "")}/${locale}/app/household`,
         },
       });
       await Promise.all(
@@ -1293,7 +1293,7 @@ Deno.serve(async (req) => {
             locale === "pl"
               ? "Przejdź do ustawień domostwa →"
               : "Open household settings →",
-          url: `${origin.replace(/\/$/, "")}/${locale}/app/gospodarstwo`,
+          url: `${origin.replace(/\/$/, "")}/${locale}/app/household`,
         },
       });
       await sendEmailViaSmtp(reqRow.requester_email, subject, html);

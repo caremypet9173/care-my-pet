@@ -17,7 +17,7 @@ export default async function AuthLayout({
       <main id="main-content" tabIndex={-1}>
         {children}
       </main>
-      <footer className="auth-footer"><span>© {new Date().getFullYear()} Care My Pet</span><nav aria-label={locale === "pl" ? "Informacje prawne" : "Legal information"}><Link href="/prywatnosc">{locale === "pl" ? "Prywatność" : "Privacy"}</Link><Link href="/regulamin">{locale === "pl" ? "Regulamin" : "Terms"}</Link></nav></footer>
+      <footer className="auth-footer"><span>© {new Date().getFullYear()} Care My Pet</span><nav aria-label={locale === "pl" ? "Informacje prawne" : "Legal information"}><Link href="/privacy">{locale === "pl" ? "Prywatność" : "Privacy"}</Link><Link href="/terms">{locale === "pl" ? "Regulamin" : "Terms"}</Link></nav></footer>
     </div>
   );
 }

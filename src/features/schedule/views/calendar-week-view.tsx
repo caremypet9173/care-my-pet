@@ -217,7 +217,7 @@ export function CalendarWeekView({
                         <div className="schedule-week-card-actions">
                           {ev.kind === "medical_report" ? (
                             <Link
-                              href={`/app/zwierzeta/${ev.petId}?tab=results&report=${ev.report.id}`}
+                              href={`/app/pets/${ev.petId}?tab=results&report=${ev.report.id}`}
                               className="schedule-week-action-link"
                               onClick={(e) => e.stopPropagation()}
                             >

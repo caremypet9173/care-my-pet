@@ -15,7 +15,7 @@ test('weight create, edit, validation and persistence',async({page},info)=>{
  const {data,error}=await client.functions.invoke('pets',{body:{action:'create',pet:{imie:`TEST WEIGHT ${info.project.name}`,gatunek:'cat',rasa:null,data_urodzenia:null,plec:'unknown',kastracja:null,identyfikacja:'unknown',numer_id:null,notatki:null}}});expect(error).toBeNull();
  const pet=data.pet;await appendFile('tmp/weight-test-fixtures.jsonl',JSON.stringify({pet_id:pet.id})+'\n');
  await page.goto('/pl/login');await page.getByLabel('Adres e-mail').fill(credentials.email);await page.getByLabel('Hasło',{exact:true}).fill(credentials.password);await page.getByRole('button',{name:'Zaloguj się',exact:true}).click();await expect(page).toHaveURL(/\/pl\/app$/,{timeout:20000});await page.getByRole('button',{name:'Rozumiem',exact:true}).click();
- await page.goto(`/pl/app/zwierzeta/${pet.id}?tab=weight`);
+ await page.goto(`/pl/app/pets/${pet.id}?tab=weight`);
  await page.getByRole('button',{name:'Dodaj pomiar',exact:false}).first().click();
  const dialog=page.getByRole('dialog');await dialog.locator('#weight-kg').fill('abc');await expect(dialog.locator('#weight-kg')).toHaveValue('');
  await dialog.locator('#weight-kg').fill('0');await dialog.getByRole('button',{name:'Zapisz pomiar',exact:true}).click();await expect(dialog.getByRole('alert')).toBeVisible();

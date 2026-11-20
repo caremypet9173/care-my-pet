@@ -23,7 +23,7 @@ test("medical document review, confirmation, retry and private source",async({pa
   const saveFixture=async()=>{await writeFile(`tmp/medical-test-${testInfo.project.name}.json`,JSON.stringify(fixture));await appendFile("tmp/medical-test-fixtures.jsonl",JSON.stringify(fixture)+"\n");};await saveFixture();
   await page.goto("/pl/login");await page.getByLabel("Adres e-mail").fill(credentials.email);await page.getByLabel("Hasło",{exact:true}).fill(credentials.password);await page.getByRole("button",{name:"Zaloguj się",exact:true}).click();await expect(page).toHaveURL(/\/pl\/app$/,{timeout:15000});
   await page.getByRole("button",{name:"Rozumiem",exact:true}).click();
-  await page.goto(`/pl/app/zwierzeta/${pet.id}?tab=results`);await expect(page.getByText("Nie ma jeszcze badań",{exact:true})).toBeVisible();
+  await page.goto(`/pl/app/pets/${pet.id}?tab=results`);await expect(page.getByText("Nie ma jeszcze badań",{exact:true})).toBeVisible();
   await page.getByRole("link",{name:"Dodaj badanie",exact:true}).click();
   await page.getByLabel("Wybierz dokument",{exact:true}).setInputFiles({name:"test.pdf",mimeType:"application/pdf",buffer:syntheticPdf()});
   await expect(page.locator(".medical-pdf-text")).toContainText("SYNTHETIC TEST DOCUMENT");
@@ -58,7 +58,7 @@ test("medical document review, confirmation, retry and private source",async({pa
   await page.getByRole("button",{name:"Zapisz badanie"}).click();const response=await responsePromise;savedBody=response.request().postDataJSON();expect(response.status(),await response.text()).toBe(201);
   fixture.report_id=(await response.json()).id;
   fixture.source_path=(await client.from("wynik_badania").select("source_path").eq("id",fixture.report_id).single()).data!.source_path;await saveFixture();
-  await expect(page).toHaveURL(new RegExp(`/zwierzeta/${pet.id}\\?tab=results&report=${fixture.report_id}$`));await page.reload();await expect(page.getByRole("heading",{name:"Wyniki laboratoryjne"})).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/pets/${pet.id}\\?tab=results&report=${fixture.report_id}$`));await page.reload();await expect(page.getByRole("heading",{name:"Wyniki laboratoryjne"})).toBeVisible();
   await expect(page.getByRole("cell",{name:"Powyżej zakresu",exact:false})).toBeVisible();
   const retry=await client.functions.invoke("medical-reports",{body:savedBody!});expect(retry.error).toBeNull();expect(retry.data.id).toBe(fixture.report_id);
   const changedRetry=await client.functions.invoke("medical-reports",{body:{...savedBody,report:{...(savedBody!.report as object),title:"Changed after confirmation"}}});expect(changedRetry.error?.context?.status).toBe(409);

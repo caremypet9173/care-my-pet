@@ -32,14 +32,14 @@ Wdrożone obszary aplikacji:
   rejestracja/logowanie (e-mail/hasło z Gmail SMTP i Google OAuth), przełącznik
   aktywnego gospodarstwa, 3 role (`owner`, `admin`, `member` ze ścisłym rozdziałem
   uprawnień właściciela), zaproszenia, bramka pilotażu (`pilot_whitelist`) oraz
-  **Klucz Odzyskiwania** (`/odzyskaj`, wzorzec Apple Legacy Contact).
+  **Klucz Odzyskiwania** (`/recover`, wzorzec Apple Legacy Contact).
 - **Profile, kartoteki i archiwizacja pupili (`pets`, `pet-archive`):**
   dodawanie/edycja z kadrowaniem prywatnego awatara i przybliżoną datą urodzenia,
   kolumna `tagi` (krótkie hasła opiekuńczo-zdrowotne ze słownikiem podpowiedzi),
   opis „Parę słów o mnie” otwierany przyciskiem/modalem **„O mnie”** w kompaktowym
   `PetHeroCover`, pasek szybkiego przełączania kartotek `PetSwitcher` (pigułki do
   5 pupili na desktopie, dropdown powyżej 5 i na mobile), **Dzienny plan opieki**
-  oraz archiwizacja pupila z zabezpieczonymi linkami archiwalnymi (`/archiwum/[token]`,
+  oraz archiwizacja pupila z zabezpieczonymi linkami archiwalnymi (`/archive/[token]`,
   kod jednorazowy PBKDF2 100k + PDF i oryginały badań).
 - **Wyniki badań i dokumenty (`medical-reports`):** odczyt PDF/JPG/PNG (limit 12 MB,
   transfer przez Storage + limit 10 stron po stronie serwera przez `pdf-lib`) przez
@@ -61,7 +61,7 @@ Wdrożone obszary aplikacji:
   czat z RAG (`pgvector 0.8.2` z `hnsw.iterative_scan`, `gemini-embedding-001` z
   `taskType` i pomijaniem re-embeddingu po SHA-256), pełnym kontekstem kartoteki
   (w tym tagów, pomiarów, leków i płynoterapii), eksportem podsumowań do PDF oraz
-  tymczasowymi linkami/QR read-only dla weterynarza (`/udostepnione/[token]`).
+  tymczasowymi linkami/QR read-only dla weterynarza (`/shared/[token]`).
 
 Projekt Stitch: https://stitch.withgoogle.com/projects/1963478756572071889.
 Nie wybieraj innego projektu na podstawie domyślnej konfiguracji gcloud.

@@ -87,7 +87,7 @@ export function AuthForm({ mode, configured, initialError }: {
         }
 
         // 2. Wyślij bezpieczny link rejestracyjny / aktywacyjny
-        const callbackUrl = `${window.location.origin}/${locale}/auth/confirm?next=${encodeURIComponent("/app/ustaw-haslo")}`;
+        const callbackUrl = `${window.location.origin}/${locale}/auth/confirm?next=${encodeURIComponent("/app/set-password")}`;
         const { error: otpError } = await supabase.auth.signInWithOtp({
           email,
           options: {
@@ -302,7 +302,7 @@ export function AuthForm({ mode, configured, initialError }: {
           </form>
 
           <p className="auth-legal">
-            {t.legal} <Link href="/regulamin">{t.terms}</Link> {t.and} <Link href="/prywatnosc">{t.privacy}</Link>.
+            {t.legal} <Link href="/terms">{t.terms}</Link> {t.and} <Link href="/privacy">{t.privacy}</Link>.
           </p>
         </>
       ) : null}
@@ -315,7 +315,7 @@ export function AuthForm({ mode, configured, initialError }: {
       </p>
       {!register && (
         <p className="auth-recovery-link">
-          <Link href="/odzyskaj">
+          <Link href="/recover">
             {locale === "pl"
               ? "Utracono dostęp do konta lub e-maila? Odzyskaj domostwo kluczem →"
               : "Lost access to account or email? Recover household with key →"}

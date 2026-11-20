@@ -8,7 +8,7 @@ test("cookie information is accessible, localized and dismissal persists", async
   expect((await new AxeBuilder({ page }).include(".cookie-notice").analyze()).violations).toEqual([]);
   await page.screenshot({ path: `tmp/cookies-${test.info().project.name}.png` });
   await notice.getByRole("link", { name: "Informacje o cookies" }).click();
-  await expect(page).toHaveURL(/\/pl\/prywatnosc#cookies$/);
+  await expect(page).toHaveURL(/\/pl\/privacy#cookies$/);
   await expect(page.locator("#cookies")).toContainText("Pliki cookies");
   await notice.getByRole("button", { name: "Rozumiem" }).click();
   await expect(notice).toHaveCount(0);
@@ -21,7 +21,7 @@ test("cookie information is accessible, localized and dismissal persists", async
   await expect(page.getByRole("complementary", { name: "Cookies and your privacy" })).toBeVisible();
   await page.getByRole("button", { name: "Got it" }).click();
   await page.getByRole("contentinfo").getByRole("link", { name: "Cookie information" }).click();
-  await expect(page).toHaveURL(/\/en\/prywatnosc#cookies$/);
+  await expect(page).toHaveURL(/\/en\/privacy#cookies$/);
 });
 
 test("cookie notice can close when browser storage is blocked", async ({ page }) => {

@@ -69,7 +69,7 @@ export function ResultsExplorer({
             <h2>{t("laboratoryTestResults")}</h2>
             <p>{t("anOverviewOfParametersAndChangesBetween")}</p>
           </div>
-          <Link className="text-link" href="/demo/luna/dokumenty?plik=badania">
+          <Link className="text-link" href="/demo/luna/documents?plik=badania">
             {t("previewSourceDocument")}
           </Link>
         </div>

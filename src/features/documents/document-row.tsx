@@ -28,7 +28,7 @@ export function DocumentRow({
       </div>
       <Link
         className="document-preview-link"
-        href={`/demo/luna/dokumenty?plik=${document.id}`}
+        href={`/demo/luna/documents?plik=${document.id}`}
         scroll={false}
         aria-label={t("previewDocument", { title: document.title })}
       >

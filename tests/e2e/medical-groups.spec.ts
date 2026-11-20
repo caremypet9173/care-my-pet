@@ -21,7 +21,7 @@ test('result groups collapse, count parameters and navigate to trend',async({pag
   const saved=await client.functions.invoke('medical-reports',{body:{action:'confirm',id,pet_id:pet.id,source_name:`synthetic-${i}.png`,source_mime:'image/png',report:{title:'Synthetic groups test',test_date:`2026-09-${15+i}`,laboratory:'',doctor:'',notes:'',rows},confirmed:true}});expect(saved.error).toBeNull();
  }
  await page.goto('/pl/login');await page.getByLabel('Adres e-mail').fill(credentials.email);await page.getByLabel('Hasło',{exact:true}).fill(credentials.password);await page.getByRole('button',{name:'Zaloguj się',exact:true}).click();await expect(page).toHaveURL(/\/pl\/app$/,{timeout:20000});await page.getByRole('button',{name:'Rozumiem',exact:true}).click();
- await page.goto(`/pl/app/zwierzeta/${pet.id}`);
+ await page.goto(`/pl/app/pets/${pet.id}`);
  const summary=page.getByRole('tabpanel',{name:'Podsumowanie',exact:true});
  await expect(summary.locator('.household-summary-reports li')).toHaveCount(2);
  await expect(summary.locator('aside')).not.toContainText('Pomiary masy ciała pojawią się w kolejnym etapie.');
@@ -30,7 +30,7 @@ test('result groups collapse, count parameters and navigate to trend',async({pag
  await page.screenshot({path:`tmp/summary-${info.project.name}.png`,fullPage:true});
  await summary.locator('.household-summary-reports li a').first().click();
  await expect(page.locator('.medical-report-picker select')).toHaveValue(fixture.ids[1]);
- await page.goto(`/pl/app/zwierzeta/${pet.id}?tab=results`);
+ await page.goto(`/pl/app/pets/${pet.id}?tab=results`);
  const matrix=page.locator('.matrix-comparison-wrap');await expect(matrix.getByRole('button',{name:/Otwórz badanie:/})).toHaveCount(2);
  // Searchbox in matrix filters parameters, tested separately; verify accessibility of comparison matrix.
  expect((await new AxeBuilder({page}).include('.matrix-comparison-wrap').analyze()).violations).toEqual([]);

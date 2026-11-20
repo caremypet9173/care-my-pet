@@ -201,7 +201,7 @@ function buildQuickMenuGroups(petId: string, pl: boolean): {
           {
             key: "fluid",
             kind: "link",
-            href: `/app/zwierzeta/${petId}/plynoterapia/nowa`,
+            href: `/app/pets/${petId}/fluid-therapy/new`,
             label: pl ? "Kroplówka / płynoterapia" : "Fluid therapy / infusion",
             hint: pl
               ? "Wlew dożylny (IV), podskórny (SC) lub IO"
@@ -236,7 +236,7 @@ function buildQuickMenuGroups(petId: string, pl: boolean): {
           {
             key: "lab",
             kind: "link",
-            href: `/app/zwierzeta/${petId}/badania/nowe`,
+            href: `/app/pets/${petId}/results/new`,
             label: pl ? "Wynik badania" : "Lab or imaging report",
             hint: pl
               ? "Morfologia, biochemia, USG lub opis z pliku"
@@ -783,7 +783,7 @@ export function PetQuickAccessStrip() {
           </button>
 
           <Link
-            href={`/app/zwierzeta/${petId}/badania/nowe`}
+            href={`/app/pets/${petId}/results/new`}
             className="household-quick-pill"
             onClick={() => setTray(null)}
           >
@@ -792,7 +792,7 @@ export function PetQuickAccessStrip() {
           </Link>
 
           <Link
-            href={`/app/zwierzeta/${petId}/plynoterapia/nowa`}
+            href={`/app/pets/${petId}/fluid-therapy/new`}
             className="household-quick-pill"
             onClick={() => setTray(null)}
           >

@@ -735,8 +735,8 @@ export function AssistantPanel({
                             {msg.sources.map((src) => {
                               const href =
                                 src.source_type === "medical_report"
-                                  ? `/app/zwierzeta/${petId}?tab=results&report=${src.source_id}`
-                                  : `/app/zwierzeta/${petId}?tab=history`;
+                                  ? `/app/pets/${petId}?tab=results&report=${src.source_id}`
+                                  : `/app/pets/${petId}?tab=history`;
                               return (
                                 <Link
                                   key={`${src.source_type}-${src.source_id}`}

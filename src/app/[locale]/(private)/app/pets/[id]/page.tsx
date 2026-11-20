@@ -146,13 +146,13 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     [t.plec, t[pet.plec]], [t.kastracja, pet.kastracja == null ? t.unknown : pet.kastracja ? t.yes : t.no],
     [t.identyfikacja, t[pet.identyfikacja]], ...(pet.numer_id ? [[t.numer_id, pet.numer_id]] : []),
   ];
-  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions">{!isReadOnly && <PetQuickAddToolbarButton />}<ShareRecordButton petId={pet.id} petName={pet.imie} />{canManage && <ArchiveLinkButton petId={pet.id} petName={pet.imie} />}{!isReadOnly && <ButtonLink size="sm" variant="secondary" href={`/app/zwierzeta/${pet.id}/edytuj`}>{t.edit}</ButtonLink>}</div></div>
+  return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions">{!isReadOnly && <PetQuickAddToolbarButton />}<ShareRecordButton petId={pet.id} petName={pet.imie} />{canManage && <ArchiveLinkButton petId={pet.id} petName={pet.imie} />}{!isReadOnly && <ButtonLink size="sm" variant="secondary" href={`/app/pets/${pet.id}/edit`}>{t.edit}</ButtonLink>}</div></div>
     <PetHeroCover
       pet={pet}
       locale={locale}
       badgeLabel={t.profile}
       updatedLabel={`${locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}${new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(pet.updated_at))}`}
-      editHref={isReadOnly ? undefined : `/app/zwierzeta/${pet.id}/edytuj`}
+      editHref={isReadOnly ? undefined : `/app/pets/${pet.id}/edit`}
     />
     {householdDetails?.household && !hasRecoveryKey && (
       <HouseholdRecoveryBanner
@@ -204,20 +204,20 @@ export default async function PetPage({ params, searchParams }: { params: Promis
         {healthEvents.length ? <ul>{healthEvents.slice(0,5).map(ev=>{
           const EvIcon = ev.category === "vaccination" ? IconVaccine : ev.category === "prevention" ? IconPill : IconStethoscope;
           return <li key={ev.id}>
-            <Link href={`/app/zwierzeta/${pet.id}?tab=history`}><EvIcon size={20} aria-hidden="true"/><span><strong>{ev.title}</strong><small><time dateTime={ev.event_date}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(ev.event_date))}</time>{ev.clinic&&` · ${ev.clinic}`}</small></span><span aria-hidden="true">→</span></Link>
+            <Link href={`/app/pets/${pet.id}?tab=history`}><EvIcon size={20} aria-hidden="true"/><span><strong>{ev.title}</strong><small><time dateTime={ev.event_date}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(ev.event_date))}</time>{ev.clinic&&` · ${ev.clinic}`}</small></span><span aria-hidden="true">→</span></Link>
           </li>;
         })}</ul> : <div className="household-inline-empty"><IconHistory size={26} aria-hidden="true" /><p>{d.noEvents}</p></div>}
-        <Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=history`}>{locale==='pl'?'Zobacz oś czasu historii zdrowia →':'View health history timeline →'}</Link>
+        <Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=history`}>{locale==='pl'?'Zobacz oś czasu historii zdrowia →':'View health history timeline →'}</Link>
       </section>
       <section className="pet-panel household-summary-reports household-summary-lab"><h2>{d.latest}</h2>
         {reports.length ? <ul>{reports.slice(0,5).map(report=><li key={report.id}>
-          <Link href={`/app/zwierzeta/${pet.id}?tab=results&report=${report.id}`}><IconFlask size={20} aria-hidden="true"/><span><strong>{report.title}</strong><small><time dateTime={report.test_date}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(report.test_date))}</time>{report.laboratory&&` · ${report.laboratory}`}</small></span><span aria-hidden="true">→</span></Link>
+          <Link href={`/app/pets/${pet.id}?tab=results&report=${report.id}`}><IconFlask size={20} aria-hidden="true"/><span><strong>{report.title}</strong><small><time dateTime={report.test_date}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(report.test_date))}</time>{report.laboratory&&` · ${report.laboratory}`}</small></span><span aria-hidden="true">→</span></Link>
         </li>)}</ul> : <p>{d.noResults}</p>}
-        <Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=results`}>{locale==='pl'?'Zobacz wszystkie badania →':'View all reports →'}</Link>
+        <Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=results`}>{locale==='pl'?'Zobacz wszystkie badania →':'View all reports →'}</Link>
       </section>
     </div><aside><section className="pet-panel household-summary-basics"><h2>{t.basics}</h2><dl className="pet-facts">
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-      <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/zwierzeta/${pet.id}?tab=weight`}>{locale==='pl'?'Pomiary zdrowia →':'Health measurements →'}</Link></dd></div>
+      <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=weight`}>{locale==='pl'?'Pomiary zdrowia →':'Health measurements →'}</Link></dd></div>
     </dl></section>
     <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} readOnly={isReadOnly} />
   </aside></div>
