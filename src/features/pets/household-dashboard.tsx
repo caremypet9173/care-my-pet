@@ -1,11 +1,14 @@
 import "@/styles/pet-archive.css";
 import {
+  IconAlertCircle,
   IconArchive,
   IconArrowRight,
   IconCalendar,
+  IconCheck,
   IconFiles,
   IconFlask,
   IconInfoCircle,
+  IconPill,
   IconPlus,
   IconShieldCheck,
 } from "@tabler/icons-react";
@@ -18,6 +21,7 @@ import type {
   ScheduleItem,
 } from "@/features/schedule/types";
 import { HouseholdSchedule } from "@/features/schedule/household-schedule";
+import { projectMedicationDoses } from "@/features/medications/projection";
 import type {
   MedicationLog,
   MedicationSchedule,
@@ -100,9 +104,9 @@ export function HouseholdDashboard({
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   const upcomingGlobal =
-    plannedDates.find((dItem) => dItem.date >= todayIso) ??
-    plannedDates[0] ??
-    null;
+    plannedDates.find((dItem) => dItem.date >= todayIso) ?? null;
+  const overdueGlobal = plannedDates.filter((dItem) => dItem.date < todayIso);
+  const latestOverdueGlobal = overdueGlobal[overdueGlobal.length - 1] ?? null;
 
   const stats = [
     {
@@ -126,13 +130,20 @@ export function HouseholdDashboard({
           : d.noData,
     },
     {
-      icon: IconCalendar,
-      title: d.nextVisit,
+      icon: !upcomingGlobal && latestOverdueGlobal ? IconAlertCircle : IconCalendar,
+      title:
+        !upcomingGlobal && latestOverdueGlobal
+          ? pl
+            ? "Zaległy termin"
+            : "Overdue"
+          : d.nextVisit,
       text: upcomingGlobal
         ? `${formatDate(upcomingGlobal.date)} · ${petMap.get(upcomingGlobal.petId)?.imie ?? ""}`
-        : pl
-          ? "Brak zaplanowanych"
-          : "None scheduled",
+        : latestOverdueGlobal
+          ? `${formatDate(latestOverdueGlobal.date)} · ${petMap.get(latestOverdueGlobal.petId)?.imie ?? ""}`
+          : pl
+            ? "Brak zaplanowanych"
+            : "None scheduled",
     },
   ];
 
@@ -165,14 +176,36 @@ export function HouseholdDashboard({
           const petSchedule = activeScheduleItems.filter(
             (it) => it.pet_id === pet.id && it.status === "planned",
           );
+          const petOverdueSchedule = petSchedule
+            .filter((it) => it.scheduled_date < todayIso)
+            .sort((a, b) => b.scheduled_date.localeCompare(a.scheduled_date));
+          const petActiveSchedules = activeMedicationSchedules.filter(
+            (s) => s.pet_id === pet.id && s.is_active && (!s.end_date || s.end_date >= todayIso),
+          );
+          const petTodayDoses =
+            petActiveSchedules.length > 0
+              ? projectMedicationDoses({
+                  schedules: petActiveSchedules,
+                  logs: activeMedicationLogs.filter((l) => l.pet_id === pet.id),
+                  rangeStart: todayIso,
+                  rangeEnd: todayIso,
+                })
+              : [];
+          const petDoneDoses = petTodayDoses.filter((dose) => dose.is_completed).length;
+          const petPendingDoses = petTodayDoses.filter(
+            (dose) => !dose.is_completed && !dose.is_skipped,
+          ).length;
+
           const lastVisitEv =
             petEvents.find((ev) => ev.category === "visit") ?? petEvents[0];
 
           const petUpcoming = [
-            ...petSchedule.map((it) => ({
-              date: it.scheduled_date,
-              title: it.title,
-            })),
+            ...petSchedule
+              .filter((it) => it.scheduled_date >= todayIso)
+              .map((it) => ({
+                date: it.scheduled_date,
+                title: it.title,
+              })),
             ...petEvents
               .filter((ev) => ev.next_due_date && ev.next_due_date >= todayIso)
               .map((ev) => ({
@@ -225,6 +258,41 @@ export function HouseholdDashboard({
                   {(pet.tagi?.length ?? 0) > 3 && (
                     <span className="household-care-tag is-more">
                       +{(pet.tagi?.length ?? 0) - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {(petTodayDoses.length > 0 || petOverdueSchedule.length > 0) && (
+                <div className="household-card-daily-pills">
+                  {petTodayDoses.length > 0 && (
+                    <span
+                      className={`household-card-daily-pill${
+                        petPendingDoses === 0 ? " is-done" : " is-pending"
+                      }`}
+                    >
+                      {petPendingDoses === 0 ? (
+                        <IconCheck size={13} aria-hidden="true" />
+                      ) : (
+                        <IconPill size={13} aria-hidden="true" />
+                      )}
+                      <span>
+                        {pl
+                          ? `Leki dziś: ${petDoneDoses}/${petTodayDoses.length}`
+                          : `Meds today: ${petDoneDoses}/${petTodayDoses.length}`}
+                      </span>
+                    </span>
+                  )}
+                  {petOverdueSchedule.length > 0 && (
+                    <span className="household-card-daily-pill is-overdue">
+                      <IconAlertCircle size={13} aria-hidden="true" />
+                      <span>
+                        {pl
+                          ? petOverdueSchedule.length === 1
+                            ? "Zaległy termin"
+                            : `Zaległe terminy (${petOverdueSchedule.length})`
+                          : `${petOverdueSchedule.length} overdue`}
+                      </span>
                     </span>
                   )}
                 </div>

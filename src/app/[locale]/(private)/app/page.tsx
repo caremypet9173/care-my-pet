@@ -7,8 +7,9 @@ import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import { getHouseholdDashboardBundle } from "@/features/pets/dashboard-bundle";
 import { petMessages } from "@/features/pets/messages";
 import { HouseholdDashboard } from "@/features/pets/household-dashboard";
+import { DashboardUploadPicker } from "@/features/pets/dashboard-upload-picker";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
-import { IconPlus, IconUpload, IconUsers } from "@tabler/icons-react";
+import { IconPlus, IconUsers } from "@tabler/icons-react";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -45,7 +46,6 @@ export default async function AppPage() {
   const activePets = (pets ?? []).filter((pet) => !pet.archived_at);
   const empty = pets?.length === 0;
   const firstPet = locale === "pl" ? "Dodaj pierwszego pupila" : "Add your first pet";
-  const primaryPet = activePets.length > 0 ? activePets[0] : null;
 
   return (
     <Container className="pets-page">
@@ -84,20 +84,17 @@ export default async function AppPage() {
               {empty ? firstPet : t.add}
             </ButtonLink>
           )}
-          {primaryPet && hasRecoveryKey && (
-            <ButtonLink
-              variant="secondary"
-              size="sm"
-              href={`/app/pets/${primaryPet.id}/results/new`}
-            >
-              <IconUpload size={16} aria-hidden="true" />
-              {d.upload}
-            </ButtonLink>
+          {activePets.length > 0 && hasRecoveryKey && (
+            <DashboardUploadPicker
+              pets={activePets.map((p) => ({
+                id: p.id,
+                imie: p.imie,
+                gatunek: p.gatunek,
+              }))}
+              label={d.upload}
+              locale={locale}
+            />
           )}
-          <ButtonLink variant="secondary" size="sm" href="/app/household">
-            <IconUsers size={16} aria-hidden="true" />
-            {locale === "pl" ? "Gospodarstwo" : "Household"}
-          </ButtonLink>
         </div>
       </div>
       {activeHousehold && !hasRecoveryKey && (

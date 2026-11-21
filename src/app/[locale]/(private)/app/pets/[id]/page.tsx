@@ -9,6 +9,9 @@ import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { getPetRecordBundle } from "@/features/pets/record-bundle";
 import { PetHeroCover } from "@/features/pets/pet-hero-cover";
+import { PetHeroModeWrapper } from "@/features/pets/pet-hero-mode-wrapper";
+import { SummaryEmptyCta, SummaryStatTiles } from "@/features/pets/summary-stats";
+import { formatMemberDisplayNames } from "@/features/household/member-names";
 import { PetSwitcher } from "@/features/pets/pet-switcher";
 import { petMessages } from "@/features/pets/messages";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
@@ -23,7 +26,7 @@ import {
   LazyMedicalResults,
 } from "@/features/pets/record-tab-panels";
 import type { Locale } from "@/i18n/types";
-import { IconCalendar, IconScale, IconFlask, IconHeart, IconHistory, IconStethoscope, IconVaccine, IconPill } from "@tabler/icons-react";
+import { IconFlask, IconHistory, IconStethoscope, IconVaccine, IconPill } from "@tabler/icons-react";
 import "@/styles/medical.css";
 import "@/styles/medical-profile.css";
 import { listReports } from "@/features/medical/data";
@@ -138,24 +141,39 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   const hasRecoveryKey = Boolean(householdDetails?.household?.has_recovery_key);
   const isReadOnly = isArchived || !hasRecoveryKey;
   const archiveMsgs = petArchiveMessages[locale as Locale] ?? petArchiveMessages.pl;
-  const memberNames: Record<string, string> = {};
-  if (householdDetails?.owner?.user_id) {
-    memberNames[householdDetails.owner.user_id] = householdDetails.owner.email?.split("@")[0] || (locale === "pl" ? "Właściciel" : "Owner");
-  }
-  for (const m of householdDetails?.members ?? []) {
-    if (m.user_id && m.email) {
-      memberNames[m.user_id] = m.email.split("@")[0];
-    }
-  }
+  const memberNames = formatMemberDisplayNames([
+    ...(householdDetails?.owner?.user_id
+      ? [
+          {
+            user_id: householdDetails.owner.user_id,
+            email: householdDetails.owner.email,
+            fallback: locale === "pl" ? "Właściciel" : "Owner",
+          },
+        ]
+      : []),
+    ...(householdDetails?.members ?? []).map((m) => ({
+      user_id: m.user_id,
+      email: m.email,
+      fallback: locale === "pl" ? "Domownik" : "Member",
+    })),
+  ]);
   const currentUserId = householdDetails?.owner?.is_self
     ? householdDetails.owner.user_id
     : householdDetails?.members.find((m) => m.is_self)?.user_id;
   const keyParameters=reports.flatMap(report=>report.rows.filter(row=>row.is_key).map(row=>({row,date:report.test_date})));
   const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date());
-  const nextDueCandidate = [
+  const allPlannedCandidates = [
     ...scheduleItems.filter(it => it.status === "planned").map(it => ({ date: it.scheduled_date, title: it.title })),
     ...healthEvents.filter(ev => ev.next_due_date && ev.next_due_date >= todayIso).map(ev => ({ date: ev.next_due_date!, title: ev.title })),
-  ].sort((a, b) => a.date.localeCompare(b.date))[0];
+  ];
+  const upcomingCandidates = allPlannedCandidates
+    .filter((item) => item.date >= todayIso)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const overdueCandidates = allPlannedCandidates
+    .filter((item) => item.date < todayIso)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const nextDueCandidate = upcomingCandidates[0] ?? overdueCandidates[0] ?? null;
+  const nextDueIsOverdue = !upcomingCandidates[0] && overdueCandidates.length > 0;
   const latestCareEvent = healthEvents.find(ev => ev.category === "vaccination" || ev.category === "prevention");
   const activeMedications = medicationSchedules.filter(
     (s) => s.is_active && (!s.end_date || s.end_date >= todayIso),
@@ -187,13 +205,15 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   ];
   const tabSyncKey = `${pet.id}:${initialTabQuery ?? ""}:${requestedReport ?? ""}:${resolvedSearch.filter ?? ""}:${requestedPrompt ?? ""}`;
   return <Container className="pets-page household-record"><PetQuickAddProvider pet={pet} householdId={pet.gospodarstwo_id} initialTab={initialTabQuery} tabSyncKey={tabSyncKey}><div className="household-record-toolbar"><div className="household-record-toolbar-nav"><Link href="/app" className="household-record-back">← {t.back}</Link><PetSwitcher pets={switcherPets} currentPetId={pet.id} locale={locale} initialTab={initialTabQuery} /></div><div className="household-record-toolbar-actions">{!isReadOnly && <PetQuickAddToolbarButton />}<ShareRecordButton petId={pet.id} petName={pet.imie} />{canManage && <ArchiveLinkButton petId={pet.id} petName={pet.imie} />}{!isReadOnly && <ButtonLink size="sm" variant="secondary" href={`/app/pets/${pet.id}/edit`}>{t.edit}</ButtonLink>}</div></div>
-    <PetHeroCover
-      pet={pet}
-      locale={locale}
-      badgeLabel={t.profile}
-      updatedLabel={`${locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}${new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(pet.updated_at))}`}
-      editHref={isReadOnly ? undefined : `/app/pets/${pet.id}/edit`}
-    />
+    <PetHeroModeWrapper>
+      <PetHeroCover
+        pet={pet}
+        locale={locale}
+        badgeLabel={t.profile}
+        updatedLabel={`${locale === "pl" ? "Ostatnia aktualizacja: " : "Last updated: "}${new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(pet.updated_at))}`}
+        editHref={isReadOnly ? undefined : `/app/pets/${pet.id}/edit`}
+      />
+    </PetHeroModeWrapper>
     {householdDetails?.household && !hasRecoveryKey && (
       <HouseholdRecoveryBanner
         householdId={householdDetails.household.id}
@@ -205,13 +225,41 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       />
     )}
     <PetArchivedBanner pet={pet} locale={locale as Locale} isOwner={canManage} />
-    <RecordSections key={`${pet.id}-${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<LazyHistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<LazyHealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<LazyMedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} trashedReports={trashedReports} otherPets={otherPets} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<LazyMedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<LazyAssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><div className={`household-summary-top ${hasDailyTasks ? "is-split" : "is-quiet"}`}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><div className="household-record-stats">{[
-      { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
-      { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
-      { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },
-      {
-        label: d.care,
-        icon: activeMedications.length > 0 ? IconPill : IconHeart,
+    <RecordSections key={`${pet.id}-${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<LazyHistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<LazyHealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<LazyMedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} trashedReports={trashedReports} otherPets={otherPets} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<LazyMedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<LazyAssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><div className={`household-summary-top ${hasDailyTasks ? "is-split" : "is-quiet"}`}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><SummaryStatTiles
+      locale={locale as "pl" | "en"}
+      labels={{
+        nextVisit: d.nextVisit,
+        overdueVisit: locale === "pl" ? "Zaległy termin" : "Overdue",
+        weight: d.weight,
+        latest: d.latest,
+        care: d.care,
+      }}
+      nextVisit={{
+        date: nextDueCandidate ? nextDueCandidate.date : null,
+        title: nextDueCandidate
+          ? nextDueCandidate.title
+          : locale === "pl"
+            ? "Brak zaplanowanych terminów"
+            : "No upcoming due dates",
+        isOverdue: nextDueIsOverdue,
+        overdueCount: overdueCandidates.length,
+      }}
+      weight={{
+        value: weights[0]
+          ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(weights[0].kg)} kg`
+          : "—",
+        sub: weights[0]
+          ? weights[0].measured_on
+          : locale === "pl"
+            ? "Brak pomiarów"
+            : "No measurements",
+      }}
+      latestReport={{
+        value: reports[0] ? reports[0].test_date : "—",
+        sub: reports[0] ? reports[0].title : d.noResults,
+      }}
+      care={{
+        hasActiveMeds: activeMedications.length > 0,
         value:
           activeMedications.length > 0
             ? locale === "pl"
@@ -236,32 +284,33 @@ export default async function PetPage({ params, searchParams }: { params: Promis
               : locale === "pl"
                 ? "Brak wpisów profilaktyki"
                 : "No prevention entries",
-      },
-    ].map(({ label, icon: Icon, value, sub }) => <section key={label}><Icon size={20} aria-hidden="true" /><h2>{label}</h2><strong>{value}</strong><p>{sub}</p></section>)}</div></div>
+      }}
+    /></div>
     {keyParameters.length>0&&<section className="pet-panel"><h2>{locale==="pl"?"Kluczowe parametry":"Key parameters"}</h2><dl className="pet-facts">{keyParameters.map(({row,date})=><div key={row.id}><dt>{row.name} · {date}</dt><dd><strong>{row.value} {row.unit}</strong>{row.note&&<p className="pet-notes">{row.note}</p>}</dd></div>)}</dl></section>}
     <div className="household-record-columns"><div>
       <section className="pet-panel household-summary-reports household-summary-events"><h2>{d.events}</h2>
-        {healthEvents.length ? <ul>{healthEvents.slice(0,5).map(ev=>{
+        {healthEvents.length ? <><ul>{healthEvents.slice(0,5).map(ev=>{
           const EvIcon = ev.category === "vaccination" ? IconVaccine : ev.category === "prevention" ? IconPill : IconStethoscope;
           return <li key={ev.id}>
             <Link href={`/app/pets/${pet.id}?tab=history`}><EvIcon size={20} aria-hidden="true"/><span><strong>{ev.title}</strong><small><time dateTime={ev.event_date}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(ev.event_date))}</time>{ev.clinic&&` · ${ev.clinic}`}</small></span><span aria-hidden="true">→</span></Link>
           </li>;
-        })}</ul> : <div className="household-inline-empty"><IconHistory size={26} aria-hidden="true" /><p>{d.noEvents}</p></div>}
-        <Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=history`}>{locale==='pl'?'Zobacz oś czasu historii zdrowia →':'View health history timeline →'}</Link>
+        })}</ul><Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=history`}>{locale==='pl'?'Zobacz oś czasu historii zdrowia →':'View health history timeline →'}</Link></> : <><div className="household-inline-empty"><IconHistory size={24} aria-hidden="true" /><p>{d.noEvents}</p></div>{!isReadOnly ? <SummaryEmptyCta kind="history" petId={pet.id} locale={locale as "pl" | "en"} /> : <Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=history`}>{locale==='pl'?'Zobacz oś czasu historii zdrowia →':'View health history timeline →'}</Link>}</>}
       </section>
       <section className="pet-panel household-summary-reports household-summary-lab"><h2>{d.latest}</h2>
-        {reports.length ? <ul>{reports.slice(0,5).map(report=><li key={report.id}>
+        {reports.length ? <><ul>{reports.slice(0,5).map(report=><li key={report.id}>
           <Link href={`/app/pets/${pet.id}?tab=results&report=${report.id}`}><IconFlask size={20} aria-hidden="true"/><span><strong>{report.title}</strong><small><time dateTime={report.test_date}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(report.test_date))}</time>{report.laboratory&&` · ${report.laboratory}`}</small></span><span aria-hidden="true">→</span></Link>
-        </li>)}</ul> : <p>{d.noResults}</p>}
-        <Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=results`}>{locale==='pl'?'Zobacz wszystkie badania →':'View all reports →'}</Link>
+        </li>)}</ul><Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=results`}>{locale==='pl'?'Zobacz wszystkie badania →':'View all reports →'}</Link></> : <><p className="household-inline-empty-text">{d.noResults}</p>{!isReadOnly ? <SummaryEmptyCta kind="report" petId={pet.id} locale={locale as "pl" | "en"} /> : <Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=results`}>{locale==='pl'?'Zobacz wszystkie badania →':'View all reports →'}</Link>}</>}
       </section>
     </div><aside><section className="pet-panel household-summary-basics"><h2>{t.basics}</h2><dl className="pet-facts">
       {facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-      <div className="household-summary-weight"><dt>{d.weight}</dt><dd>{weights[0]?<><strong>{new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg</strong><small className="household-summary-weight-date"><time dateTime={weights[0].measured_on}>{new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:'UTC'}).format(new Date(weights[0].measured_on))}</time></small></>:(locale==='pl'?'Brak pomiarów':'No measurements')}<Link className="household-summary-link" href={`/app/pets/${pet.id}?tab=weight`}>{locale==='pl'?'Pomiary zdrowia →':'Health measurements →'}</Link></dd></div>
     </dl></section>
-    <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} readOnly={isReadOnly} />
+    <div id="pet-medications-anchor">
+      <ActiveMedicationsCard petId={pet.id} petName={pet.imie} initialSchedules={medicationSchedules} initialLogs={medicationLogs} memberNames={memberNames} currentUserId={currentUserId} pets={[{ id: pet.id, imie: pet.imie }]} petData={{ id: pet.id, imie: pet.imie, gatunek: pet.gatunek, rasa: pet.rasa, data_urodzenia: pet.data_urodzenia, data_urodzenia_przyblizona: pet.data_urodzenia_przyblizona, plec: pet.plec, kastracja: pet.kastracja, identyfikacja: pet.identyfikacja, numer_id: pet.numer_id, notatki: pet.notatki, tagi: pet.tagi }} weight={weights[0] ? { kg: weights[0].kg, measured_on: weights[0].measured_on } : null} reports={reports.map(r => ({ id: r.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory }))} keyParameters={keyParameters} readOnly={isReadOnly} />
+    </div>
   </aside></div>
-    <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} householdId={pet.gospodarstwo_id} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} readOnly={isReadOnly} />
+    <div id="pet-schedule-anchor">
+      <HouseholdSchedule pets={[{ id: pet.id, imie: pet.imie }]} householdId={pet.gospodarstwo_id} initialScheduleItems={scheduleItems} initialHealthEvents={healthEvents} initialReports={reports.map(r => ({ id: r.id, pet_id: pet.id, title: r.title, test_date: r.test_date, laboratory: r.laboratory, doctor: r.doctor }))} initialMedicationSchedules={medicationSchedules} initialMedicationLogs={medicationLogs} initialNotificationSettings={notificationSettings} fixedPetId={pet.id} memberNames={memberNames} currentUserId={currentUserId} readOnly={isReadOnly} />
+    </div>
     </RecordSections>
     </PetQuickAddProvider>
   </Container>;
