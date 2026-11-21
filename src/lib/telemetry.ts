@@ -13,13 +13,32 @@ const ENDPOINT = "/api/telemetry";
 const FLUSH_INTERVAL_MS = 4000;
 const MAX_BATCH_SIZE = 10;
 const MAX_QUEUE_SIZE = 20;
+const MAX_BREADCRUMBS = 12;
+const MAX_RECENT_ERRORS = 5;
+
+export interface TelemetryBreadcrumb {
+  at: string;
+  type: TelemetryEventType;
+  name: string;
+  route: string;
+}
+
+export interface TelemetryRecentError {
+  at: string;
+  source: string;
+  route: string;
+  error_name: string;
+  msg: string;
+}
 
 const queue: TelemetryEventPayload[] = [];
+const recentBreadcrumbs: TelemetryBreadcrumb[] = [];
+const recentErrors: TelemetryRecentError[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let errorCountThisPage = 0;
 const MAX_ERRORS_PER_PAGE = 5;
 
-function detectDeviceClass(): TelemetryDeviceClass {
+export function detectDeviceClass(): TelemetryDeviceClass {
   if (typeof window === "undefined") return "desktop";
   const w = window.innerWidth;
   if (w < 768) return "mobile";
@@ -27,7 +46,7 @@ function detectDeviceClass(): TelemetryDeviceClass {
   return "desktop";
 }
 
-function detectIsPwa(): boolean {
+export function detectIsPwa(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const nav = window.navigator as Navigator & { standalone?: boolean };
@@ -38,6 +57,16 @@ function detectIsPwa(): boolean {
   } catch {
     return false;
   }
+}
+
+export function getTelemetryDiagnosticsSnapshot(): {
+  breadcrumbs: TelemetryBreadcrumb[];
+  recentErrors: TelemetryRecentError[];
+} {
+  return {
+    breadcrumbs: recentBreadcrumbs.slice(),
+    recentErrors: recentErrors.slice(),
+  };
 }
 
 export function flushTelemetry(useBeacon = false): void {
@@ -104,6 +133,31 @@ export function trackEvent(params: {
       queue.shift();
     }
 
+    const meta = sanitizeTelemetryMeta(params.meta);
+
+    if (recentBreadcrumbs.length >= MAX_BREADCRUMBS) {
+      recentBreadcrumbs.shift();
+    }
+    recentBreadcrumbs.push({
+      at: new Date().toISOString(),
+      type: params.type,
+      name: cleanName,
+      route: routeTemplate,
+    });
+
+    if (params.type === "client_error") {
+      if (recentErrors.length >= MAX_RECENT_ERRORS) {
+        recentErrors.shift();
+      }
+      recentErrors.push({
+        at: new Date().toISOString(),
+        source: cleanName,
+        route: routeTemplate,
+        error_name: typeof meta.error_name === "string" ? meta.error_name : "Error",
+        msg: typeof meta.msg === "string" ? meta.msg : "",
+      });
+    }
+
     queue.push({
       event_type: params.type,
       route_template: routeTemplate,
@@ -111,7 +165,7 @@ export function trackEvent(params: {
       locale,
       device_class: detectDeviceClass(),
       is_pwa: detectIsPwa(),
-      meta: sanitizeTelemetryMeta(params.meta),
+      meta,
     });
 
     scheduleFlush();

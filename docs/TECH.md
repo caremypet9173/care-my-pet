@@ -107,11 +107,12 @@ Edge Function `pet-assistant`:
 
 ---
 
-## 4. Model danych (stan z 62 migracji SQL)
+## 4. Model danych (stan z 63 migracji SQL)
 
 - **Gospodarstwa, dostęp i odzyskiwanie:** `gospodarstwo`, `czlonek_gospodarstwa`,
   `zaproszenie_gospodarstwa`, `household_recovery_key`, `household_recovery_request`,
-  `pilot_whitelist`, `waitlist`
+  `pilot_whitelist`, `waitlist`, `pilot_feedback` (zgłoszenia sugestii/błędów z pilotażu
+  + prywatny bucket `pilot-feedback`, retencja 90 dni)
 - **Pupile i archiwum:** `zwierze` (m.in. gatunek, rasa, płeć, przybliżona data
   urodzenia, kastracja, identyfikacja/chip, `tagi text[]`, `notatki`, `avatar_path`,
   `archived_at`, `archive_reason`, `closed_on`), `pet_archive_link`
