@@ -32,6 +32,7 @@ import {
   PetQuickAddToolbarButton,
 } from "@/features/pets/pet-quick-actions";
 import { ActiveMedicationsCard } from "@/features/medications/active-medications-card";
+import { projectMedicationDoses } from "@/features/medications/projection";
 import { DailyCareCard } from "@/features/pets/daily-care-card";
 import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import type { Metadata } from "next";
@@ -159,6 +160,19 @@ export default async function PetPage({ params, searchParams }: { params: Promis
   const activeMedications = medicationSchedules.filter(
     (s) => s.is_active && (!s.end_date || s.end_date >= todayIso),
   );
+  const hasDailyTasks =
+    projectMedicationDoses({
+      schedules: activeMedications,
+      logs: medicationLogs,
+      rangeStart: todayIso,
+      rangeEnd: todayIso,
+    }).length > 0 ||
+    scheduleItems.some(
+      (it) => it.scheduled_date === todayIso && it.status === "planned",
+    ) ||
+    fluids.some((f) => f.administered_on === todayIso) ||
+    vitalMeasurements.some((v) => v.measured_on === todayIso) ||
+    weights.some((w) => w.measured_on === todayIso);
   const facts = [
     [t.rasa, pet.rasa ?? t.missing],
     [t.data_urodzenia, pet.data_urodzenia ? new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(pet.data_urodzenia)) + (pet.data_urodzenia_przyblizona ? (locale === "pl" ? " (data przybliżona)" : " (approximate date)") : "") : t.unknown],
@@ -191,7 +205,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       />
     )}
     <PetArchivedBanner pet={pet} locale={locale as Locale} isOwner={canManage} />
-    <RecordSections key={`${pet.id}-${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<LazyHistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<LazyHealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<LazyMedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} trashedReports={trashedReports} otherPets={otherPets} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<LazyMedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<LazyAssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><div className="household-record-stats">{[
+    <RecordSections key={`${pet.id}-${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<LazyHistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<LazyHealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<LazyMedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} trashedReports={trashedReports} otherPets={otherPets} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<LazyMedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<LazyAssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><div className={`household-summary-top ${hasDailyTasks ? "is-split" : "is-quiet"}`}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><div className="household-record-stats">{[
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
       { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },
@@ -223,7 +237,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
                 ? "Brak wpisów profilaktyki"
                 : "No prevention entries",
       },
-    ].map(({ label, icon: Icon, value, sub }) => <section key={label}><Icon size={22} aria-hidden="true" /><h2>{label}</h2><strong>{value}</strong><p>{sub}</p></section>)}</div>
+    ].map(({ label, icon: Icon, value, sub }) => <section key={label}><Icon size={20} aria-hidden="true" /><h2>{label}</h2><strong>{value}</strong><p>{sub}</p></section>)}</div></div>
     {keyParameters.length>0&&<section className="pet-panel"><h2>{locale==="pl"?"Kluczowe parametry":"Key parameters"}</h2><dl className="pet-facts">{keyParameters.map(({row,date})=><div key={row.id}><dt>{row.name} · {date}</dt><dd><strong>{row.value} {row.unit}</strong>{row.note&&<p className="pet-notes">{row.note}</p>}</dd></div>)}</dl></section>}
     <div className="household-record-columns"><div>
       <section className="pet-panel household-summary-reports household-summary-events"><h2>{d.events}</h2>

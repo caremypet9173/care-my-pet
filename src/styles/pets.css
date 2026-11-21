@@ -331,6 +331,23 @@
 .household-record-tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--color-border); margin-block: 1rem 1.5rem; flex-wrap: wrap; }
 .household-record-tabs button { display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: .75rem .5rem; color: var(--color-text-muted); border-bottom: 2px solid transparent; font-size: .8125rem; cursor: pointer; }
 .household-record-tabs button[aria-selected=true] { color: var(--color-primary); border-color: var(--color-primary); font-weight: 600; }
+.household-summary-top { margin-bottom: 1.25rem; }
+.household-summary-top .daily-care-card { margin-bottom: 0; }
+.household-summary-top .household-record-stats { margin-bottom: 0; }
+.household-summary-top.is-quiet { display: grid; gap: .85rem; }
+.household-summary-top.is-quiet .household-record-stats section { padding: .75rem .9rem; }
+.household-summary-top.is-quiet .household-record-stats strong { font-size: 1.05rem; margin-block: .3rem .15rem; }
+.household-summary-top.is-split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.15rem; align-items: stretch; }
+.household-summary-top.is-split .household-record-stats { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(4, minmax(3.4rem, 4.75rem)); gap: .5rem; align-content: start; }
+.household-summary-top.is-split .household-record-stats section { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "icon label value" "icon sub value"; align-items: center; column-gap: .65rem; row-gap: .08rem; padding: .55rem .85rem; border-radius: .75rem; }
+.household-summary-top.is-split .household-record-stats svg { grid-area: icon; float: none; width: 18px; height: 18px; flex-shrink: 0; }
+.household-summary-top.is-split .household-record-stats h2 { grid-area: label; margin: 0; font-size: .62rem; line-height: 1.2; }
+.household-summary-top.is-split .household-record-stats strong { grid-area: value; margin: 0; font-size: .98rem; line-height: 1.2; text-align: right; white-space: nowrap; }
+.household-summary-top.is-split .household-record-stats p { grid-area: sub; margin: 0; font-size: .7rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) and (min-width: 601px) {
+  .household-summary-top.is-split { grid-template-columns: minmax(0, 1fr); gap: .85rem; }
+  .household-summary-top.is-split .household-record-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; }
+}
 .household-record-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .household-record-stats section { padding: 1rem; border: 1px solid var(--color-border); border-radius: .875rem; background: var(--color-success-surface); }
 .household-record-stats section:nth-child(3) { background: var(--color-info-surface); }
@@ -767,6 +784,13 @@
   .household-quick-backdrop { background: rgba(15, 32, 24, .42); }
   .household-quick-popover { position: fixed; left: 0; right: 0; top: auto; bottom: 0; width: 100%; max-height: 86dvh; border-radius: 1.25rem 1.25rem 0 0; border-bottom: 0; z-index: 75; }
   .household-quick-toast { left: .75rem; right: .75rem; bottom: .75rem; max-width: none; }
+  #record-panel-0 > .household-summary-top { display: contents; }
+  #record-panel-0 > .household-summary-top > .daily-care-card { order: 0; margin-bottom: 0; }
+  #record-panel-0 > .household-summary-top > .household-record-stats { margin-bottom: 0; order: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; gap: .65rem; }
+  #record-panel-0 > .household-summary-top.is-split > .household-record-stats section { display: block; padding: .75rem .85rem; }
+  #record-panel-0 > .household-summary-top.is-split > .household-record-stats svg { float: right; }
+  #record-panel-0 > .household-summary-top.is-split > .household-record-stats strong { display: block; text-align: left; margin-block: .25rem .15rem; font-size: 1rem; }
+  #record-panel-0 > .household-summary-top.is-split > .household-record-stats p { white-space: normal; }
   #record-panel-0 > .household-record-columns { display: contents; }
   #record-panel-0 > .household-record-columns > aside { display: contents; }
   #record-panel-0 > .household-record-columns > aside > * { width: 100%; min-width: 0; }

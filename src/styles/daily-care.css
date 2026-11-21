@@ -1,19 +1,19 @@
 /* Dzienny pulpit opieki pupila (Daily Care Hub) */
-.daily-care-card { border-radius: .95rem; padding: 1.15rem 1.25rem; background: linear-gradient(135deg, #ffffff 0%, #f7fbf8 100%); border: 1px solid #cbe3d7; box-shadow: 0 4px 18px -4px rgba(22, 77, 52, 0.08); margin-bottom: 1.25rem; display: grid; gap: 1rem; }
-.daily-care-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
-.daily-care-badge-row { display: inline-flex; align-items: center; gap: .4rem; }
-.daily-care-icon-badge { width: 1.6rem; height: 1.6rem; border-radius: .45rem; background: #e7f4ec; color: #164d34; display: grid; place-items: center; }
-.daily-care-kicker { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #164d34; }
-.daily-care-title { font-size: 1.05rem; font-weight: 800; color: #153b2a; margin: .15rem 0 0; }
-.daily-care-pill-badge { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+.daily-care-card { border-radius: .95rem; padding: .9rem 1.05rem; background: linear-gradient(135deg, #ffffff 0%, #f7fbf8 100%); border: 1px solid #cbe3d7; box-shadow: 0 4px 18px -4px rgba(22, 77, 52, 0.08); margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: .7rem; }
+.daily-care-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.daily-care-badge-row { display: inline-flex; align-items: center; gap: .38rem; }
+.daily-care-icon-badge { width: 1.45rem; height: 1.45rem; border-radius: .4rem; background: #e7f4ec; color: #164d34; display: grid; place-items: center; }
+.daily-care-kicker { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #164d34; }
+.daily-care-title { font-size: .98rem; font-weight: 800; color: #153b2a; margin: .1rem 0 0; }
+.daily-care-pill-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .24rem .65rem; border-radius: 999px; font-size: .72rem; font-weight: 700; }
 .daily-care-pill-badge.is-complete { background: #e7f4ec; color: #164d34; border: 1px solid #b8d4c5; }
 .daily-care-pill-badge.is-pending { background: #fdf5ea; color: #8a5314; border: 1px solid #f3d4a6; }
 .daily-care-pill-badge.is-visit { background: #e8f4fd; color: #135589; border: 1px solid #b8dcf6; }
 .daily-care-pill-badge.is-quiet { background: #f3f6f4; color: #42584e; border: 1px solid #d5dfd9; }
-.daily-care-section { display: grid; gap: .6rem; }
-.daily-care-section-title { display: inline-flex; align-items: center; gap: .4rem; font-size: .82rem; font-weight: 700; color: #164d34; margin: 0; }
-.daily-care-dose-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
-.daily-care-dose-item { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .85rem; border-radius: .75rem; border: 1px solid #e1e9e4; background: #fff; transition: background-color .15s, border-color .15s; }
+.daily-care-section { display: grid; gap: .45rem; }
+.daily-care-section-title { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; font-weight: 700; color: #164d34; margin: 0; }
+.daily-care-dose-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .38rem; }
+.daily-care-dose-item { display: flex; align-items: center; justify-content: space-between; gap: .65rem; padding: .46rem .7rem; border-radius: .65rem; border: 1px solid #e1e9e4; background: #fff; transition: background-color .15s, border-color .15s; }
 .daily-care-dose-item.is-completed { background: #f4faf6; border-color: #cbe3d7; }
 .daily-care-dose-item.is-skipped { background: #fdf8f7; border-color: #f7d4d0; }
 .daily-care-dose-item.is-fluid-dose:not(.is-completed):not(.is-skipped) { border-color: #bae6fd; background: #f8fcff; }
