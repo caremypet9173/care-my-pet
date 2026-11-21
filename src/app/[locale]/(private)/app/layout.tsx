@@ -45,21 +45,25 @@ export default async function PrivateLayout({ children }: { children: React.Reac
             <strong>{user.email}</strong>
           </p>
           <div className="household-header-actions">
-            <HouseholdHeaderSwitcher
-              availableHouseholds={availableHouseholds}
-              activeHouseholdId={activeHousehold?.id ?? null}
-              locale={locale}
-            />
-            <Link
-              href="/app/household"
-              className="household-nav-link"
-              title={pl ? "Konta rodzinne i współdzielenie" : "Family accounts & sharing"}
-            >
-              <IconUsers size={18} aria-hidden="true" />
-              <span>{pl ? "Gospodarstwo" : "Household"}</span>
-            </Link>
-            <LanguageSwitch />
-            <SignOut />
+            <div className="household-header-nav">
+              <HouseholdHeaderSwitcher
+                availableHouseholds={availableHouseholds}
+                activeHouseholdId={activeHousehold?.id ?? null}
+                locale={locale}
+              />
+              <Link
+                href="/app/household"
+                className="household-nav-link"
+                title={pl ? "Konta rodzinne i współdzielenie" : "Family accounts & sharing"}
+              >
+                <IconUsers size={18} aria-hidden="true" />
+                <span>{pl ? "Gospodarstwo" : "Household"}</span>
+              </Link>
+            </div>
+            <div className="household-header-utility">
+              <LanguageSwitch />
+              <SignOut />
+            </div>
           </div>
         </Container>
       </header>
