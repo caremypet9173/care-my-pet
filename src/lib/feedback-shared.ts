@@ -66,9 +66,10 @@ function normalizeRoute(rawPath: string): {
     const seg = segments[i] ?? "";
     const prev = i > 0 ? segments[i - 1] : "";
     const prev2 = i > 1 ? segments[i - 2] : "";
-    if (UUID_SEGMENT_RE.test(seg)) {
+    if (seg === "[id]" || UUID_SEGMENT_RE.test(seg)) {
       normalized.push("[id]");
     } else if (
+      seg === "[token]" ||
       TOKEN_PARENT_SEGMENTS.has(prev) ||
       (prev2 === "recover" && prev === "confirm")
     ) {

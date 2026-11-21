@@ -36,7 +36,20 @@ export function PilotFeedbackWidget() {
     try {
       const pathname = window.location.pathname;
       const search = new URLSearchParams(window.location.search);
-      const activeTab = (search.get("tab") ?? "").slice(0, 40);
+      const selectedTabEl = document.querySelector<HTMLElement>(
+        '.household-record-tabs [role="tab"][aria-selected="true"]',
+      );
+      const tabFromDom = selectedTabEl?.id
+        ? ({
+            "record-tab-0": "summary",
+            "record-tab-4": "weight",
+            "record-tab-1": "history",
+            "record-tab-2": "results",
+            "record-tab-3": "documents",
+            "record-tab-5": "assistant",
+          }[selectedTabEl.id] ?? "")
+        : "";
+      const activeTab = (tabFromDom || search.get("tab") || "").slice(0, 40);
       const { routeTemplate } = normalizeRouteTemplate(pathname);
       const diag = getTelemetryDiagnosticsSnapshot();
       const snapshot: FeedbackContextSnapshot = {

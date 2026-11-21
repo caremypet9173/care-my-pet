@@ -20,6 +20,12 @@ test("sanitizeFeedbackPayload normalizes route, breadcrumbs, errors and screensh
           name: "results",
           route: "/pl/app/pets/0e1966e5-ef2a-4c35-8b5c-a3f1f03d4fd7",
         },
+        {
+          at: "2026-11-21T11:30:02.000Z",
+          type: "tab_view",
+          name: "summary",
+          route: "/app/pets/[id]",
+        },
       ],
       recent_errors: [
         {
@@ -48,8 +54,9 @@ test("sanitizeFeedbackPayload normalizes route, breadcrumbs, errors and screensh
   assert.equal(result.device_class, "mobile");
   assert.equal(result.is_pwa, true);
   assert.equal(result.viewport, "390x844");
-  assert.equal(result.breadcrumbs.length, 1);
+  assert.equal(result.breadcrumbs.length, 2);
   assert.equal(result.breadcrumbs[0]?.route, "/app/pets/[id]");
+  assert.equal(result.breadcrumbs[1]?.route, "/app/pets/[id]");
   assert.equal(result.recent_errors.length, 1);
   assert.ok(!result.recent_errors[0]?.msg.includes("jan@example.com"));
   assert.ok(

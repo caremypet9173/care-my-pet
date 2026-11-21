@@ -49,13 +49,20 @@ function runQuery(sql) {
   }
 }
 
+const REPO_ROOT = path.resolve(
+  path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")),
+  "../../../..",
+);
+
 function downloadScreenshot(screenshotPath, feedbackId) {
   if (!screenshotPath) return null;
   const outDir = path.join(os.tmpdir(), "caremypet-feedback");
   fs.mkdirSync(outDir, { recursive: true });
   const ext = path.extname(screenshotPath) || ".jpg";
-  const localPath = path.join(outDir, `${feedbackId}${ext}`);
+  const fileName = `${feedbackId}${ext}`;
+  const localPath = path.join(outDir, fileName);
   try {
+    // Use relative destination filename inside outDir + --workdir to avoid Windows "C:" URL-scheme parsing bug in supabase storage cp
     execFileSync(
       "supabase",
       [
@@ -63,10 +70,13 @@ function downloadScreenshot(screenshotPath, feedbackId) {
         "cp",
         "--linked",
         "--experimental",
+        "--workdir",
+        REPO_ROOT,
         `ss:///pilot-feedback/${screenshotPath}`,
-        localPath,
+        fileName,
       ],
       {
+        cwd: outDir,
         encoding: "utf8",
         stdio: ["pipe", "pipe", "pipe"],
       },
