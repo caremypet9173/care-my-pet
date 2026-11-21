@@ -272,7 +272,8 @@ export function DischargePdfPageViewer({
           setLoading(false);
         });
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[DischargePdfPageViewer] load error:", err);
         if (active) {
           setError(true);
           setLoading(false);

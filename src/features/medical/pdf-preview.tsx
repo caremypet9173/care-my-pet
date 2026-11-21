@@ -16,7 +16,7 @@ export function PdfPreview({url}:{url:string}) {
       const task=pdf.getDocument({url,useSystemFonts:true,disableAutoFetch:true,disableStream:true});
       destroy=()=>{void task.destroy();};
       return task.promise.then(doc=>{if(active)setDocument(doc);});
-    }).catch(()=>{if(active)setError(true);});
+    }).catch((err)=>{console.error("[PdfPreview] load error:",err);if(active)setError(true);});
     return()=>{active=false;destroy?.();};
   },[url]);
   useEffect(()=>{

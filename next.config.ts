@@ -21,6 +21,8 @@ function buildCsp(): string {
 
   const connectSources = [
     "'self'",
+    "blob:",
+    "data:",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     ...extraOrigins,
@@ -34,7 +36,7 @@ function buildCsp(): string {
     ...extraOrigins,
   ];
   const scriptSources = isProd
-    ? ["'self'", "'unsafe-inline'"]
+    ? ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"]
     : ["'self'", "'unsafe-inline'", "'unsafe-eval'"];
 
   return [
