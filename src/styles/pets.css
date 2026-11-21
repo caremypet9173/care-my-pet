@@ -87,12 +87,6 @@
 .household-heading-actions { display: flex; gap: .75rem; align-items: flex-start; flex-wrap: wrap; }
 .household-heading-actions small { display: block; color: var(--color-text-muted); font-size: .65rem; text-align: center; margin-top: .25rem; }
 .household-heading-actions button:disabled { opacity: 1; background: var(--color-surface-sand); color: var(--color-text-muted); border: 1px solid var(--color-border); }
-.dashboard-upload-picker { position: relative; display: inline-flex; }
-.dashboard-upload-menu { position: absolute; right: 0; top: calc(100% + .4rem); z-index: 60; min-width: 14.5rem; max-width: min(19rem, calc(100vw - 2rem)); padding: .35rem; border-radius: .85rem; border: 1px solid var(--color-border); background: var(--color-surface-raised); box-shadow: 0 14px 32px -8px rgba(20, 42, 30, .2), 0 4px 10px rgba(20, 42, 30, .06); display: grid; gap: .15rem; }
-.dashboard-upload-menu-title { display: block; padding: .4rem .6rem .35rem; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); margin-bottom: .15rem; }
-.dashboard-upload-menu-item { display: flex; align-items: center; gap: .55rem; padding: .5rem .65rem; border-radius: .55rem; color: var(--color-text); text-decoration: none; font-size: .82rem; font-weight: 600; transition: background-color .15s, color .15s; }
-.dashboard-upload-menu-item:hover, .dashboard-upload-menu-item:focus-visible { background: #eef7f2; color: #164d34; outline: none; }
-.dashboard-upload-menu-item svg { color: var(--color-primary); flex-shrink: 0; }
 .pets-eyebrow { background: var(--color-surface-sand); border-radius: .35rem; padding: .25rem .5rem; font-size: .65rem; letter-spacing: .08em; }
 .pets-eyebrows-row {
   display: flex;
@@ -182,7 +176,10 @@
 .household-card-facts { font-size: .7rem; }
 .household-card-facts > div { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
 .household-card-facts dt { color: var(--color-text-muted); }
+.household-card-actions { margin-top: auto; display: flex; align-items: center; gap: .5rem; }
 .household-card-link { margin-top: auto; width: 100%; font-size: .75rem; }
+.household-card-actions .household-card-link { margin-top: 0; flex: 1; min-width: 0; width: auto; }
+.household-card-upload { flex-shrink: 0; white-space: nowrap; font-size: .75rem; padding-inline: .72rem; }
 .add-pet-icon { background: var(--color-success-surface); display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 1rem; }
 .pet-card--add h3 { font-size: .9375rem; }
 .pet-card--add p { font-size: .75rem; line-height: 1.8; }
@@ -788,7 +785,9 @@
   .household-card-facts > div { margin-bottom: 0; gap: .5rem; align-items: baseline; line-height: 1.35; }
   .household-card-facts > div.is-empty { display: none; }
   .household-card-facts dd { text-align: right; overflow-wrap: anywhere; }
-  .pet-card .household-card-link { min-height: 36px; padding: .35rem .75rem; font-size: .75rem; border-radius: .6rem; margin-top: .1rem; }
+  .pet-card .household-card-actions { margin-top: .1rem; gap: .45rem; }
+  .pet-card .household-card-link,
+  .pet-card .household-card-upload { min-height: 36px; padding: .35rem .68rem; font-size: .74rem; border-radius: .6rem; margin-top: 0; }
   .pet-card--add { min-height: auto; flex-direction: row; justify-content: flex-start; align-items: center; text-align: left; padding: .75rem .85rem; gap: .75rem; }
   .pet-card--add .add-pet-icon { width: 2.5rem; height: 2.5rem; border-radius: .75rem; flex-shrink: 0; }
   .pet-card--add .add-pet-icon svg { width: 20px; height: 20px; }

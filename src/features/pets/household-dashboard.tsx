@@ -11,6 +11,7 @@ import {
   IconPill,
   IconPlus,
   IconShieldCheck,
+  IconUpload,
 } from "@tabler/icons-react";
 import { Link } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/types";
@@ -328,7 +329,15 @@ export function HouseholdDashboard({
                     !petUpcoming && !latestPreventionEv ? "is-empty" : undefined
                   }
                 >
-                  <dt>{d.prevention}</dt>
+                  <dt>
+                    {petUpcoming
+                      ? d.prevention
+                      : latestPreventionEv
+                        ? pl
+                          ? "Ostatnia profilaktyka"
+                          : "Latest prevention"
+                        : d.prevention}
+                  </dt>
                   <dd>
                     {petUpcoming
                       ? `${formatDate(petUpcoming.date)} (${petUpcoming.title})`
@@ -343,13 +352,26 @@ export function HouseholdDashboard({
                 </div>
               </dl>
 
-              <Link
-                className="button button--primary button--sm household-card-link"
-                href={`/app/pets/${pet.id}`}
-              >
-                {d.record} <span className="sr-only">{pet.imie}</span>
-                <IconArrowRight size={16} aria-hidden="true" />
-              </Link>
+              <div className="household-card-actions">
+                <Link
+                  className="button button--primary button--sm household-card-link"
+                  href={`/app/pets/${pet.id}`}
+                >
+                  {d.record} <span className="sr-only">{pet.imie}</span>
+                  <IconArrowRight size={16} aria-hidden="true" />
+                </Link>
+                {!readOnly && (
+                  <Link
+                    className="button button--secondary button--sm household-card-upload"
+                    href={`/app/pets/${pet.id}/results/new`}
+                    title={`${d.upload} — ${pet.imie}`}
+                    aria-label={`${d.upload} — ${pet.imie}`}
+                  >
+                    <IconUpload size={15} aria-hidden="true" />
+                    <span>{pl ? "Badanie" : "Report"}</span>
+                  </Link>
+                )}
+              </div>
             </article>
           );
         })}

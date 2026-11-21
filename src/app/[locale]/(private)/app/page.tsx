@@ -7,7 +7,6 @@ import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import { getHouseholdDashboardBundle } from "@/features/pets/dashboard-bundle";
 import { petMessages } from "@/features/pets/messages";
 import { HouseholdDashboard } from "@/features/pets/household-dashboard";
-import { DashboardUploadPicker } from "@/features/pets/dashboard-upload-picker";
 import { dashboardMessages } from "@/features/pets/dashboard-messages";
 import { IconPlus, IconUsers } from "@tabler/icons-react";
 
@@ -43,7 +42,6 @@ export default async function AppPage() {
     medicationLogs,
   } = await getHouseholdDashboardBundle(cookieHouseholdId);
   const d = dashboardMessages[locale];
-  const activePets = (pets ?? []).filter((pet) => !pet.archived_at);
   const empty = pets?.length === 0;
   const firstPet = locale === "pl" ? "Dodaj pierwszego pupila" : "Add your first pet";
 
@@ -73,8 +71,8 @@ export default async function AppPage() {
           </h1>
           <p>{t.intro}</p>
         </div>
-        <div className="household-heading-actions">
-          {canManage && hasRecoveryKey && (
+        {canManage && hasRecoveryKey && (
+          <div className="household-heading-actions">
             <ButtonLink
               variant={empty ? "primary" : "secondary"}
               size="sm"
@@ -83,19 +81,8 @@ export default async function AppPage() {
               <IconPlus size={16} aria-hidden="true" />
               {empty ? firstPet : t.add}
             </ButtonLink>
-          )}
-          {activePets.length > 0 && hasRecoveryKey && (
-            <DashboardUploadPicker
-              pets={activePets.map((p) => ({
-                id: p.id,
-                imie: p.imie,
-                gatunek: p.gatunek,
-              }))}
-              label={d.upload}
-              locale={locale}
-            />
-          )}
-        </div>
+          </div>
+        )}
       </div>
       {activeHousehold && !hasRecoveryKey && (
         <HouseholdRecoveryBanner
