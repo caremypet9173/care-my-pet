@@ -107,7 +107,7 @@ Edge Function `pet-assistant`:
 
 ---
 
-## 4. Model danych (stan z 60 migracji SQL)
+## 4. Model danych (stan z 62 migracji SQL)
 
 - **Gospodarstwa, dostęp i odzyskiwanie:** `gospodarstwo`, `czlonek_gospodarstwa`,
   `zaproszenie_gospodarstwa`, `household_recovery_key`, `household_recovery_request`,
@@ -115,8 +115,9 @@ Edge Function `pet-assistant`:
 - **Pupile i archiwum:** `zwierze` (m.in. gatunek, rasa, płeć, przybliżona data
   urodzenia, kastracja, identyfikacja/chip, `tagi text[]`, `notatki`, `avatar_path`,
   `archived_at`, `archive_reason`, `closed_on`), `pet_archive_link`
-- **Wyniki badań (znormalizowane):** `wynik_badania`, `pomiar_parametru`,
-  `measurement_correction`
+- **Wyniki badań (znormalizowane):** `wynik_badania` (w tym soft-delete `deleted_at`/`deleted_by`
+  z 30-dniowym koszem, przenoszeniem między pupilami i re-użyciem odczytu po `source_sha256`
+  w obrębie gospodarstwa), `pomiar_parametru`, `measurement_correction`
 - **Pomiary zdrowia i terapia:** `pet_weight`, `pet_vital_measurement`
   (ciśnienie krwi, glukoza, temperatura), `pet_fluid_therapy`
 - **Historia, leki i terminarz:** `pet_health_event`, `medication_schedules`
@@ -127,7 +128,8 @@ Edge Function `pet-assistant`:
 - **AI / RAG:** `pet_knowledge_chunk` (`vector(768)` + indeks HNSW z `hnsw.iterative_scan`),
   `pet_assistant_thread`, `pet_assistant_message`
 - **Schemat prywatny (`private.*`):** `medical_read_quota`,
-  `ai_assistant_quota`, `ai_usage_log`
+  `ai_assistant_quota`, `ai_usage_log`, `pilot_telemetry_event`,
+  `rejected_document_hash` (24h cache odrzuconych plików niemedycznych)
 
 ---
 

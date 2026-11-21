@@ -109,6 +109,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     householdDetails,
     switcherPets,
     notificationSettings,
+    trashedReports,
     weights,
     vitalMeasurements,
     fluids,
@@ -117,6 +118,9 @@ export default async function PetPage({ params, searchParams }: { params: Promis
     medicationSchedules,
     medicationLogs,
   } = bundle;
+  const otherPets = switcherPets
+    .filter((p) => p.id !== pet.id)
+    .map((p) => ({ id: p.id, imie: p.imie }));
   const reports =
     requestedReport &&
     UUID_RE.test(requestedReport) &&
@@ -187,7 +191,7 @@ export default async function PetPage({ params, searchParams }: { params: Promis
       />
     )}
     <PetArchivedBanner pet={pet} locale={locale as Locale} isOwner={canManage} />
-    <RecordSections key={`${pet.id}-${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<LazyHistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<LazyHealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<LazyMedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<LazyMedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<LazyAssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><div className="household-record-stats">{[
+    <RecordSections key={`${pet.id}-${initialTab}-${requestedReport ?? ""}-${resolvedSearch.filter ?? ""}`} initialTab={initialTab} history={<LazyHistoryPanel petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} initialEvents={healthEvents} reports={reports} initialFluids={fluids} initialFilter={resolvedSearch.filter} readOnly={isReadOnly}/>} weight={<LazyHealthMeasurementsPanel petId={pet.id} petName={pet.imie} weights={weights} vitalMeasurements={vitalMeasurements} readOnly={isReadOnly}/>} results={<LazyMedicalResults key={ resolvedSearch.report } petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} trashedReports={trashedReports} otherPets={otherPets} initialReportId={resolvedSearch.report} readOnly={isReadOnly}/>} documents={<LazyMedicalDocuments key={resolvedSearch.document} petId={pet.id} householdId={pet.gospodarstwo_id} petName={pet.imie} reports={reports} healthEvents={healthEvents} initialDocumentId={resolvedSearch.document} readOnly={isReadOnly}/>} assistant={<LazyAssistantPanel petId={pet.id} petName={pet.imie} initialThreads={assistantThreads} initialMessages={assistantMessages} initialQuotaUsed={assistantQuotaUsed} initialPrompt={requestedPrompt}/>}><DailyCareCard petId={pet.id} petName={pet.imie} schedules={medicationSchedules} initialLogs={medicationLogs} scheduleItems={scheduleItems} fluids={fluids} vitalMeasurements={vitalMeasurements} weights={weights} memberNames={memberNames} readOnly={isReadOnly}/><div className="household-record-stats">{[
       { label: d.nextVisit, icon: IconCalendar, value: nextDueCandidate ? nextDueCandidate.date : "—", sub: nextDueCandidate ? nextDueCandidate.title : (locale === "pl" ? "Brak zaplanowanych terminów" : "No upcoming due dates") },
       { label: d.weight, icon: IconScale, value: weights[0] ? `${new Intl.NumberFormat(locale,{maximumFractionDigits:3}).format(weights[0].kg)} kg` : "—", sub: weights[0] ? weights[0].measured_on : (locale === "pl" ? "Brak pomiarów" : "No measurements") },
       { label: d.latest, icon: IconFlask, value: reports[0] ? reports[0].test_date : "—", sub: reports[0] ? reports[0].title : d.noResults },

@@ -86,7 +86,17 @@ export async function extractClinicalDischarge(
   }
 
   let data: { discharge?: RawDischargeExtraction } | null = null;
-  let error: { context?: { json?: () => Promise<{ error?: string; message?: string }> }; message?: string } | null = null;
+  let error: {
+    context?: {
+      json?: () => Promise<{
+        error?: string;
+        message?: string;
+        reason?: string;
+        document_type?: string;
+      }>;
+    };
+    message?: string;
+  } | null = null;
   try {
     const res = await client.functions.invoke("medical-reports", {
       body: invokeBody,
@@ -103,7 +113,14 @@ export async function extractClinicalDischarge(
     const details = await error.context?.json?.().catch(() => null);
     const errCode = details?.error || error.message || "extraction_failed";
     let message = errCode;
-    if (errCode === "extraction_failed") {
+    if (errCode === "invalid_document_type") {
+      const reason = typeof details?.reason === "string" && details.reason.trim()
+        ? ` ${details.reason.trim()}`
+        : "";
+      message = pl
+        ? `Ten plik nie wygląda na wypis ani dokumentację weterynaryjną.${reason}`
+        : `This file does not appear to be a veterinary discharge or medical record.${reason}`;
+    } else if (errCode === "extraction_failed") {
       message = pl
         ? "Nie udało się wyodrębnić danych z dokumentu. Upewnij się, że plik PDF jest czytelnym wypisem z lecznicy."
         : "Could not extract data from the document. Make sure the PDF is a legible clinical discharge.";

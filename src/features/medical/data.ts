@@ -19,6 +19,7 @@ const listReportsCached = cache(
         "id, gospodarstwo_id, zwierze_id, title, test_date, laboratory, doctor, notes, source_path, source_name, source_mime, created_by, confirmed_at",
       )
       .eq("zwierze_id", petId)
+      .is("deleted_at", null)
       .order("test_date", { ascending: false })
       .order("confirmed_at", { ascending: false })
       .limit(10);
@@ -72,6 +73,7 @@ const listReportsCached = cache(
     .from("wynik_badania")
     .select("*,rows:pomiar_parametru(*,correction:measurement_correction(*))")
     .eq("zwierze_id", petId)
+    .is("deleted_at", null)
     .order("test_date", { ascending: false })
     .order("confirmed_at", { ascending: false })
     .limit(100);
@@ -88,6 +90,7 @@ const listReportsCached = cache(
       .select("*,rows:pomiar_parametru(*,correction:measurement_correction(*))")
       .eq("zwierze_id", petId)
       .eq("id", requestedId)
+      .is("deleted_at", null)
       .maybeSingle();
     if (extra.error) throw new Error("Could not load report");
     if (extra.data) data.push(extra.data);

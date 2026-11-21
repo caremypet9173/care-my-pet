@@ -15,6 +15,7 @@ export async function listHouseholdReportsSummary(
   let query = client
     .from("wynik_badania")
     .select("id, pet_id:zwierze_id, title, test_date, laboratory, doctor")
+    .is("deleted_at", null)
     .order("test_date", { ascending: false })
     .order("confirmed_at", { ascending: false })
     .limit(400);

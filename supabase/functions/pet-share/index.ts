@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
           .eq("zwierze_id", link.pet_id)
           .eq("gospodarstwo_id", link.household_id)
           .eq("source_path", sourcePath)
+          .is("deleted_at", null)
           .limit(1)
           .maybeSingle(),
         adminClient
@@ -189,6 +190,7 @@ Deno.serve(async (req) => {
         )
         .eq("zwierze_id", link.pet_id)
         .eq("gospodarstwo_id", link.household_id)
+        .is("deleted_at", null)
         .order("test_date", { ascending: false })
         .order("confirmed_at", { ascending: false })
         .limit(100),

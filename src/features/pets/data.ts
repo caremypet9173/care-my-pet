@@ -87,6 +87,7 @@ export const listPets = cache(async (householdId?: string | null): Promise<Pet[]
   let query = client
     .from("zwierze")
     .select("*,medical_reports:wynik_badania(count)")
+    .is("medical_reports.deleted_at", null)
     .order("created_at");
   if (householdId) {
     query = query.eq("gospodarstwo_id", householdId);

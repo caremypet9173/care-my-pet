@@ -442,6 +442,7 @@ Deno.serve(async (req) => {
           "id,title,test_date,laboratory,doctor,notes,ai_interpretation,rows:pomiar_parametru(ordinal,name,value,unit,reference,category,correction:measurement_correction(value,unit,reference))",
         )
         .eq("zwierze_id", pet.id)
+        .is("deleted_at", null)
         .order("test_date", { ascending: false })
         .order("confirmed_at", { ascending: false })
         .limit(80);

@@ -31,3 +31,24 @@ export function fileMatches(bytes,mime) {
   if (mime==='image/png') return [137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v);
   return false;
 }
+
+const VALID_REPORT_DOC_TYPES = new Set(['veterinary_report', 'human_lab_report', 'non_medical', 'unreadable']);
+const VALID_DISCHARGE_DOC_TYPES = new Set(['veterinary_discharge', 'human_lab_report', 'non_medical', 'unreadable']);
+
+export function classifyDocumentGate(extracted, mode = 'report') {
+  const allowed = mode === 'discharge' ? VALID_DISCHARGE_DOC_TYPES : VALID_REPORT_DOC_TYPES;
+  const fallbackAllow = mode === 'discharge' ? 'veterinary_discharge' : 'veterinary_report';
+  const rawType = typeof extracted?.document_type === 'string' ? extracted.document_type.trim() : '';
+  const documentType = allowed.has(rawType) ? rawType : fallbackAllow;
+  const reason = typeof extracted?.rejection_reason === 'string'
+    ? extracted.rejection_reason.trim().slice(0, 300)
+    : '';
+
+  if (documentType === 'non_medical' || documentType === 'unreadable') {
+    return { action: 'reject', documentType, reason };
+  }
+  if (documentType === 'human_lab_report') {
+    return { action: 'warn_human', documentType, reason: '' };
+  }
+  return { action: 'allow', documentType, reason: '' };
+}

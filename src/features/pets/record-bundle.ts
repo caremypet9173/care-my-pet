@@ -2,7 +2,11 @@ import "server-only";
 import { cache } from "react";
 import { createClient, getCurrentUserClaims } from "@/lib/supabase/server";
 import type { PetPageHouseholdSummary } from "@/features/household/data";
-import type { MeasurementCorrection, MedicalReport } from "@/features/medical/types";
+import type {
+  MeasurementCorrection,
+  MedicalReport,
+  TrashedMedicalReport,
+} from "@/features/medical/types";
 import type { WeightMeasurement } from "@/features/weight/types";
 import type { VitalMeasurement } from "@/features/measurements/types";
 import type { PetFluidTherapy } from "@/features/fluid-therapy/types";
@@ -70,6 +74,7 @@ type RawPetRecordBundle = {
   switcher_pets: RawSwitcherPet[] | null;
   notification_settings: RawNotificationSettings | null;
   reports: RawReport[] | null;
+  trashed_reports: TrashedMedicalReport[] | null;
   weights: WeightMeasurement[] | null;
   vital_measurements: VitalMeasurement[] | null;
   fluids: PetFluidTherapy[] | null;
@@ -85,6 +90,7 @@ export interface PetRecordBundle {
   switcherPets: PetSwitcherItem[];
   notificationSettings: HouseholdNotificationSettings;
   reports: MedicalReport[];
+  trashedReports: TrashedMedicalReport[];
   weights: WeightMeasurement[];
   vitalMeasurements: VitalMeasurement[];
   fluids: PetFluidTherapy[];
@@ -247,6 +253,9 @@ export const getPetRecordBundle = cache(
       switcherPets,
       notificationSettings,
       reports,
+      trashedReports: Array.isArray(raw.trashed_reports)
+        ? raw.trashed_reports
+        : [],
       weights: Array.isArray(raw.weights) ? raw.weights : [],
       vitalMeasurements: Array.isArray(raw.vital_measurements)
         ? raw.vital_measurements

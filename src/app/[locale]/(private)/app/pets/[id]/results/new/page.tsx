@@ -1,7 +1,7 @@
 import { getLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getPet } from "@/features/pets/data";
+import { getPet, listPetSwitcherPets } from "@/features/pets/data";
 import { getHouseholdDetails } from "@/features/household/data";
 import { HouseholdRecoveryBanner } from "@/features/household/recovery-banner";
 import { PetArchivedBlockedCard } from "@/features/pets/pet-archived-notice";
@@ -39,7 +39,10 @@ export default async function NewReportPage({params}:{params:Promise<{id:string}
       </div>
     );
   }
-  const details = await getHouseholdDetails(pet.gospodarstwo_id);
+  const [details, switcherPets] = await Promise.all([
+    getHouseholdDetails(pet.gospodarstwo_id),
+    listPetSwitcherPets(pet.gospodarstwo_id),
+  ]);
   const hasRecoveryKey = Boolean(details?.household?.has_recovery_key);
   if (!hasRecoveryKey && details?.household) {
     return (
@@ -56,5 +59,8 @@ export default async function NewReportPage({params}:{params:Promise<{id:string}
       </div>
     );
   }
-  return <ReviewForm pet={pet}/>;
+  const otherPets = switcherPets
+    .filter((p) => p.id !== pet.id)
+    .map((p) => ({ id: p.id, imie: p.imie }));
+  return <ReviewForm pet={pet} otherPets={otherPets} />;
 }
