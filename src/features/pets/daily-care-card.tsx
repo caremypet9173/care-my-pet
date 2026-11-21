@@ -368,6 +368,14 @@ export function DailyCareCard({
                           ({dose.dosage})
                         </span>
                       )}
+                      {!readOnly && dose.is_completed && givenByName && (
+                        <span
+                          className="daily-care-dose-by"
+                          title={`${pl ? "Podano przez" : "Administered by"}: ${givenByName}`}
+                        >
+                          · {givenByName}
+                        </span>
+                      )}
                     </div>
 
                     {dose.instructions && (
@@ -376,17 +384,16 @@ export function DailyCareCard({
                       </p>
                     )}
 
-                    {dose.is_completed && (
+                    {readOnly && dose.is_completed && (
                       <small className="daily-care-dose-meta">
                         ✓ {pl ? "Podano" : "Administered"}
                         {givenByName ? ` (${givenByName})` : ""}
                       </small>
                     )}
 
-                    {dose.is_skipped && (
+                    {dose.is_skipped && (readOnly || dose.log?.notes) && (
                       <small className="daily-care-dose-meta is-skipped">
-                        ✕ {pl ? "Pominięto" : "Skipped"}
-                        {dose.log?.notes ? `: ${dose.log.notes}` : ""}
+                        {readOnly ? `✕ ${pl ? "Pominięto" : "Skipped"}${dose.log?.notes ? `: ${dose.log.notes}` : ""}` : dose.log?.notes}
                       </small>
                     )}
                   </div>

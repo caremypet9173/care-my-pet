@@ -338,15 +338,15 @@
 .household-summary-top.is-quiet .household-record-stats section { padding: .75rem .9rem; }
 .household-summary-top.is-quiet .household-record-stats strong { font-size: 1.05rem; margin-block: .3rem .15rem; }
 .household-summary-top.is-split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.15rem; align-items: stretch; }
-.household-summary-top.is-split .household-record-stats { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(4, minmax(3.4rem, 4.75rem)); gap: .5rem; align-content: start; }
-.household-summary-top.is-split .household-record-stats section { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "icon label value" "icon sub value"; align-items: center; column-gap: .65rem; row-gap: .08rem; padding: .55rem .85rem; border-radius: .75rem; }
+.household-summary-top.is-split .household-record-stats { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(4, minmax(3.1rem, 1fr)); gap: .45rem; height: 100%; max-height: 20rem; }
+.household-summary-top.is-split .household-record-stats section { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "icon label value" "icon sub value"; align-items: center; column-gap: .65rem; row-gap: .05rem; padding: .48rem .82rem; border-radius: .7rem; }
 .household-summary-top.is-split .household-record-stats svg { grid-area: icon; float: none; width: 18px; height: 18px; flex-shrink: 0; }
 .household-summary-top.is-split .household-record-stats h2 { grid-area: label; margin: 0; font-size: .62rem; line-height: 1.2; }
 .household-summary-top.is-split .household-record-stats strong { grid-area: value; margin: 0; font-size: .98rem; line-height: 1.2; text-align: right; white-space: nowrap; }
 .household-summary-top.is-split .household-record-stats p { grid-area: sub; margin: 0; font-size: .7rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) and (min-width: 601px) {
   .household-summary-top.is-split { grid-template-columns: minmax(0, 1fr); gap: .85rem; }
-  .household-summary-top.is-split .household-record-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; }
+  .household-summary-top.is-split .household-record-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; height: auto; max-height: none; }
 }
 .household-record-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .household-record-stats section { padding: 1rem; border: 1px solid var(--color-border); border-radius: .875rem; background: var(--color-success-surface); }
@@ -786,7 +786,7 @@
   .household-quick-toast { left: .75rem; right: .75rem; bottom: .75rem; max-width: none; }
   #record-panel-0 > .household-summary-top { display: contents; }
   #record-panel-0 > .household-summary-top > .daily-care-card { order: 0; margin-bottom: 0; }
-  #record-panel-0 > .household-summary-top > .household-record-stats { margin-bottom: 0; order: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; gap: .65rem; }
+  #record-panel-0 > .household-summary-top > .household-record-stats { margin-bottom: 0; order: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; height: auto; max-height: none; gap: .65rem; }
   #record-panel-0 > .household-summary-top.is-split > .household-record-stats section { display: block; padding: .75rem .85rem; }
   #record-panel-0 > .household-summary-top.is-split > .household-record-stats svg { float: right; }
   #record-panel-0 > .household-summary-top.is-split > .household-record-stats strong { display: block; text-align: left; margin-block: .25rem .15rem; font-size: 1rem; }
