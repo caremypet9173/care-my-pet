@@ -120,13 +120,16 @@ export const getPetRecordBundle = cache(
       return null;
     }
 
-    const client = await createClient();
+    const [{ user }, client] = await Promise.all([
+      getCurrentUserClaims(),
+      createClient(),
+    ]);
+    if (!user) return null;
     if (!client) throw new Error("Supabase unavailable");
 
-    const [{ data, error }, { user }] = await Promise.all([
-      client.rpc("get_pet_record_bundle", { p_pet_id: petId }),
-      getCurrentUserClaims(),
-    ]);
+    const { data, error } = await client.rpc("get_pet_record_bundle", {
+      p_pet_id: petId,
+    });
 
     if (error) {
       console.error("[getPetRecordBundle error]", error);

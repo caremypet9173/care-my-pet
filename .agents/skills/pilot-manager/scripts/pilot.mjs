@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+
+function sqlLiteral(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
 
 function runQuery(sql) {
-  // Use powershell / cmd to run npx supabase db query --linked
-  const cleanSql = sql.replace(/"/g, '""');
-  const cmd = `npx supabase db query --linked "${cleanSql}"`;
-  const raw = execSync(cmd, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] });
-  
+  const raw = execFileSync("supabase", ["db", "query", "--linked", sql], {
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
   // Find json block between { and }
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) {
@@ -70,13 +74,13 @@ try {
       const targetEmail = arg1.trim().toLowerCase();
       // Fetch waitlist entry
       const existing = runQuery(
-        `select id, email, pets_count from public.waitlist where lower(email) = lower('${targetEmail}');`
+        `select id, email, pets_count from public.waitlist where lower(email) = lower(${sqlLiteral(targetEmail)});`
       );
       const petsCount = existing[0]?.pets_count ?? 1;
       const note = `Zatwierdzony z listy oczekujących (${petsCount} ${petsCount === 1 ? "pupil" : "pupili"})`;
 
       runQuery(
-        `insert into public.pilot_whitelist (email, notes) values ('${targetEmail}', '${note}') on conflict (email) do update set notes = excluded.notes; update public.waitlist set status = 'invited' where lower(email) = lower('${targetEmail}');`
+        `insert into public.pilot_whitelist (email, notes) values (${sqlLiteral(targetEmail)}, ${sqlLiteral(note)}) on conflict (email) do update set notes = excluded.notes; update public.waitlist set status = 'invited' where lower(email) = lower(${sqlLiteral(targetEmail)});`
       );
 
       console.log(`\n✅ Pomyślnie zatwierdzono ${targetEmail} do pilotażu!`);
@@ -92,7 +96,7 @@ try {
       }
       const targetEmail = arg1.trim().toLowerCase();
       runQuery(
-        `update public.waitlist set status = 'rejected' where lower(email) = lower('${targetEmail}');`
+        `update public.waitlist set status = 'rejected' where lower(email) = lower(${sqlLiteral(targetEmail)});`
       );
       console.log(`\n❌ Zgłoszenie ${targetEmail} zostało oznaczone jako 'rejected'.\n`);
       break;
@@ -106,7 +110,7 @@ try {
       const targetEmail = arg1.trim().toLowerCase();
       const note = extraArg.trim() || "Dodany ręcznie";
       runQuery(
-        `insert into public.pilot_whitelist (email, notes) values ('${targetEmail}', '${note}') on conflict (email) do update set notes = excluded.notes;`
+        `insert into public.pilot_whitelist (email, notes) values (${sqlLiteral(targetEmail)}, ${sqlLiteral(note)}) on conflict (email) do update set notes = excluded.notes;`
       );
       console.log(`\n✅ Dodano ${targetEmail} do białej listy pilotażu (notatka: "${note}").\n`);
       break;
@@ -119,7 +123,7 @@ try {
       }
       const targetEmail = arg1.trim().toLowerCase();
       runQuery(
-        `delete from public.pilot_whitelist where lower(email) = lower('${targetEmail}');`
+        `delete from public.pilot_whitelist where lower(email) = lower(${sqlLiteral(targetEmail)});`
       );
       console.log(`\n🗑️ Usunięto ${targetEmail} z białej listy pilotażu.\n`);
       break;

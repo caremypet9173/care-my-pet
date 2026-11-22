@@ -51,12 +51,16 @@ export function PwaProvider() {
     }
 
     // Check dismissal cookie/timestamp
-    const dismissedAt = localStorage.getItem("caremypet_pwa_dismissed");
-    if (dismissedAt) {
-      const pastDays = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60 * 24);
-      if (pastDays < 7) {
-        return cleanupLoad; // Don't show if dismissed within past 7 days
+    try {
+      const dismissedAt = localStorage.getItem("caremypet_pwa_dismissed");
+      if (dismissedAt) {
+        const pastDays = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60 * 24);
+        if (pastDays < 7) {
+          return cleanupLoad; // Don't show if dismissed within past 7 days
+        }
       }
+    } catch {
+      // Ignore blocked browser storage (e.g. strict Safari Private / WebView)
     }
 
     // 3. Listen for BeforeInstallPrompt

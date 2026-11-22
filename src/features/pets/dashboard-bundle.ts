@@ -107,17 +107,17 @@ export const getHouseholdDashboardBundle = cache(
         ? selectedHouseholdId
         : null;
 
-    const client = await createClient();
-    if (!client) {
+    const [{ user }, client] = await Promise.all([
+      getCurrentUserClaims(),
+      createClient(),
+    ]);
+    if (!user || !client) {
       return failedBundle();
     }
 
-    const [{ data, error }, { user }] = await Promise.all([
-      client.rpc("get_household_dashboard_bundle", {
-        p_selected_household_id: validSelectedId,
-      }),
-      getCurrentUserClaims(),
-    ]);
+    const { data, error } = await client.rpc("get_household_dashboard_bundle", {
+      p_selected_household_id: validSelectedId,
+    });
 
     if (error) {
       console.error("[getHouseholdDashboardBundle error]", error);
