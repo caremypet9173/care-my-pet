@@ -28,6 +28,7 @@ import type {
   MedicationSchedule,
 } from "@/features/medications/types";
 import type { Pet } from "./types";
+import { PetCardCover } from "./pet-card-cover";
 import { PetIcon } from "./pet-icon";
 import { petMessages } from "./messages";
 import { dashboardMessages } from "./dashboard-messages";
@@ -239,151 +240,154 @@ export function HouseholdDashboard({
           const totalDocs = (pet.report_count ?? 0) + petEvents.length;
 
           return (
-            <article className="pet-card" key={pet.id}>
-              <div className="household-card-identity">
-                <PetIcon
-                  species={pet.gatunek}
-                  src={pet.avatar_url}
-                  name={pet.imie}
-                />
-                <div>
-                  <h3>
-                    {pet.imie}{" "}
-                    <span className="household-tag">{t[pet.gatunek]}</span>
-                  </h3>
-                  <p>
-                    {pet.rasa || t.missing} · {t[pet.plec]}
-                  </p>
-                  <span className="household-tag">
-                    {pet.kastracja == null
-                      ? `${t.kastracja}: ${t.unknown}`
-                      : `${t.kastracja}: ${pet.kastracja ? t.yes : t.no}`}
-                  </span>
-                </div>
-              </div>
-
-              {(pet.tagi?.length ?? 0) > 0 && (
-                <div className="household-card-care-tags" aria-label={t.tagi}>
-                  {(pet.tagi ?? []).slice(0, 3).map((tag) => (
-                    <span key={tag} className="household-care-tag">
-                      {tag}
+            <article className="pet-card pet-card--with-cover" key={pet.id}>
+              <PetCardCover src={pet.avatar_url} />
+              <div className="household-card-body">
+                <div className="household-card-identity">
+                  <PetIcon
+                    species={pet.gatunek}
+                    src={pet.avatar_url}
+                    name={pet.imie}
+                  />
+                  <div>
+                    <h3>
+                      {pet.imie}{" "}
+                      <span className="household-tag">{t[pet.gatunek]}</span>
+                    </h3>
+                    <p>
+                      {pet.rasa || t.missing} · {t[pet.plec]}
+                    </p>
+                    <span className="household-tag">
+                      {pet.kastracja == null
+                        ? `${t.kastracja}: ${t.unknown}`
+                        : `${t.kastracja}: ${pet.kastracja ? t.yes : t.no}`}
                     </span>
-                  ))}
-                  {(pet.tagi?.length ?? 0) > 3 && (
-                    <span className="household-care-tag is-more">
-                      +{(pet.tagi?.length ?? 0) - 3}
-                    </span>
-                  )}
+                  </div>
                 </div>
-              )}
 
-              {(petTodayDoses.length > 0 || petOverdueSchedule.length > 0) && (
-                <div className="household-card-daily-pills">
-                  {petTodayDoses.length > 0 && (
-                    <span
-                      className={`household-card-daily-pill${
-                        petPendingDoses === 0 ? " is-done" : " is-pending"
-                      }`}
-                    >
-                      {petPendingDoses === 0 ? (
-                        <IconCheck size={13} aria-hidden="true" />
-                      ) : (
-                        <IconPill size={13} aria-hidden="true" />
-                      )}
-                      <span>
-                        {pl
-                          ? `Leki dziś: ${petDoneDoses}/${petTodayDoses.length}`
-                          : `Meds today: ${petDoneDoses}/${petTodayDoses.length}`}
+                {(pet.tagi?.length ?? 0) > 0 && (
+                  <div className="household-card-care-tags" aria-label={t.tagi}>
+                    {(pet.tagi ?? []).slice(0, 3).map((tag) => (
+                      <span key={tag} className="household-care-tag">
+                        {tag}
                       </span>
-                    </span>
-                  )}
-                  {petOverdueSchedule.length > 0 && (
-                    <span className="household-card-daily-pill is-overdue">
-                      <IconAlertCircle size={13} aria-hidden="true" />
-                      <span>
-                        {pl
-                          ? petOverdueSchedule.length === 1
-                            ? "Zaległy termin"
-                            : `Zaległe terminy (${petOverdueSchedule.length})`
-                          : `${petOverdueSchedule.length} overdue`}
+                    ))}
+                    {(pet.tagi?.length ?? 0) > 3 && (
+                      <span className="household-care-tag is-more">
+                        +{(pet.tagi?.length ?? 0) - 3}
                       </span>
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <div className="household-card-notice">
-                <IconFiles size={18} aria-hidden="true" />
-                <div>
-                  <strong>
-                    {totalDocs > 0
-                      ? pl
-                        ? `Badania: ${pet.report_count ?? 0} · Wpisy historii: ${petEvents.length}`
-                        : `Reports: ${pet.report_count ?? 0} · History entries: ${petEvents.length}`
-                      : d.medicalEmpty}
-                  </strong>
-                  <p>
-                    {pl
-                      ? "Dodawaj badania, wizyty i pytaj Asystenta AI w kartotece pupila."
-                      : "Add reports, visits, and ask the AI Assistant in your pet’s record."}
-                  </p>
-                </div>
-              </div>
-
-              <dl className="household-card-facts">
-                <div className={!lastVisitEv ? "is-empty" : undefined}>
-                  <dt>{d.lastVisit}</dt>
-                  <dd>
-                    {lastVisitEv ? formatDate(lastVisitEv.event_date) : "—"}
-                  </dd>
-                </div>
-                <div
-                  className={
-                    !petUpcoming && !latestPreventionEv ? "is-empty" : undefined
-                  }
-                >
-                  <dt>
-                    {petUpcoming
-                      ? d.prevention
-                      : latestPreventionEv
-                        ? pl
-                          ? "Ostatnia profilaktyka"
-                          : "Latest prevention"
-                        : d.prevention}
-                  </dt>
-                  <dd>
-                    {petUpcoming
-                      ? `${formatDate(petUpcoming.date)} (${petUpcoming.title})`
-                      : latestPreventionEv
-                        ? formatDate(latestPreventionEv.event_date)
-                        : "—"}
-                  </dd>
-                </div>
-                <div className={!latestWithClinic ? "is-empty" : undefined}>
-                  <dt>{d.clinic}</dt>
-                  <dd>{latestWithClinic ? latestWithClinic.clinic : "—"}</dd>
-                </div>
-              </dl>
-
-              <div className="household-card-actions">
-                <Link
-                  className="button button--primary button--sm household-card-link"
-                  href={`/app/pets/${pet.id}`}
-                >
-                  {d.record} <span className="sr-only">{pet.imie}</span>
-                  <IconArrowRight size={16} aria-hidden="true" />
-                </Link>
-                {!readOnly && (
-                  <Link
-                    className="button button--secondary button--sm household-card-upload"
-                    href={`/app/pets/${pet.id}/results/new`}
-                    title={`${d.upload} — ${pet.imie}`}
-                    aria-label={`${d.upload} — ${pet.imie}`}
-                  >
-                    <IconUpload size={15} aria-hidden="true" />
-                    <span>{pl ? "Badanie" : "Report"}</span>
-                  </Link>
+                    )}
+                  </div>
                 )}
+
+                {(petTodayDoses.length > 0 || petOverdueSchedule.length > 0) && (
+                  <div className="household-card-daily-pills">
+                    {petTodayDoses.length > 0 && (
+                      <span
+                        className={`household-card-daily-pill${
+                          petPendingDoses === 0 ? " is-done" : " is-pending"
+                        }`}
+                      >
+                        {petPendingDoses === 0 ? (
+                          <IconCheck size={13} aria-hidden="true" />
+                        ) : (
+                          <IconPill size={13} aria-hidden="true" />
+                        )}
+                        <span>
+                          {pl
+                            ? `Leki dziś: ${petDoneDoses}/${petTodayDoses.length}`
+                            : `Meds today: ${petDoneDoses}/${petTodayDoses.length}`}
+                        </span>
+                      </span>
+                    )}
+                    {petOverdueSchedule.length > 0 && (
+                      <span className="household-card-daily-pill is-overdue">
+                        <IconAlertCircle size={13} aria-hidden="true" />
+                        <span>
+                          {pl
+                            ? petOverdueSchedule.length === 1
+                              ? "Zaległy termin"
+                              : `Zaległe terminy (${petOverdueSchedule.length})`
+                            : `${petOverdueSchedule.length} overdue`}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="household-card-notice">
+                  <IconFiles size={18} aria-hidden="true" />
+                  <div>
+                    <strong>
+                      {totalDocs > 0
+                        ? pl
+                          ? `Badania: ${pet.report_count ?? 0} · Wpisy historii: ${petEvents.length}`
+                          : `Reports: ${pet.report_count ?? 0} · History entries: ${petEvents.length}`
+                        : d.medicalEmpty}
+                    </strong>
+                    <p>
+                      {pl
+                        ? "Dodawaj badania, wizyty i pytaj Asystenta AI w kartotece pupila."
+                        : "Add reports, visits, and ask the AI Assistant in your pet’s record."}
+                    </p>
+                  </div>
+                </div>
+
+                <dl className="household-card-facts">
+                  <div className={!lastVisitEv ? "is-empty" : undefined}>
+                    <dt>{d.lastVisit}</dt>
+                    <dd>
+                      {lastVisitEv ? formatDate(lastVisitEv.event_date) : "—"}
+                    </dd>
+                  </div>
+                  <div
+                    className={
+                      !petUpcoming && !latestPreventionEv ? "is-empty" : undefined
+                    }
+                  >
+                    <dt>
+                      {petUpcoming
+                        ? d.prevention
+                        : latestPreventionEv
+                          ? pl
+                            ? "Ostatnia profilaktyka"
+                            : "Latest prevention"
+                          : d.prevention}
+                    </dt>
+                    <dd>
+                      {petUpcoming
+                        ? `${formatDate(petUpcoming.date)} (${petUpcoming.title})`
+                        : latestPreventionEv
+                          ? formatDate(latestPreventionEv.event_date)
+                          : "—"}
+                    </dd>
+                  </div>
+                  <div className={!latestWithClinic ? "is-empty" : undefined}>
+                    <dt>{d.clinic}</dt>
+                    <dd>{latestWithClinic ? latestWithClinic.clinic : "—"}</dd>
+                  </div>
+                </dl>
+
+                <div className="household-card-actions">
+                  <Link
+                    className="button button--primary button--sm household-card-link"
+                    href={`/app/pets/${pet.id}`}
+                  >
+                    {d.record} <span className="sr-only">{pet.imie}</span>
+                    <IconArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                  {!readOnly && (
+                    <Link
+                      className="button button--secondary button--sm household-card-upload"
+                      href={`/app/pets/${pet.id}/results/new`}
+                      title={`${d.upload} — ${pet.imie}`}
+                      aria-label={`${d.upload} — ${pet.imie}`}
+                    >
+                      <IconUpload size={15} aria-hidden="true" />
+                      <span>{pl ? "Badanie" : "Report"}</span>
+                    </Link>
+                  )}
+                </div>
               </div>
             </article>
           );
