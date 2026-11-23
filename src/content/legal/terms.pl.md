@@ -1,14 +1,14 @@
 # Regulamin Świadczenia Usług Drogą Elektroniczną
 ## Aplikacji „Care My Pet”
 
-Data wejścia w życie: 6 października 2026 r.  
-Wersja: 1.0
+Data wejścia w życie: 24 listopada 2026 r.  
+Wersja: 1.1
 
 ---
 
 ### § 1. Postanowienia ogólne i dane Usługodawcy
 
-1. Niniejszy Regulamin określa zasady korzystania z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [care-my-pet-flax.vercel.app](https://care-my-pet-flax.vercel.app), w tym prawa i obowiązki Usługodawcy oraz Użytkowników.
+1. Niniejszy Regulamin określa zasady korzystania z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [caremypet.pl](https://caremypet.pl), w tym prawa i obowiązki Usługodawcy oraz Użytkowników.
 2. Usługodawcą prowadzącym Aplikację jest:
    * **Wojciech Dobrowolski**, prowadzący jednoosobową działalność gospodarczą pod firmą **DOBROWOLSKI WOJCIECH**,
    * Adres siedziby / doręczeń: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Polska**,
@@ -135,4 +135,4 @@ Wersja: 1.0
 1. Prawem właściwym dla umów zawieranych na podstawie niniejszego Regulaminu jest prawo Rzeczypospolitej Polskiej.
 2. W sprawach nieuregulowanych zastosowanie mają przepisy Kodeksu cywilnego, ustawy o świadczeniu usług drogą elektroniczną, ustawy o prawach konsumenta oraz RODO.
 3. Wszelkie spory z Użytkownikami niebędącymi Konsumentami rozstrzygać będzie sąd powszechny właściwy miejscowo dla siedziby Usługodawcy.
-4. Konsument ma prawo do skorzystania z pozasądowych metod rozwiązywania sporów i dochodzenia roszczeń, w tym za pośrednictwem platformy ODR (http://ec.europa.eu/consumers/odr) lub właściwego rzecznika konsumentów.
+4. Konsument ma prawo do skorzystania z pozasądowych metod rozwiązywania sporów i dochodzenia roszczeń (ADR), w tym pomocy miejskiego lub powiatowego rzecznika konsumentów, wojewódzkich inspektoratów Inspekcji Handlowej oraz informacji publikowanych przez Prezesa Urzędu Ochrony Konkurencji i Konsumentów (UOKiK).

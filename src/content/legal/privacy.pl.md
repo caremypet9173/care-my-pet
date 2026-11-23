@@ -1,13 +1,13 @@
 # Polityka Prywatności aplikacji Care My Pet
 
-Data wejścia w życie: 6 października 2026 r.  
-Wersja: 1.0
+Data wejścia w życie: 24 listopada 2026 r.  
+Wersja: 1.1
 
 ---
 
 ## 1. Informacje ogólne i Administrator Danych
 
-1. Niniejsza Polityka Prywatności określa zasady przetwarzania i ochrony danych osobowych Użytkowników korzystających z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [care-my-pet-flax.vercel.app](https://care-my-pet-flax.vercel.app).
+1. Niniejsza Polityka Prywatności określa zasady przetwarzania i ochrony danych osobowych Użytkowników korzystających z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [caremypet.pl](https://caremypet.pl).
 2. Administratorem danych osobowych Użytkowników w rozumieniu Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 (RODO) jest:
    * **Wojciech Dobrowolski**, prowadzący działalność gospodarczą pod firmą **DOBROWOLSKI WOJCIECH**,
    * Adres siedziby: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Polska**,
@@ -104,9 +104,11 @@ Każdy Użytkownik ma również prawo wnieść skargę do właściwego organu na
 ## 8. Pliki cookies i technologie lokalne
 
 1. Aplikacja nie stosuje zewnętrznych ciasteczek śledzących, analitycznych profilujących ani marketingowych sieci reklamowych.
-2. Obecna publiczna wersja aplikacji korzysta z pamięci przeglądarki (`Local Storage`) do zapamiętania zamknięcia informacji o cookies. Po kliknięciu „Rozumiem” zapisuje wpis `care-my-pet:cookie-notice:v1` o wartości `acknowledged`. Wpis nie zawiera danych konta ani identyfikatora użytkownika i pozostaje w tej przeglądarce do usunięcia danych witryny przez użytkownika. Nie jest przesyłany na serwer.
-3. Kliknięcie „Rozumiem” zamyka komunikat; nie włącza analityki ani reklam. Informacje o cookies pozostają dostępne w stopce strony oraz w niniejszej polityce.
-4. Wpis można usunąć w ustawieniach przeglądarki, czyszcząc dane witryny. Po usunięciu komunikat pojawi się ponownie. Jeśli przeglądarka blokuje pamięć lokalną, komunikat nadal można zamknąć, ale może pojawić się ponownie po odświeżeniu strony.
+2. Aplikacja wykorzystuje wyłącznie niezbędne techniczne pliki cookies oraz pamięć przeglądarki (`Local Storage`):
+   * **Techniczne pliki cookies sesyjne** (`HttpOnly`, `Secure`, `SameSite`) obsługiwane przez Supabase Auth w celu utrzymania i odświeżania bezpiecznej sesji zalogowanego Użytkownika w panelu Aplikacji,
+   * **Pamięć lokalną przeglądarki (`Local Storage`)** służącą m.in. do zapamiętania zamknięcia informacji o cookies (wpis `care-my-pet:cookie-notice:v1` o wartości `acknowledged` — nie zawiera danych konta ani identyfikatora użytkownika i nie jest przesyłany na serwer) oraz lokalnych ustawień interfejsu.
+3. Kliknięcie „Rozumiem” zamyka komunikat o cookies; nie włącza analityki ani reklam. Informacje o cookies pozostają dostępne w stopce strony oraz w niniejszej polityce.
+4. Pliki cookies i wpisy w pamięci lokalnej można w każdej chwili usunąć w ustawieniach przeglądarki, czyszcząc dane witryny (spowoduje to wylogowanie sesji oraz ponowne wyświetlenie komunikatu o cookies). Jeśli przeglądarka blokuje pamięć lokalną, komunikat nadal można zamknąć, ale może pojawić się ponownie po odświeżeniu strony.
 
 ---
 

@@ -1,20 +1,20 @@
 # Regulamin Świadczenia Usług Drogą Elektroniczną
 ## Aplikacji „Care My Pet”
 
-Data wejścia w życie: 6 października 2026 r.  
-Wersja: 1.0
+Data wejścia w życie: 24 listopada 2026 r.  
+Wersja: 1.1
 
 ---
 
 ### § 1. Postanowienia ogólne i dane Usługodawcy
 
-1. Niniejszy Regulamin określa zasady korzystania z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [care-my-pet-flax.vercel.app](https://care-my-pet-flax.vercel.app), w tym prawa i obowiązki Usługodawcy oraz Użytkowników.
+1. Niniejszy Regulamin określa zasady korzystania z aplikacji internetowej i mobilnej **Care My Pet** (dalej: „Aplikacja”), dostępnej pod adresem domeny [caremypet.pl](https://caremypet.pl), w tym prawa i obowiązki Usługodawcy oraz Użytkowników.
 2. Usługodawcą prowadzącym Aplikację jest:
-   * **Wojciech Dobrowolski**, prowadzący jednoosobową działalność gospodarczą pod firmą **DOBROWOLSKI WOJCIECH**[cite: 1],
-   * Adres siedziby / doręczeń: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Polska**[cite: 1],
-   * NIP: **7132283642**[cite: 1],
-   * REGON: **060126310**[cite: 1],
-   * Organ rejestrowy: Centralna Ewidencja i Informacja o Działalności Gospodarczej (CEIDG) prowadzona przez ministra właściwego ds. gospodarki[cite: 1],
+   * **Wojciech Dobrowolski**, prowadzący jednoosobową działalność gospodarczą pod firmą **DOBROWOLSKI WOJCIECH**,
+   * Adres siedziby / doręczeń: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Polska**,
+   * NIP: **7132283642**,
+   * REGON: **060126310**,
+   * Organ rejestrowy: Centralna Ewidencja i Informacja o Działalności Gospodarczej (CEIDG) prowadzona przez ministra właściwego ds. gospodarki,
    * Adres poczty elektronicznej do kontaktu: **caremypet9173@gmail.com**.
 3. Regulamin stanowi wzorzec umowny w rozumieniu art. 384 Kodeksu cywilnego oraz regulamin, o którym mowa w art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną.
 4. Przed rozpoczęciem korzystania z Aplikacji Użytkownik ma obowiązek zapoznać się z treścią niniejszego Regulaminu oraz Polityki Prywatności. Rejestracja w Aplikacji stanowi potwierdzenie zapoznania się z dokumentami i ich akceptację.
@@ -24,7 +24,7 @@ Wersja: 1.0
 ### § 2. Definicje
 
 * **Aplikacja** – oprogramowanie „Care My Pet” udostępniane przez Usługodawcę drogą elektroniczną, służące do cyfrowego prowadzenia kartoteki zdrowia zwierząt domowych oraz planowania opieki.
-* **Usługodawca** – Wojciech Dobrowolski prowadzący działalność gospodarczą pod firmą DOBROWOLSKI WOJCIECH[cite: 1].
+* **Usługodawca** – Wojciech Dobrowolski prowadzący działalność gospodarczą pod firmą DOBROWOLSKI WOJCIECH.
 * **Użytkownik** – osoba fizyczna posiadająca pełną zdolność do czynności prawnych (lub ograniczoną zdolność za uprzednią zgodą przedstawiciela ustawowego), korzystająca z Aplikacji.
 * **Konsument** – Użytkownik będący osobą fizyczną dokonującą z Usługodawcą czynności prawnej niezwiązanej bezpośrednio z jej działalnością gospodarczą lub zawodową.
 * **Przedsiębiorca na prawach konsumenta (PNPK)** – osoba fizyczna zawierająca umowę bezpośrednio związaną z jej działalnością gospodarczą, gdy z treści umowy wynika, że nie posiada ona dla niej charakteru zawodowego.
@@ -65,17 +65,17 @@ Wersja: 1.0
    b) Bezpiecznym przechowywaniu skanów i zdjęć dokumentacji medycznej w magazynie chmurowym;  
    c) Automatycznym wsparciu odczytu dokumentacji weterynaryjnej przez Asystenta AI;  
    d) Udostępnieniu cyfrowego Terminarza wizyt i profilaktyki.
-2. **Wieloletnia retencja danych:** Usługa została zaprojektowana z myślą o długofalowej ewidencji historii życia i zdrowia pupili[cite: 1, 2]. Dane nie są usuwane z powodu braku logowania przez określony czas, lecz pozostają zapisane przez cały cykl życia Konta (do momentu żądania ich usunięcia przez Użytkownika)[cite: 1, 2].
-3. **Zalecenie zachowania oryginałów:** Aplikacja jest cyfrowym narzędziem pomocniczym. Usługodawca zaleca Użytkownikom zachowanie papierowych oryginałów wszelkiej dokumentacji wystawionej przez placówki weterynaryjne[cite: 1, 2].
+2. **Wieloletnia retencja danych:** Usługa została zaprojektowana z myślą o długofalowej ewidencji historii życia i zdrowia pupili. Dane nie są usuwane z powodu braku logowania przez określony czas, lecz pozostają zapisane przez cały cykl życia Konta (do momentu żądania ich usunięcia przez Użytkownika).
+3. **Zalecenie zachowania oryginałów:** Aplikacja jest cyfrowym narzędziem pomocniczym. Usługodawca zaleca Użytkownikom zachowanie papierowych oryginałów wszelkiej dokumentacji wystawionej przez placówki weterynaryjne.
 
 ---
 
 ### § 6. Zastrzeżenie medyczno-weterynaryjne (Veterinary Disclaimer) & Działanie AI
 
-1. **BRAK ŚWIADCZENIA USŁUG WETERYNARYJNYCH:** Aplikacja Care My Pet stanowi prywatny organizer i narzędzie ewidencyjne[cite: 1, 2]. Usługodawca, Aplikacja oraz zintegrowane mechanizmy sztucznej inteligencji:
+1. **BRAK ŚWIADCZENIA USŁUG WETERYNARYJNYCH:** Aplikacja Care My Pet stanowi prywatny organizer i narzędzie ewidencyjne. Usługodawca, Aplikacja oraz zintegrowane mechanizmy sztucznej inteligencji:
    a) **NIE świadczą usług weterynaryjnych** w rozumieniu ustawy z dnia 21 grudnia 1990 r. o zawodzie lekarza weterynarii i izbach lekarsko-weterynaryjnych;  
-   b) **NIE stawiają diagnoz medycznych**, nie dobierają leków, nie wyliczają dawek farmakologicznych ani nie ustalają planów terapii[cite: 1, 2];  
-   c) **NIE zastępują badania klinicznego**, bezpośredniej diagnozy ani porady uprawnionego lekarza weterynarii[cite: 1, 2].
+   b) **NIE stawiają diagnoz medycznych**, nie dobierają leków, nie wyliczają dawek farmakologicznych ani nie ustalają planów terapii;  
+   c) **NIE zastępują badania klinicznego**, bezpośredniej diagnozy ani porady uprawnionego lekarza weterynarii.
 2. **STANY NAGŁE I ZAGROŻENIE ŻYCIA:** W przypadku zauważenia u zwierzęcia nagłych objawów chorobowych, duszności, krwotoku, urazu mechanicznego, zatrucia lub gwałtownego pogorszenia samopoczucia, Użytkownik ma bezwzględny obowiązek **niezwłocznego kontaktu ze stacjonarną lecznicą weterynaryjną**.
 3. **Specyfika technologii AI (Google Gemini):**
    a) Moduł AI dokonuje odczytu tekstu i obrazów algorytmicznie. Z uwagi na ograniczenia technologii uczenia maszynowego oraz zmienną jakość materiałów źródłowych (rozmyte zdjęcia, pismo odręczne lekarza), wyniki odczytane przez AI mogą zawierać błędy, przekłamania lub halucynacje;  
@@ -86,13 +86,13 @@ Wersja: 1.0
 
 ### § 7. Terminarz dawek, kalendarz opieki i system przypomnień
 
-1. Moduły Terminarza, harmonogramu dawek leków oraz powiadomień mają charakter **WYŁĄCZNIE POMOCNICZY I INFORMACYJNY**[cite: 2].
+1. Moduły Terminarza, harmonogramu dawek leków oraz powiadomień mają charakter **WYŁĄCZNIE POMOCNICZY I INFORMACYJNY**.
 2. Terminarz funkcjonuje w oparciu o daty i parametry zdefiniowane samodzielnie przez Użytkownika lub zaakceptowane po wstępnej sugestii AI.
 3. System Aplikacji:
    a) **Nie weryfikuje** poprawności ani bezpieczeństwa wprowadzonych dawek i interwałów;  
    b) **Nie bada** interakcji pomiędzy podawanymi preparatami;  
-   c) **Nie gwarantuje stuprocentowej skuteczności doręczenia powiadomień** (alerty push i e-maile mogą ulec opóźnieniu lub zablokowaniu z przyczyn niezależnych od Usługodawcy, w tym z powodu trybów uśpienia i oszczędzania energii w systemach iOS/Android, braku zasięgu sieci czy filtrów antyspamowych)[cite: 2].
-4. Wyłączną odpowiedzialność za terminowe podawanie leków i realizację zaleceń leczniczych ponosi Użytkownik jako opiekun zwierzęcia[cite: 2]. Usługodawca nie odpowiada za skutki pominięcia lub opóźnienia podania preparatu[cite: 2].
+   c) **Nie gwarantuje stuprocentowej skuteczności doręczenia powiadomień** (alerty push i e-maile mogą ulec opóźnieniu lub zablokowaniu z przyczyn niezależnych od Usługodawcy, w tym z powodu trybów uśpienia i oszczędzania energii w systemach iOS/Android, braku zasięgu sieci czy filtrów antyspamowych).
+4. Wyłączną odpowiedzialność za terminowe podawanie leków i realizację zaleceń leczniczych ponosi Użytkownik jako opiekun zwierzęcia. Usługodawca nie odpowiada za skutki pominięcia lub opóźnienia podania preparatu.
 
 ---
 
@@ -134,5 +134,5 @@ Wersja: 1.0
 
 1. Prawem właściwym dla umów zawieranych na podstawie niniejszego Regulaminu jest prawo Rzeczypospolitej Polskiej.
 2. W sprawach nieuregulowanych zastosowanie mają przepisy Kodeksu cywilnego, ustawy o świadczeniu usług drogą elektroniczną, ustawy o prawach konsumenta oraz RODO.
-3. Wszelkie spory z Użytkownikami niebędącymi Konsumentami rozstrzygać będzie sąd powszechny właściwy miejscowo dla siedziby Usługodawcy[cite: 1].
-4. Konsument ma prawo do skorzystania z pozasądowych metod rozwiązywania sporów i dochodzenia roszczeń, w tym za pośrednictwem platformy ODR (http://ec.europa.eu/consumers/odr) lub właściwego rzecznika konsumentów.
+3. Wszelkie spory z Użytkownikami niebędącymi Konsumentami rozstrzygać będzie sąd powszechny właściwy miejscowo dla siedziby Usługodawcy.
+4. Konsument ma prawo do skorzystania z pozasądowych metod rozwiązywania sporów i dochodzenia roszczeń (ADR), w tym pomocy miejskiego lub powiatowego rzecznika konsumentów, wojewódzkich inspektoratów Inspekcji Handlowej oraz informacji publikowanych przez Prezesa Urzędu Ochrony Konkurencji i Konsumentów (UOKiK).

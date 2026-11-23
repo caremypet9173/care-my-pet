@@ -1,14 +1,14 @@
 # Terms and Conditions for the Provision of Electronic Services
 ## For the Care My Pet Application
 
-Effective date: 6 October 2026  
-Version: 1.0
+Effective date: 24 November 2026  
+Version: 1.1
 
 ---
 
 ### Section 1. General provisions and Service Provider details
 
-1. These Terms and Conditions set out the rules for using the **Care My Pet** web and mobile application (the "Application"), available at the domain [care-my-pet-flax.vercel.app](https://care-my-pet-flax.vercel.app), including the rights and obligations of the Service Provider and Users.
+1. These Terms and Conditions set out the rules for using the **Care My Pet** web and mobile application (the "Application"), available at the domain [caremypet.pl](https://caremypet.pl), including the rights and obligations of the Service Provider and Users.
 2. The Service Provider operating the Application is:
    * **Wojciech Dobrowolski**, operating a sole proprietorship under the name **DOBROWOLSKI WOJCIECH**,
    * Registered business / correspondence address: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Poland**,
@@ -135,4 +135,4 @@ Version: 1.0
 1. Contracts concluded under these Terms and Conditions are governed by the law of the Republic of Poland.
 2. Matters not covered by these Terms and Conditions are subject to the Polish Civil Code, the Act on the Provision of Electronic Services, the Consumer Rights Act and the GDPR.
 3. Any disputes with Users who are not Consumers will be resolved by the ordinary court with territorial jurisdiction over the Service Provider's registered business address.
-4. The Consumer has the right to use out-of-court methods of resolving disputes and pursuing claims, including through the ODR platform (http://ec.europa.eu/consumers/odr) or the competent consumer ombudsman.
+4. The Consumer has the right to use out-of-court methods of resolving disputes and pursuing claims (ADR), including assistance from a municipal or district consumer ombudsman, provincial Trade Inspection authorities, and guidance published by the President of the Polish Office of Competition and Consumer Protection (UOKiK).

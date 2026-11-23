@@ -1,13 +1,13 @@
 # Privacy Policy for the Care My Pet Application
 
-Effective date: 6 October 2026  
-Version: 1.0
+Effective date: 24 November 2026  
+Version: 1.1
 
 ---
 
 ## 1. General information and the Data Controller
 
-1. This Privacy Policy sets out the rules for processing and protecting the personal data of Users of the **Care My Pet** web and mobile application (the "Application"), available at the domain [care-my-pet-flax.vercel.app](https://care-my-pet-flax.vercel.app).
+1. This Privacy Policy sets out the rules for processing and protecting the personal data of Users of the **Care My Pet** web and mobile application (the "Application"), available at the domain [caremypet.pl](https://caremypet.pl).
 2. The controller of Users' personal data within the meaning of Regulation (EU) 2016/679 of the European Parliament and of the Council (GDPR) is:
    * **Wojciech Dobrowolski**, conducting business under the name **DOBROWOLSKI WOJCIECH**,
    * Registered business address: **ul. Mikołaja Kopernika 20 lok. 8, 21-040 Świdnik, Poland**,
@@ -104,9 +104,11 @@ Every User also has the right to lodge a complaint with the competent supervisor
 ## 8. Cookies and local technologies
 
 1. The Application does not use third-party tracking cookies, analytical profiling cookies or advertising networks.
-2. The current public version uses browser storage (`Local Storage`) to remember dismissal of the cookie notice. Clicking “Got it” saves `care-my-pet:cookie-notice:v1` with the value `acknowledged`. This entry contains no account data or user identifier and remains in this browser until the user clears the site's data. It is not sent to the server.
-3. Clicking “Got it” closes the notice; it does not enable analytics or advertising. Cookie information remains available in the website footer and this policy.
-4. You can remove the entry by clearing the site's data in your browser settings. The notice will then appear again. If browser storage is blocked, you can still close the notice, but it may reappear after reloading the page.
+2. The Application uses only strictly necessary technical cookies and browser storage (`Local Storage`):
+   * **Technical session cookies** (`HttpOnly`, `Secure`, `SameSite`) managed by Supabase Auth to maintain and refresh a secure authenticated session in the Application panel,
+   * **Browser storage (`Local Storage`)** used, among other things, to remember dismissal of the cookie notice (entry `care-my-pet:cookie-notice:v1` with the value `acknowledged`, which contains no account data or user identifier and is not sent to the server) and local interface preferences.
+3. Clicking “Got it” closes the cookie notice; it does not enable analytics or advertising. Cookie information remains available in the website footer and this policy.
+4. You can remove cookies and browser storage entries at any time by clearing the site's data in your browser settings (which signs out the active session and causes the cookie notice to appear again). If browser storage is blocked, you can still close the notice, but it may reappear after reloading the page.
 
 ---
 
