@@ -141,7 +141,7 @@ export function RecoveryKeyDialog({
     setErrorMsg(null);
     try {
       const origin =
-        typeof window !== "undefined" ? window.location.origin : "https://caremypet.app";
+        typeof window !== "undefined" ? window.location.origin : "https://caremypet.pl";
       const { buildRecoveryKeyPdf } = await import("./recovery-key-pdf");
       const pdfBytes = await buildRecoveryKeyPdf({
         householdName: householdName || (pl ? "Mój dom" : "My home"),

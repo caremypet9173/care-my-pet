@@ -569,7 +569,7 @@ export async function buildPetArchivePdf(
   // Stopka z numeracją stron
   const totalPages = pages.length;
   pages.forEach((p, idx) => {
-    const footerLeft = "Care My Pet  •  caremypet.app";
+    const footerLeft = "Care My Pet  •  caremypet.pl";
     const footerRight = pl
       ? `Strona ${idx + 1} z ${totalPages}`
       : `Page ${idx + 1} of ${totalPages}`;

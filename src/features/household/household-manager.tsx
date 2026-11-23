@@ -1259,7 +1259,7 @@ export function HouseholdManager({
               const origin =
                 typeof window !== "undefined"
                   ? window.location.origin
-                  : "https://caremypet.app";
+                  : "https://caremypet.pl";
               const inviteUrl = `${origin}/pl/invite/${invite.token}`;
               const isCopied = copiedToken === invite.token;
 

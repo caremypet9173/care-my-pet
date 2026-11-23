@@ -738,7 +738,7 @@ Deno.serve(async (req) => {
     const appOrigin = (
       Deno.env.get("SITE_URL") ||
       Deno.env.get("APP_URL") ||
-      "https://caremypet.app"
+      "https://caremypet.pl"
     ).replace(/\/$/, "");
     for (const reqRow of Array.isArray(approvedRequests) ? approvedRequests : []) {
       if (reqRow?.requester_email) {

@@ -1,8 +1,8 @@
-const DEFAULT_PRODUCTION_ORIGIN = "https://caremypet.app";
+const DEFAULT_PRODUCTION_ORIGIN = "https://caremypet.pl";
 
 const BUILTIN_ALLOWED_ORIGINS = [
-  "https://caremypet.app",
-  "https://www.caremypet.app",
+  "https://caremypet.pl",
+  "https://www.caremypet.pl",
   "https://care-my-pet-flax.vercel.app",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
