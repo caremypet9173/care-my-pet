@@ -37,7 +37,7 @@ export default async function PrivateLayout({ children }: { children: React.Reac
       <header className="household-header">
         <Container>
           <div className="household-brand">
-            <BrandLogo />
+            <BrandLogo href="/app" />
             <span>{dashboardMessages[locale].recordLabel}</span>
           </div>
           <p className="household-account">

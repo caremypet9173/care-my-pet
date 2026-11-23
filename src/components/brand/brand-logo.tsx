@@ -3,10 +3,10 @@ import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import { assets } from "@/lib/assets";
 
-export function BrandLogo() {
+export function BrandLogo({ href = "/" }: { href?: string }) {
   const t = useTranslations("copy");
   return (
-    <Link href="/" className="brand" aria-label={t("careMyPetHome")}>
+    <Link href={href} className="brand" aria-label={t("careMyPetHome")}>
       <Image src={assets.brand} width={36} height={36} alt="" />
       <span>
         Care My <span className="brand-accent">Pet</span>
