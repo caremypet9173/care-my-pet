@@ -1,22 +1,20 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 import { escapeHtml } from "../_shared/recovery-crypto.mjs";
-import { renderEmailCard, sendSmtpEmail } from "../_shared/recovery-email.ts";
+import { renderEmailCard } from "../_shared/recovery-email.ts";
+import {
+  createSmtpTransporter,
+  sendSmtpEmail,
+  type SmtpTransporter,
+} from "../_shared/smtp.ts";
+import { resolveAdminNotifyEmail } from "../_shared/smtp-config.mjs";
 
 const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "";
 const vapidSubject =
-  Deno.env.get("VAPID_SUBJECT") || "mailto:caremypet9173@gmail.com";
+  Deno.env.get("VAPID_SUBJECT") ||
+  `mailto:${resolveAdminNotifyEmail((key) => Deno.env.get(key))}`;
 
 type WebPushModule = typeof import("npm:web-push@3.6.7")["default"];
-type SmtpTransporter = {
-  sendMail: (opts: {
-    from: string;
-    to: string;
-    subject: string;
-    html: string;
-  }) => Promise<unknown>;
-  close?: () => void;
-};
 
 let cachedWebPush: WebPushModule | null = null;
 let vapidInitialized = false;
@@ -68,30 +66,6 @@ async function sendWebPush(
     }
     return { ok: false, expired };
   }
-}
-
-async function createSmtpTransporter(pooled: boolean): Promise<{
-  transporter: SmtpTransporter;
-  smtpUser: string;
-}> {
-  const smtpUser = Deno.env.get("SMTP_USER") || "caremypet9173@gmail.com";
-  const smtpPass = Deno.env.get("SMTP_PASS");
-  if (!smtpPass) {
-    throw new Error("Missing SMTP_PASS secret");
-  }
-  const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    ...(pooled ? { pool: true, maxConnections: 3, maxMessages: 50 } : {}),
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  }) as unknown as SmtpTransporter;
-
-  return { transporter, smtpUser };
 }
 
 function chunkArray<T>(items: T[], size = 200): T[][] {
@@ -750,9 +724,9 @@ Deno.serve(async (req) => {
       const { subject, html } = buildEmailHtml(previewItems, true);
 
       try {
-        const { transporter, smtpUser } = await createSmtpTransporter(false);
+        const { transporter, from } = await createSmtpTransporter({ pooled: false });
         await transporter.sendMail({
-          from: `"Care My Pet" <${smtpUser}>`,
+          from,
           to: targetEmail,
           subject,
           html,
@@ -838,11 +812,7 @@ Deno.serve(async (req) => {
     }
 
     const dryRun = body.dry_run === true;
-    const recipient = (
-      Deno.env.get("WAITLIST_NOTIFY_EMAIL") ||
-      Deno.env.get("SMTP_USER") ||
-      "caremypet9173@gmail.com"
-    ).trim();
+    const recipient = resolveAdminNotifyEmail((key) => Deno.env.get(key));
 
     const { data: unnotified, error: fetchErr } = await adminClient
       .from("waitlist")
@@ -1182,10 +1152,10 @@ Deno.serve(async (req) => {
     });
   }
 
-  let pooledSmtp: { transporter: SmtpTransporter; smtpUser: string } | null = null;
+  let pooledSmtp: { transporter: SmtpTransporter; from: string } | null = null;
   const ensurePooledSmtp = async () => {
     if (!pooledSmtp) {
-      pooledSmtp = await createSmtpTransporter(true);
+      pooledSmtp = await createSmtpTransporter({ pooled: true });
     }
     return pooledSmtp;
   };
@@ -1223,9 +1193,9 @@ Deno.serve(async (req) => {
       isExternalRecipient,
     );
     try {
-      const { transporter, smtpUser } = await ensurePooledSmtp();
+      const { transporter, from } = await ensurePooledSmtp();
       await transporter.sendMail({
-        from: `"Care My Pet" <${smtpUser}>`,
+        from,
         to: email,
         subject,
         html,

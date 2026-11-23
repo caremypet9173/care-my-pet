@@ -20,16 +20,17 @@ minimum_password_length = 12
 [auth.email]
 enable_confirmations = true
 
-# Supabase CLI loads this secret from the root .env (ignored by Git).
+# Supabase CLI loads these variables from the root .env (ignored by Git).
 # Configure SMTP before sending any real signup emails.
+# Note: `port` must remain a raw integer in config.toml (Supabase CLI parses it as uint16, not env()).
 [auth.email.smtp]
 enabled = true
-host = "smtp.gmail.com"
+host = "env(SUPABASE_AUTH_SMTP_HOST)"
 port = 587
-user = "caremypet9173@gmail.com"
+user = "env(SUPABASE_AUTH_SMTP_USER)"
 pass = "env(SUPABASE_AUTH_SMTP_PASS)"
-admin_email = "caremypet9173@gmail.com"
-sender_name = "Care My Pet"
+admin_email = "env(SUPABASE_AUTH_SMTP_ADMIN_EMAIL)"
+sender_name = "env(SUPABASE_AUTH_SMTP_SENDER_NAME)"
 
 [auth.email.template.confirmation]
 subject = "Care My Pet — potwierdź adres e-mail / confirm your email"

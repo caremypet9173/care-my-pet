@@ -9,6 +9,7 @@ import {
 } from "../_shared/recovery-crypto.mjs";
 import { renderEmailCard } from "../_shared/recovery-email.ts";
 import { resolveSafeOrigin } from "../_shared/safe-origin.ts";
+import { sendSmtpEmail } from "../_shared/smtp.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -40,43 +41,6 @@ function escapeHtml(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-async function sendEmailViaSmtp(
-  to: string,
-  subject: string,
-  html: string,
-): Promise<boolean> {
-  const smtpUser = Deno.env.get("SMTP_USER") || "caremypet9173@gmail.com";
-  const smtpPass = Deno.env.get("SMTP_PASS");
-  if (!smtpPass) {
-    console.warn("SMTP_PASS secret missing; skipping email sending");
-    return false;
-  }
-
-  try {
-    const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"Care My Pet" <${smtpUser}>`,
-      to,
-      subject,
-      html,
-    });
-    return true;
-  } catch (err) {
-    console.error("Failed to send email via SMTP:", err);
-    return false;
-  }
 }
 
 Deno.serve(async (req) => {
@@ -741,7 +705,7 @@ Deno.serve(async (req) => {
       </div>
     `;
 
-    const emailSent = await sendEmailViaSmtp(email, subject, html);
+    const emailSent = await sendSmtpEmail({ to: email, subject, html });
 
     return reply({
       invitation: newInvite,
@@ -911,11 +875,11 @@ Deno.serve(async (req) => {
             : "Key ends with: " + keyHint,
       });
 
-      sentToRecoveryEmail = await sendEmailViaSmtp(
-        activeHousehold.recovery_email,
+      sentToRecoveryEmail = await sendSmtpEmail({
+        to: activeHousehold.recovery_email,
         subject,
         html,
-      );
+      });
     }
 
     // Powiadomienie bezpieczeństwa na adres właściciela (bez samego klucza!)
@@ -965,7 +929,7 @@ Deno.serve(async (req) => {
             ? "Jeśli to nie Ty wygenerowałeś(-aś) ten klucz, zaloguj się natychmiast, zmień hasło i wygeneruj nowy klucz odzyskania."
             : "If you did not generate this key, sign in immediately, change your password, and rotate your recovery key.",
       });
-      await sendEmailViaSmtp(ownerEmail, subject, html);
+      await sendSmtpEmail({ to: ownerEmail, subject, html });
     }
 
     return reply({
@@ -1026,7 +990,7 @@ Deno.serve(async (req) => {
                 `<strong>${escapeHtml(normalized)}</strong> is now configured as the backup security email for <strong>${escapeHtml(activeHousehold.nazwa)}</strong>.`,
               ],
       });
-      await sendEmailViaSmtp(normalized, subject, html);
+      await sendSmtpEmail({ to: normalized, subject, html });
     }
 
     return reply({ success: true, recovery_email: normalized });
@@ -1170,7 +1134,7 @@ Deno.serve(async (req) => {
         },
       });
       await Promise.all(
-        alertRecipients.map((to) => sendEmailViaSmtp(to, subject, html)),
+        alertRecipients.map((to) => sendSmtpEmail({ to, subject, html })),
       );
     }
 
@@ -1296,7 +1260,7 @@ Deno.serve(async (req) => {
           url: `${origin.replace(/\/$/, "")}/${locale}/app/household`,
         },
       });
-      await sendEmailViaSmtp(reqRow.requester_email, subject, html);
+      await sendSmtpEmail({ to: reqRow.requester_email, subject, html });
     }
 
     return reply({ success: true, admin_request: updatedReq });

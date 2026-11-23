@@ -1,41 +1,5 @@
 import { escapeHtml } from "./recovery-crypto.mjs";
-
-export async function sendSmtpEmail(params: {
-  to: string;
-  subject: string;
-  html: string;
-}): Promise<boolean> {
-  const smtpUser = Deno.env.get("SMTP_USER") || "caremypet9173@gmail.com";
-  const smtpPass = Deno.env.get("SMTP_PASS");
-  if (!smtpPass) {
-    console.warn("SMTP_PASS secret missing; skipping email sending");
-    return false;
-  }
-
-  try {
-    const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"Care My Pet" <${smtpUser}>`,
-      to: params.to,
-      subject: params.subject,
-      html: params.html,
-    });
-    return true;
-  } catch (err) {
-    console.error("Failed to send SMTP email:", err);
-    return false;
-  }
-}
+export { sendSmtpEmail } from "./smtp.ts";
 
 export function renderEmailCard(params: {
   locale?: "pl" | "en";

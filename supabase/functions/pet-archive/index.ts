@@ -18,6 +18,7 @@ import {
   verifyArchiveSession,
 } from "./helpers.mjs";
 import { resolveSafeOrigin } from "../_shared/safe-origin.ts";
+import { isSmtpConfigured, sendSmtpEmail } from "../_shared/smtp.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -60,10 +61,8 @@ async function sendArchiveEmail(params: {
   formattedCode: string;
   expiresAtIso: string;
 }): Promise<boolean> {
-  const smtpUser = Deno.env.get("SMTP_USER") || "caremypet9173@gmail.com";
-  const smtpPass = Deno.env.get("SMTP_PASS");
-  if (!smtpPass) {
-    console.warn("SMTP_PASS secret missing; cannot send archive email");
+  if (!isSmtpConfigured()) {
+    console.warn("SMTP not configured; cannot send archive email");
     return false;
   }
 
@@ -150,29 +149,11 @@ async function sendArchiveEmail(params: {
       </div>
     `;
 
-  try {
-    const { default: nodemailer } = await import("npm:nodemailer@6.9.16");
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"Care My Pet" <${smtpUser}>`,
-      to: params.to,
-      subject,
-      html,
-    });
-    return true;
-  } catch (err) {
-    console.error("Failed to send archive email via SMTP:", err);
-    return false;
-  }
+  return await sendSmtpEmail({
+    to: params.to,
+    subject,
+    html,
+  });
 }
 
 Deno.serve(async (req) => {

@@ -22,7 +22,7 @@ Wojtka i ich rzeczywista dokumentacja, przed szerszym udostępnieniem zaproszony
 znajomym. W projekcie Supabase `lrlnqmciarjvngvquchu` wdrożono **63 migracje SQL**
 i **12 Edge Functions** (`household`, `household-recovery`, `medical-reports`,
 `pet-archive`, `pet-assistant`, `pet-history`, `pet-medications`, `pet-schedule`,
-`pet-share`, `pet-weight`, `pets`, `schedule-notifications` + `_shared/{rag,recovery-crypto,recovery-email,safe-origin}`).
+`pet-share`, `pet-weight`, `pets`, `schedule-notifications` + `_shared/{rag,recovery-crypto,recovery-email,safe-origin,smtp,smtp-config}`).
 
 Wdrożone obszary aplikacji:
 - **Warstwa publiczna i demo:** strona główna „06 — Care My Pet Signature”

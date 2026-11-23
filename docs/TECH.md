@@ -41,7 +41,7 @@ semantycznych (`--color-primary` itd.), nie na wartościach hex w kodzie.
   `household`, `household-recovery`, `medical-reports`, `pet-archive`,
   `pet-assistant`, `pet-history`, `pet-medications`, `pet-schedule`, `pet-share`,
   `pet-weight`, `pets`, `schedule-notifications` (oraz współdzielone moduły
-  `_shared/{rag,recovery-crypto,recovery-email,safe-origin}`).
+  `_shared/{rag,recovery-crypto,recovery-email,safe-origin,smtp,smtp-config}`).
 - **Auth przez Supabase** (`@supabase/ssr`), `src/proxy.ts` jako bramka UI i
   odświeżania sesji dla tras `/{locale}/app`, `/login`, `/register`, `/auth`.
   Dostęp kontrolowany przez tabelę `pilot_whitelist` (`check_pilot_access`), a
