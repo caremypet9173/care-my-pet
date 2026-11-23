@@ -9,7 +9,6 @@ import { sanitizeRelativePath } from "@/lib/safe-redirect";
 import { authMessages } from "./messages";
 import { authDesignMessages } from "./design-messages";
 import {
-  IconBrandApple,
   IconEye,
   IconEyeOff,
   IconArrowRight,
@@ -247,11 +246,6 @@ export function AuthForm({ mode, configured, initialError }: {
               </svg>
               {t.google}
             </Button>
-            <Button className="auth-apple" disabled aria-describedby="apple-unavailable">
-              <IconBrandApple size={18} aria-hidden="true" />
-              {d.apple}
-            </Button>
-            <small id="apple-unavailable">{d.unavailable}</small>
           </div>
 
           <p className="auth-divider">{t.or}</p>

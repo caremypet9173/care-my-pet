@@ -87,10 +87,12 @@ test("registration is accessible and fits a narrow screen", async ({ page }, tes
   await page.getByRole("button", { name: "Rozumiem", exact: true }).click();
   await expect(page.locator(".auth-mode-switch a[aria-current]")).toHaveAttribute("href", "/pl/register");
   await expect(page.getByLabel("Adres e-mail")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Apple/i })).toHaveCount(0);
   await page.screenshot({ path: `tmp/auth-register-${testInfo.project.name}.png`, fullPage: true });
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
   await page.locator(".auth-mode-switch").getByRole("link", { name: "Zaloguj się" }).click();
   await expect(page.getByRole("heading", { name: "Witaj z powrotem" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Apple/i })).toHaveCount(0);
   await page.getByLabel("Hasło", { exact: true }).fill("example-password-only");
   await page.getByRole("button", { name: "Pokaż hasło", exact: true }).click();
   await expect(page.getByLabel("Hasło", { exact: true })).toHaveAttribute("type", "text");

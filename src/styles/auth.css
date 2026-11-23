@@ -117,8 +117,6 @@
 .auth-form-heading p { font-size: .75rem; color: var(--color-text-muted); margin-top: .35rem; }
 .auth-social { display: grid; gap: .625rem; }
 .auth-social .button { width: 100%; font-size: .75rem; }
-.auth-social .auth-apple:disabled { opacity: 1; background: var(--color-text); color: var(--color-on-action); }
-.auth-social small { font-size: .625rem; text-align: center; color: var(--color-text-muted); margin-top: -.4rem; }
 .auth-content .auth-divider { display: flex; align-items: center; gap: .75rem; text-transform: uppercase; letter-spacing: .06em; font-size: .625rem; color: var(--color-text-muted); }
 .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
 .auth-form-panel .auth-form { gap: .5rem; }

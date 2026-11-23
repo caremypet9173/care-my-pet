@@ -20,9 +20,10 @@ Obie trasy korzystają z „Forest — Ekran logowania i rejestracji”
 (`3ba83b4082ce4583ae27cbc1ea89c97f`), wskazanego przez użytkownika.
 Minimalny nagłówek i stopka, karta maks. 1024 px, desktop dwie kolumny 5:7.
 Zielona kolumna: marka, hasło, trzy punkty i dolny panel. Biała kolumna:
-przełącznik tras, nagłówek, Google/Apple, separator, formularz, informacje prawne.
-Na telefonie jedna kolumna. Rejestracja zachowuje pole potwierdzenia hasła.
-Różnice funkcjonalne: Apple nie jest skonfigurowane (wyłączone z opisem),
+przełącznik tras, nagłówek, Google, separator, formularz, informacje prawne.
+Na telefonie jedna kolumna. Rejestracja korzysta z przepływu linku aktywacyjnego pilotażu.
+Różnice funkcjonalne (korekta zatwierdzona przez użytkownika 2026-11-23): przycisk Apple ID
+jest ukryty do czasu wdrożenia Apple OAuth (zamiast wyłączonej zaślepki „Niedostępne”),
 brak pozorowanych akcji odzyskania hasła i checkboxa zapamiętywania sesji.
 Przykładową opinię zastępuje jawne zaproszenie do demonstracyjnego profilu Luny.
 Przycisk podglądu hasła działa i ma dostępną nazwę oraz stan.
