@@ -26,8 +26,8 @@
   transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease, opacity .18s ease;
 }
 
-/* Never obscure the one-time cookie notice action buttons on mobile or desktop. */
-body:has(.cookie-notice) .pilot-feedback-fab {
+/* Never obscure the one-time cookie notice or PWA install banner on mobile/desktop. */
+body:has(.cookie-notice, .pwa-install-banner) .pilot-feedback-fab {
   opacity: 0;
   pointer-events: none;
   transform: translateY(10px);

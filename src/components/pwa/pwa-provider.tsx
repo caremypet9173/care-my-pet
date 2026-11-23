@@ -103,6 +103,7 @@ export function PwaProvider() {
 
   return (
     <aside
+      className="pwa-install-banner"
       aria-label={pl ? "Instalacja aplikacji" : "App installation"}
       style={{
         position: "fixed",

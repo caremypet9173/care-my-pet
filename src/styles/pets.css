@@ -82,9 +82,9 @@
 .household-header-actions { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
 .household-header-nav, .household-header-utility { display: contents; }
 .household-header-utility > .button { font-size: .75rem; min-height: 44px; padding: .5rem .875rem; background: var(--color-surface-sand); color: var(--color-primary); }
-.household-shell .site-footer { background: var(--color-primary); color: var(--color-on-action); padding-block: 1.5rem; }
+.household-shell .site-footer { background: var(--color-primary); color: var(--color-on-action); padding-block: 1.15rem; }
 .household-shell .site-footer a, .household-shell .site-footer p, .household-shell .site-footer .brand-accent { color: var(--color-on-action); }
-.household-shell .footer-bottom { border-color: rgb(255 255 255 / .2); }
+.household-shell .footer-top, .household-shell .footer-bottom { border-color: rgb(255 255 255 / .18); }
 .household-heading-actions { display: flex; gap: .75rem; align-items: flex-start; flex-wrap: wrap; }
 .household-heading-actions small { display: block; color: var(--color-text-muted); font-size: .65rem; text-align: center; margin-top: .25rem; }
 .household-heading-actions button:disabled { opacity: 1; background: var(--color-surface-sand); color: var(--color-text-muted); border: 1px solid var(--color-border); }
@@ -755,6 +755,7 @@
   .household-digest > div + div { border: 0; padding: 0; }
 }
 @media (max-width: 48rem) {
+  .household-shell .site-footer { padding-block: .75rem .9rem; }
   .pets-heading { margin-block: 0 1rem; gap: .75rem; }
   .household-header > .container { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .45rem .5rem; min-height: 0; padding-block: .55rem; }
   .household-brand { order: 1; }

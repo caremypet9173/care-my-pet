@@ -13,7 +13,7 @@
 .history-action-link.is-primary{background:#eef7f2;color:#164d34;border-color:#b8d4c5}
 .history-action-link.is-primary:hover{background:#dfeee6;border-color:#164d34}
 @media (max-width: 48rem) {
-  .pets-page { padding-block: 1.15rem 5rem; }
+  .pets-page { padding-block: 1.15rem 2rem; }
 }
 @media (max-width: 40rem) {
   .pet-panel { padding: 1.25rem; }

@@ -15,7 +15,7 @@ export function PublicFooter({ signedIn = false }: { signedIn?: boolean }) {
             <Link href="/privacy">{t("privacy")}</Link>
             <Link href="/privacy#cookies">{t("cookieNoticeDetails")}</Link>
             <Link href="/terms">{t("terms")}</Link>
-            <AccountLink initialSignedIn={signedIn} />
+            {!signedIn && <AccountLink initialSignedIn={false} />}
           </nav>
         </div>
         <div className="footer-bottom">
