@@ -19,6 +19,22 @@ Przykłady w PowerShell (argumenty bez dodatkowego słowa `git`):
 Jeśli Docker jest niedostępny, zgłoś problem zamiast przechodzić na Git hosta.
 Nie wypisuj adresów remote zawierających dane uwierzytelniające.
 
+## Vercel CLI (izolowane konto projektu)
+
+Wszystkie operacje Vercel CLI wykonuj przez `vercel-shell.ps1`, który wymusza
+izolowaną konfigurację w `.vercel/cli-auth` (oraz opcjonalny token w `.vercel/token`,
+oba ignorowane przez Git), dzięki czemu nie koliduje z osobistym kontem Vercel hosta.
+
+Przykłady w PowerShell:
+
+```powershell
+.\vercel-shell.ps1 whoami
+.\vercel-shell.ps1 env ls
+.\vercel-shell.ps1 ls
+```
+
+Nigdy nie wypisuj zawartości `.vercel/token` ani wartości tajnych zmiennych środowiskowych.
+
 ## Zasada krytyczna: Supabase Data API Grants dla nowych tabel (Od 30.10.2026)
 
 W projektach opartych o Supabase od 30 października 2026 r. nowe tabele w schemacie `public` nie otrzymują już automatycznych uprawnień (grants) dla API.
