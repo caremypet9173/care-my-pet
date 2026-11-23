@@ -163,7 +163,7 @@ const resolveActiveHousehold = cache(
         .maybeSingle();
 
       if (!anyHome && !selectedHouseholdId) {
-        const { data: createdHome } = await client
+        const { data: createdHome, error: createError } = await client
           .from("gospodarstwo")
           .insert({ owner_id: user.id, nazwa: "Mój dom" })
           .select(
@@ -171,6 +171,9 @@ const resolveActiveHousehold = cache(
           )
           .maybeSingle();
 
+        if (createError) {
+          console.error("[resolveActiveHousehold create error]", createError);
+        }
         if (!createdHome) return null;
         activeHousehold = createdHome as HouseholdRow;
         isOwner = true;

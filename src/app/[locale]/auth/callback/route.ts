@@ -16,16 +16,26 @@ export async function GET(request: NextRequest, context: { params: Promise<{ loc
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-          const { data: check } = await supabase.rpc("check_pilot_access", { p_email: user.email });
-          if (check && check.eligible === false) {
+        if (!user?.email) {
+          await supabase.auth.signOut();
+          pilotRestricted = true;
+        } else {
+          const { data: check, error: checkError } = await supabase.rpc("check_pilot_access", {
+            p_email: user.email,
+          });
+          if (checkError || !check || check.eligible !== true) {
+            if (check?.eligible === false) {
+              try {
+                await supabase.rpc("cleanup_unauthorized_pilot_user");
+              } catch {
+                // Best-effort cleanup of newly created unauthorized OAuth user
+              }
+              pilotRestricted = true;
+            }
             await supabase.auth.signOut();
-            pilotRestricted = true;
           } else {
             success = true;
           }
-        } else {
-          success = true;
         }
       }
     }

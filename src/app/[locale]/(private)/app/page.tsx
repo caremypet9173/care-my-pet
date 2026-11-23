@@ -92,6 +92,7 @@ export default async function AppPage() {
           recoveryEmail={activeHousehold.recovery_email}
           canManage={isOwner}
           hasRecoveryKey={hasRecoveryKey}
+          isEmptyHousehold={empty}
         />
       )}
       {!canManage && activeHousehold && (
@@ -113,7 +114,7 @@ export default async function AppPage() {
           </div>
         </div>
       )}
-      {pets === null ? (
+      {pets === null || !activeHousehold ? (
         <p role="alert">{t.loadFailed}</p>
       ) : (
         <HouseholdDashboard
@@ -127,6 +128,17 @@ export default async function AppPage() {
           locale={locale}
           canAddPet={canManage && hasRecoveryKey}
           readOnly={!hasRecoveryKey}
+          recoveryLock={
+            !hasRecoveryKey
+              ? {
+                  householdId: activeHousehold.id,
+                  householdName: activeHousehold.nazwa,
+                  ownerEmail,
+                  recoveryEmail: activeHousehold.recovery_email,
+                  isOwner,
+                }
+              : null
+          }
         />
       )}
     </Container>

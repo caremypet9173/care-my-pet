@@ -32,7 +32,10 @@ import { PetIcon } from "./pet-icon";
 import { petMessages } from "./messages";
 import { dashboardMessages } from "./dashboard-messages";
 import { petArchiveMessages } from "./archive-messages";
-import { EmptyHousehold } from "./empty-household";
+import {
+  EmptyHousehold,
+  type EmptyHouseholdRecoveryLock,
+} from "./empty-household";
 
 export function HouseholdDashboard({
   pets,
@@ -45,6 +48,7 @@ export function HouseholdDashboard({
   locale,
   canAddPet = true,
   readOnly = false,
+  recoveryLock = null,
 }: {
   pets: Pet[];
   healthEvents?: HealthEvent[];
@@ -56,11 +60,20 @@ export function HouseholdDashboard({
   locale: Locale;
   canAddPet?: boolean;
   readOnly?: boolean;
+  recoveryLock?: EmptyHouseholdRecoveryLock | null;
 }) {
   const t = petMessages[locale];
   const d = dashboardMessages[locale];
   const pl = locale === "pl";
-  if (pets.length === 0) return <EmptyHousehold locale={locale} canAddPet={canAddPet} />;
+  if (pets.length === 0) {
+    return (
+      <EmptyHousehold
+        locale={locale}
+        canAddPet={canAddPet}
+        recoveryLock={recoveryLock}
+      />
+    );
+  }
   const am = petArchiveMessages[locale];
   const activePets = pets.filter((pet) => !pet.archived_at);
   const archivedPets = pets.filter((pet) => !!pet.archived_at);
