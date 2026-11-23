@@ -128,7 +128,7 @@
   position: fixed;
   inset-inline: var(--gutter);
   bottom: max(var(--space-4), env(safe-area-inset-bottom));
-  z-index: 40;
+  z-index: 50;
   max-width: 44rem;
   margin-inline: auto;
   padding: var(--space-5);
