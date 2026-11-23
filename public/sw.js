@@ -263,3 +263,41 @@ self.addEventListener("notificationclick", (event) => {
       })
   );
 });
+
+// Keep browser push subscription alive when the push service rotates keys/endpoints
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        let subscription = event.newSubscription || null;
+        const applicationServerKey =
+          event.oldSubscription?.options?.applicationServerKey || null;
+
+        if (
+          !subscription &&
+          applicationServerKey &&
+          self.registration?.pushManager
+        ) {
+          subscription = await self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey,
+          });
+        }
+
+        const windowClients = await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        });
+        for (const client of windowClients) {
+          client.postMessage({
+            type: "CMP_PUSH_SUBSCRIPTION_CHANGED",
+            oldEndpoint: event.oldSubscription?.endpoint || null,
+            newEndpoint: subscription?.endpoint || null,
+          });
+        }
+      } catch (err) {
+        console.warn("[SW] pushsubscriptionchange failed:", err);
+      }
+    })()
+  );
+});

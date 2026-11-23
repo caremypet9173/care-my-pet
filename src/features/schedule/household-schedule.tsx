@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import {
   getDevicePushStatus,
+  getPushGuidance,
   subscribeToPush,
   unsubscribeFromPush,
   type PushStatus,
@@ -414,11 +415,28 @@ export function HouseholdSchedule({
   } | null>(null);
 
   useEffect(() => {
-    if (notificationsOpen) {
+    if (!notificationsOpen) return;
+
+    const refreshPushStatus = () => {
       getDevicePushStatus()
         .then(setPushStatus)
         .catch(() => undefined);
-    }
+    };
+
+    refreshPushStatus();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshPushStatus();
+      }
+    };
+
+    window.addEventListener("focus", refreshPushStatus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", refreshPushStatus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [notificationsOpen]);
 
   const petMap = useMemo(
@@ -1200,8 +1218,8 @@ export function HouseholdSchedule({
     setPushFeedback(null);
     try {
       if (pushStatus?.subscribed) {
-        const ok = await unsubscribeFromPush();
-        if (ok) {
+        const res = await unsubscribeFromPush();
+        if (res.ok) {
           const fresh = await getDevicePushStatus();
           setPushStatus(fresh);
           setPushFeedback({
@@ -1232,11 +1250,23 @@ export function HouseholdSchedule({
         } else {
           const fresh = await getDevicePushStatus();
           setPushStatus(fresh);
+          const deniedHint =
+            sub.error === "permission_denied" && fresh.permission === "denied"
+              ? getPushGuidance({
+                  supported: fresh.supported,
+                  permission: fresh.permission,
+                  subscribed: fresh.subscribed,
+                  env: fresh.env,
+                  locale: pl ? "pl" : "en",
+                })?.text
+              : null;
           setPushFeedback({
             type: "error",
-            text: pl
-              ? "Nie udało się włączyć powiadomień. Upewnij się, że przeglądarka nie blokuje uprawnień."
-              : "Could not enable push. Make sure browser permissions are allowed.",
+            text:
+              deniedHint ??
+              (pl
+                ? "Nie udało się włączyć powiadomień. Upewnij się, że przeglądarka lub system nie blokuje uprawnień."
+                : "Could not enable push. Make sure browser or device permissions are allowed."),
           });
         }
       }
@@ -2234,11 +2264,23 @@ export function HouseholdSchedule({
                   </span>
                 ) : !pushStatus.supported ? (
                   <span className="schedule-push-badge is-unsupported">
-                    {pl ? "Nieobsługiwane w tej przeglądarce" : "Unsupported in this browser"}
+                    {pushStatus.env.isIos && !pushStatus.env.isStandalone
+                      ? pl
+                        ? "Wymaga instalacji na ekranie (iOS)"
+                        : "Requires Home Screen install (iOS)"
+                      : pl
+                        ? "Nieobsługiwane w tej przeglądarce"
+                        : "Unsupported in this browser"}
                   </span>
                 ) : pushStatus.permission === "denied" ? (
                   <span className="schedule-push-badge is-blocked">
-                    {pl ? "Zablokowane w przeglądarce" : "Blocked in browser"}
+                    {pushStatus.env.isStandalone
+                      ? pl
+                        ? "Zablokowane w ustawieniach aplikacji"
+                        : "Blocked in app settings"
+                      : pl
+                        ? "Zablokowane w przeglądarce"
+                        : "Blocked in browser"}
                   </span>
                 ) : pushStatus.subscribed ? (
                   <span className="schedule-push-badge is-active">
@@ -2297,6 +2339,26 @@ export function HouseholdSchedule({
                 )}
               </div>
             </div>
+
+            {(() => {
+              if (!pushStatus) return null;
+              const guidance = getPushGuidance({
+                supported: pushStatus.supported,
+                permission: pushStatus.permission,
+                subscribed: pushStatus.subscribed,
+                env: pushStatus.env,
+                locale: pl ? "pl" : "en",
+              });
+              if (!guidance) return null;
+              if (pushFeedback?.type === "error" && pushFeedback.text === guidance.text) {
+                return null;
+              }
+              return (
+                <p className={`schedule-push-hint is-${guidance.kind}`}>
+                  {guidance.text}
+                </p>
+              );
+            })()}
 
             {pushFeedback && (
               <p

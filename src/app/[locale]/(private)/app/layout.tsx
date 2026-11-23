@@ -12,6 +12,7 @@ import { getActiveHouseholdContext } from "@/features/household/data";
 import { HouseholdHeaderSwitcher } from "@/features/household/household-header-switcher";
 import { AppTelemetryTracker } from "@/components/telemetry/app-telemetry-tracker";
 import { PilotFeedbackWidget } from "@/components/feedback/pilot-feedback-widget";
+import { PushSubscriptionSync } from "@/components/pwa/push-subscription-sync";
 import { IconUsers } from "@tabler/icons-react";
 import "@/styles/tailwind-private.css";
 import "@/styles/pets.css";
@@ -34,6 +35,7 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   return (
     <div className="household-shell">
       <AppTelemetryTracker />
+      <PushSubscriptionSync householdId={activeHousehold?.id ?? null} />
       <header className="household-header">
         <Container>
           <div className="household-brand">
