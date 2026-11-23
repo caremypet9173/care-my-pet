@@ -26,10 +26,10 @@ import {
 } from "../src/features/household/recovery-key-pdf.ts";
 
 const regularFontBytes = new Uint8Array(
-  readFileSync("public/fonts/Inter-Regular.ttf"),
+  readFileSync("node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf"),
 );
 const boldFontBytes = new Uint8Array(
-  readFileSync("public/fonts/Inter-Bold.ttf"),
+  readFileSync("node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf"),
 );
 const logoPngBytes = new Uint8Array(readFileSync("public/brand/icon-192.png"));
 
