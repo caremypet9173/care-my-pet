@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, "../../../..");
 
 function sqlLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
@@ -8,6 +13,7 @@ function sqlLiteral(value) {
 
 function runQuery(sql) {
   const raw = execFileSync("supabase", ["db", "query", "--linked", sql], {
+    cwd: repoRoot,
     encoding: "utf-8",
     stdio: ["pipe", "pipe", "pipe"],
   });

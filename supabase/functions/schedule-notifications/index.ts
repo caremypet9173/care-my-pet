@@ -169,6 +169,134 @@ function formatDatePl(iso: string): string {
   }).format(new Date(`${iso}T00:00:00Z`));
 }
 
+function formatDateTimeWarsaw(iso: string): string {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return new Intl.DateTimeFormat("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Warsaw",
+  }).format(parsed);
+}
+
+interface WaitlistEntryRow {
+  id: string;
+  email: string;
+  pets_count: number;
+  notes: string | null;
+  status: string;
+  created_at: string;
+}
+
+function pluralizePl(
+  n: number,
+  one: string,
+  few: string,
+  many: string,
+): string {
+  const abs = Math.abs(n);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (abs === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return few;
+  return many;
+}
+
+function buildWaitlistDigestEmail(
+  entries: WaitlistEntryRow[],
+  totalPending: number,
+): { subject: string; html: string } {
+  const count = entries.length;
+  const subject =
+    count === 1
+      ? `Care My Pet — nowe zgłoszenie na waitlistę: ${entries[0].email}`
+      : `Care My Pet — ${count} ${pluralizePl(count, "nowe zgłoszenie", "nowe zgłoszenia", "nowych zgłoszeń")} na listę oczekujących`;
+
+  const rowsHtml = entries
+    .map((entry) => {
+      const petsLabel = `${entry.pets_count} ${pluralizePl(entry.pets_count, "pupil", "pupile", "pupili")}`;
+      const createdAtPl = formatDateTimeWarsaw(entry.created_at);
+      const safeEmail = escapeHtml(entry.email);
+      const safeNotes = entry.notes?.trim() ? escapeHtml(entry.notes.trim()) : "";
+      const approveCmd = escapeHtml(
+        `node .agents/skills/pilot-manager/scripts/pilot.mjs approve ${entry.email}`,
+      );
+
+      return `
+        <div style="border:1px solid #dfd7c8;border-radius:14px;padding:14px 16px;margin-bottom:12px;background:#ffffff;">
+          <div style="margin-bottom:6px;">
+            <span style="display:inline-block;background:#164d34;color:#ffffff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:0.04em;">NOWE ZGŁOSZENIE</span>
+            <span style="display:inline-block;background:#eef3ee;color:#164d34;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;margin-left:6px;">🐾 ${escapeHtml(petsLabel)}</span>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:#1f241f;margin:4px 0;word-break:break-word;">
+            ${safeEmail}
+          </div>
+          <div style="font-size:13px;color:#555046;margin-bottom:8px;">
+            Zgłoszono: ${escapeHtml(createdAtPl)} (Europe/Warsaw)
+          </div>
+          ${
+            safeNotes
+              ? `<div style="font-size:13px;color:#555046;background:#f8f5ef;padding:8px 10px;border-radius:8px;margin-bottom:8px;">${safeNotes}</div>`
+              : ""
+          }
+          <div style="font-size:12px;color:#4d6d5c;background:#f4faf6;border:1px solid #d5e6dc;padding:8px 10px;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all;">
+            ${approveCmd}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  const html = `
+    <!doctype html>
+    <html lang="pl">
+      <body style="margin:0;padding:24px;background:#f4efe6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f241f;">
+        <div style="max-width:600px;margin:0 auto;background:#fbf8f3;border:1px solid #e3dacb;border-radius:20px;padding:28px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#164d34;margin-bottom:6px;">
+            Care My Pet · Pilotaż (caremypet.pl)
+          </div>
+          <h1 style="font-size:22px;margin:0 0 10px 0;color:#1f241f;">
+            ${count === 1 ? "Nowe zgłoszenie na listę oczekujących" : `Nowe zgłoszenia na listę oczekujących (${count})`}
+          </h1>
+          <p style="font-size:14px;line-height:1.55;color:#555046;margin:0 0 18px 0;">
+            Łącznie na zatwierdzenie (status <strong>pending</strong>) czeka obecnie <strong>${totalPending}</strong> ${totalPending === 1 ? "osoba" : totalPending >= 2 && totalPending <= 4 ? "osoby" : "osób"}.
+          </p>
+          ${rowsHtml}
+          <hr style="border:none;border-top:1px solid #e3dacb;margin:20px 0 14px 0;" />
+          <p style="font-size:12px;color:#7a7367;margin:0;line-height:1.5;">
+            Możesz zatwierdzić kandydata w Antigravity (np. „zatwierdź &lt;email&gt;”) albo z terminala komendą powyżej.
+            Ten raport wysyłany jest automatycznie co godzinę przez Supabase tylko wtedy, gdy pojawiają się nowe zgłoszenia.
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return { subject, html };
+}
+
+async function isAuthorizedCronRequest(
+  req: Request,
+  adminClient: SupabaseClient,
+): Promise<boolean> {
+  const providedSecret = (req.headers.get("x-cron-secret") ?? "").trim();
+  if (providedSecret.length < 32) return false;
+
+  const envCronSecret = (Deno.env.get("CRON_SECRET") ?? "").trim();
+  if (envCronSecret && constantTimeEqualStrings(providedSecret, envCronSecret)) {
+    return true;
+  }
+
+  const { data: dbVerified, error: verifyErr } = await adminClient.rpc(
+    "verify_cron_dispatch_secret",
+    { p_secret: providedSecret },
+  );
+  return !verifyErr && dbVerified === true;
+}
+
 function categoryBadgePl(category: string): string {
   if (category === "vaccination") return "Szczepienie";
   if (category === "prevention") return "Profilaktyka / leki";
@@ -703,29 +831,109 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (action === "waitlist_digest") {
+    const cronAuthorized = await isAuthorizedCronRequest(req, adminClient);
+    if (!cronAuthorized) {
+      return reply({ error: "unauthorized" }, 401);
+    }
+
+    const dryRun = body.dry_run === true;
+    const recipient = (
+      Deno.env.get("WAITLIST_NOTIFY_EMAIL") ||
+      Deno.env.get("SMTP_USER") ||
+      "caremypet9173@gmail.com"
+    ).trim();
+
+    const { data: unnotified, error: fetchErr } = await adminClient
+      .from("waitlist")
+      .select("id, email, pets_count, notes, status, created_at")
+      .eq("status", "pending")
+      .is("admin_notified_at", null)
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    if (fetchErr) {
+      console.error("[WaitlistDigest] Failed to load waitlist:", fetchErr);
+      return reply({ error: "database_error", detail: fetchErr.message }, 500);
+    }
+
+    const entries = (unnotified ?? []) as WaitlistEntryRow[];
+    if (entries.length === 0) {
+      return reply({
+        ok: true,
+        sent: false,
+        notified_count: 0,
+        recipient,
+      });
+    }
+
+    const { count: totalPending } = await adminClient
+      .from("waitlist")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+
+    const { subject, html } = buildWaitlistDigestEmail(
+      entries,
+      totalPending ?? entries.length,
+    );
+
+    if (dryRun) {
+      return reply({
+        ok: true,
+        dry_run: true,
+        sent: false,
+        recipient,
+        subject,
+        notified_count: entries.length,
+        total_pending: totalPending ?? entries.length,
+        emails: entries.map((e) => e.email),
+      });
+    }
+
+    const sent = await sendSmtpEmail({
+      to: recipient,
+      subject,
+      html,
+    });
+
+    if (!sent) {
+      return reply({ error: "smtp_send_failed" }, 500);
+    }
+
+    const ids = entries.map((e) => e.id);
+    const { error: markErr } = await adminClient
+      .from("waitlist")
+      .update({ admin_notified_at: new Date().toISOString() })
+      .in("id", ids)
+      .is("admin_notified_at", null);
+
+    if (markErr) {
+      console.error("[WaitlistDigest] Failed to mark admin_notified_at:", markErr);
+      return reply({
+        ok: true,
+        sent: true,
+        warning: "mark_notified_failed",
+        recipient,
+        notified_count: entries.length,
+        total_pending: totalPending ?? entries.length,
+      });
+    }
+
+    return reply({
+      ok: true,
+      sent: true,
+      recipient,
+      notified_count: entries.length,
+      total_pending: totalPending ?? entries.length,
+    });
+  }
+
   if (action !== "cron_dispatch") {
     return reply({ error: "unknown_action" }, 400);
   }
 
   // Przypadek 2: Automatyczna wysyłka z pg_cron / Vercel Cron — wymagany sekret x-cron-secret
-  const providedSecret = (req.headers.get("x-cron-secret") ?? "").trim();
-  const envCronSecret = (Deno.env.get("CRON_SECRET") ?? "").trim();
-  let cronAuthorized = false;
-
-  if (providedSecret.length >= 32) {
-    if (envCronSecret && constantTimeEqualStrings(providedSecret, envCronSecret)) {
-      cronAuthorized = true;
-    } else {
-      const { data: dbVerified, error: verifyErr } = await adminClient.rpc(
-        "verify_cron_dispatch_secret",
-        { p_secret: providedSecret },
-      );
-      if (!verifyErr && dbVerified === true) {
-        cronAuthorized = true;
-      }
-    }
-  }
-
+  const cronAuthorized = await isAuthorizedCronRequest(req, adminClient);
   if (!cronAuthorized) {
     return reply({ error: "unauthorized" }, 401);
   }
