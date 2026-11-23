@@ -16,14 +16,16 @@ import "@/styles/auth.css";
 export function WaitlistModal({
   isOpen,
   onClose,
+  initialEmail = "",
 }: {
   isOpen: boolean;
   onClose: () => void;
+  initialEmail?: string;
 }) {
   const locale = useLocale();
   const pl = locale === "pl";
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [petsCount, setPetsCount] = useState(1);
   const [isPending, setIsPending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -36,14 +38,19 @@ export function WaitlistModal({
     if (isOpen) {
       if (!dialog.open) {
         dialog.showModal();
-        document.body.style.overflow = "hidden";
       }
-    } else {
+      document.body.style.overflow = "hidden";
+    } else if (dialog.open) {
+      dialog.close();
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
       if (dialog.open) {
         dialog.close();
-        document.body.style.overflow = "";
       }
-    }
+    };
   }, [isOpen]);
 
   function handleClose() {

@@ -21,13 +21,16 @@
 }
 
 .waitlist-dialog-content {
+  position: relative;
   display: flex;
   flex-direction: column;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
 }
 
 .waitlist-dialog-header {
   position: relative;
-  padding: 1.5rem 1.5rem 1.25rem;
+  padding: 1.5rem 3.75rem 1.25rem 1.5rem;
   border-bottom: 1px solid var(--color-border);
   background: radial-gradient(circle at 10% 10%, rgb(217 116 72 / 0.08), transparent 70%), var(--color-surface);
 }
@@ -36,6 +39,7 @@
   position: absolute;
   top: 1.25rem;
   right: 1.25rem;
+  z-index: 2;
   width: 36px;
   height: 36px;
   display: grid;

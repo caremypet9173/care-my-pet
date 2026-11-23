@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseConfig } from "@/lib/supabase/config";
 
 export interface WaitlistResult {
   ok: boolean;
@@ -29,10 +30,19 @@ export async function joinWaitlist(formData: FormData): Promise<WaitlistResult> 
       : 1;
 
   try {
-    const supabase = await createClient();
-    if (!supabase) {
+    const config = getSupabaseConfig();
+    if (!config) {
       return { ok: false, error: "service_unavailable" };
     }
+
+    // Bezstanowy klient anon: odporny na wygasłe lub usunięte ciasteczko sesji w przeglądarce
+    const supabase = createSupabaseClient(config.url, config.key, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
 
     // Bezpieczny zapis do waitlist z normalizacją i walidacją
     const { error } = await supabase.rpc("add_waitlist_entry", {

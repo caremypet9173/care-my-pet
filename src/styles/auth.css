@@ -43,19 +43,46 @@
   font-size: 0.8125rem;
   line-height: 1.5;
 }
+.auth-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin-top: 0.25rem;
+}
 .auth-alert-action {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  margin-top: 0.35rem;
+  min-height: 44px;
+  padding: 0.25rem 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-align: left;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 .auth-alert-action:hover {
   text-decoration-thickness: 2px;
+}
+.auth-alert-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.25rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: inherit;
+  opacity: 0.85;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.auth-alert-secondary-action:hover {
+  opacity: 1;
 }
 .auth-alert.is-pilot {
   background: #fffbeb;
@@ -66,7 +93,7 @@
 .auth-alert.is-pilot .auth-alert-icon { color: #d97706; }
 .auth-alert.is-pilot strong { color: #92400e; }
 .auth-alert.is-pilot p { color: #78350f; }
-.auth-alert.is-pilot .auth-alert-action { color: #b45309; }
+.auth-alert.is-pilot .auth-alert-action { color: #92400e; }
 .auth-alert.is-pilot .auth-alert-action:hover { color: #78350f; }
 .auth-alert.is-error {
   background: #fef2f2;

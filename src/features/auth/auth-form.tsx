@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import { useLocale } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,11 @@ import {
   IconInfoCircle,
 } from "@tabler/icons-react";
 
+const WaitlistModal = dynamic(
+  () => import("@/features/waitlist/waitlist-modal").then((m) => m.WaitlistModal),
+  { ssr: false },
+);
+
 export function AuthForm({ mode, configured, initialError }: {
   mode: "login" | "register"; configured: boolean; initialError?: string;
 }) {
@@ -30,6 +36,8 @@ export function AuthForm({ mode, configured, initialError }: {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [sentEmail, setSentEmail] = useState("");
+  const [attemptedEmail, setAttemptedEmail] = useState("");
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [error, setError] = useState(
     initialError === "callback"
       ? t.callback
@@ -74,6 +82,7 @@ export function AuthForm({ mode, configured, initialError }: {
         }
 
         if (check?.eligible === false) {
+          setAttemptedEmail(email);
           showError(t.pilotRestricted);
           setBusy(false);
           return;
@@ -204,14 +213,23 @@ export function AuthForm({ mode, configured, initialError }: {
                     : "Closed Pilot — Invite Only"}
                 </strong>
                 <p>{error}</p>
-                <a
-                  href="mailto:caremypet9173@gmail.com?subject=CareMyPet%20-%20Pro%C5%9Bba%20o%20dost%C4%99p%20do%20pilota%C5%BCu"
-                  className="auth-alert-action"
-                >
-                  {pl
-                    ? "Napisz do nas, aby dołączyć do testów →"
-                    : "Contact us to join the pilot →"}
-                </a>
+                <div className="auth-alert-actions">
+                  <button
+                    type="button"
+                    onClick={() => setWaitlistOpen(true)}
+                    className="auth-alert-action"
+                  >
+                    {pl
+                      ? "Zapisz się na listę oczekujących →"
+                      : "Join the pilot waitlist →"}
+                  </button>
+                  <a
+                    href="mailto:caremypet9173@gmail.com?subject=CareMyPet%20-%20Pro%C5%9Bba%20o%20dost%C4%99p%20do%20pilota%C5%BCu"
+                    className="auth-alert-secondary-action"
+                  >
+                    {pl ? "Lub napisz e-mail" : "Or email us"}
+                  </a>
+                </div>
               </>
             ) : error === t.alreadyRegistered ? (
               <>
@@ -315,6 +333,13 @@ export function AuthForm({ mode, configured, initialError }: {
               : "Lost access to account or email? Recover household with key →"}
           </Link>
         </p>
+      )}
+      {waitlistOpen && (
+        <WaitlistModal
+          isOpen={waitlistOpen}
+          initialEmail={attemptedEmail}
+          onClose={() => setWaitlistOpen(false)}
+        />
       )}
     </div>
   );

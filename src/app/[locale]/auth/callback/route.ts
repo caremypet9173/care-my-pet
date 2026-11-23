@@ -24,15 +24,21 @@ export async function GET(request: NextRequest, context: { params: Promise<{ loc
             p_email: user.email,
           });
           if (checkError || !check || check.eligible !== true) {
+            let cleanedUp = false;
             if (check?.eligible === false) {
               try {
-                await supabase.rpc("cleanup_unauthorized_pilot_user");
+                const { data: deleted } = await supabase.rpc("cleanup_unauthorized_pilot_user");
+                cleanedUp = deleted === true;
               } catch {
                 // Best-effort cleanup of newly created unauthorized OAuth user
               }
               pilotRestricted = true;
             }
-            await supabase.auth.signOut();
+            try {
+              await supabase.auth.signOut(cleanedUp ? { scope: "local" } : undefined);
+            } catch {
+              // Ensure redirect still happens if server logout fails for removed user
+            }
           } else {
             success = true;
           }

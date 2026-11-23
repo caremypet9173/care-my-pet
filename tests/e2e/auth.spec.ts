@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("registration rejects email not on pilot whitelist", async ({ page }) => {
+test("registration rejects email not on pilot whitelist and opens pre-filled waitlist modal", async ({ page }) => {
   await page.route("**/rest/v1/rpc/check_pilot_access*", async (route) => {
     await route.fulfill({
       json: { eligible: false, has_account: false, reason: "not_whitelisted" },
@@ -13,6 +13,23 @@ test("registration rejects email not on pilot whitelist", async ({ page }) => {
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Trwa zamknięty pilotaż CareMyPet",
   );
+  await page.getByRole("button", { name: "Zapisz się na listę oczekujących →" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Twój adres e-mail *")).toHaveValue("uninvited@example.com");
+  await dialog.getByRole("button", { name: "Zamknij" }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
+test("pilot_restricted login alert offers accessible waitlist modal", async ({ page }) => {
+  await page.goto("/pl/login?error=pilot_restricted");
+  await page.getByRole("button", { name: "Rozumiem", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Trwa zamknięty pilotaż CareMyPet",
+  );
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Zapisz się na listę oczekujących →" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
 });
 
 test("email registration sends activation link for eligible pilot email", async ({ page }) => {
