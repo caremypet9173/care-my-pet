@@ -494,47 +494,108 @@
   line-height: 1.4;
 }
 
-/* Vendor comparison table */
-.help-table-wrap {
-  width: 100%;
-  overflow-x: auto;
+/* Vendor accordion (Android skins) */
+.help-vendor-accordion {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.help-vendor-item {
   border-radius: var(--radius-card);
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
 }
 
-.help-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-small);
-  min-width: 32rem;
+.help-vendor-item[open] {
+  border-color: var(--color-primary);
 }
 
-.help-table th,
-.help-table td {
-  text-align: left;
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid var(--color-border);
-  vertical-align: top;
-}
-
-.help-table th {
-  background: var(--color-surface-sand);
-  color: var(--color-primary);
+.help-vendor-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.85rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
   font-weight: 700;
+  font-size: var(--text-body);
+  color: var(--color-primary);
+  user-select: none;
+}
+
+.help-vendor-summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-vendor-summary:hover {
+  background: var(--color-surface);
+}
+
+.help-vendor-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.help-vendor-title svg {
+  flex-shrink: 0;
+  color: var(--color-accent-text);
+}
+
+.help-vendor-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.18s ease;
+}
+
+.help-vendor-item[open] .help-vendor-chevron {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+.help-vendor-dl {
+  margin: 0;
+  padding: 0 1.1rem 1.1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (min-width: 48rem) {
+  .help-vendor-dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.help-vendor-row {
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: grid;
+  gap: 0.25rem;
+  align-content: start;
+}
+
+.help-vendor-row dt {
   font-size: var(--text-caption);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  color: var(--color-text-muted);
 }
 
-.help-table tr:last-child td {
-  border-bottom: 0;
-}
-
-.help-table td:first-child {
-  font-weight: 700;
+.help-vendor-row dd {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 600;
   color: var(--color-text);
-  white-space: nowrap;
+  line-height: 1.5;
 }
 
 /* Simple checklist / platform steps without screenshots */

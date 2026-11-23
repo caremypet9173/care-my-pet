@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   IconBrandAndroid,
   IconBrandApple,
+  IconChevronDown,
   IconDeviceDesktop,
+  IconDeviceMobile,
 } from "@tabler/icons-react";
 import type { NotificationsGuideContent } from "./content";
 import { HelpCallout, HelpStepList } from "./help-components";
@@ -196,36 +198,44 @@ export function NotificationsPlatformGuide({
           <HelpStepList steps={content.android.batterySection.steps} />
 
           <div className="help-section-head" style={{ marginTop: "0.75rem" }}>
-            <h3 id="vendor-table-heading">
+            <h3 id="vendor-accordion-heading">
               {content.android.batterySection.vendorTitle}
             </h3>
           </div>
           <div
-            className="help-table-wrap"
+            className="help-vendor-accordion"
             role="region"
-            aria-labelledby="vendor-table-heading"
-            tabIndex={0}
+            aria-labelledby="vendor-accordion-heading"
           >
-            <table className="help-table">
-              <thead>
-                <tr>
-                  {content.android.batterySection.vendorHeaders.map((h) => (
-                    <th key={h} scope="col">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {content.android.batterySection.vendorRows.map((row) => (
-                  <tr key={row[0]}>
-                    <td>{row[0]}</td>
-                    <td>{row[1]}</td>
-                    <td>{row[2]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {content.android.batterySection.vendorRows.map((row, idx) => (
+              <details
+                key={row[0]}
+                className="help-vendor-item"
+                open={idx === 0}
+              >
+                <summary className="help-vendor-summary">
+                  <span className="help-vendor-title">
+                    <IconDeviceMobile size={18} aria-hidden="true" />
+                    <span>{row[0]}</span>
+                  </span>
+                  <IconChevronDown
+                    size={18}
+                    aria-hidden="true"
+                    className="help-vendor-chevron"
+                  />
+                </summary>
+                <dl className="help-vendor-dl">
+                  <div className="help-vendor-row">
+                    <dt>{content.android.batterySection.vendorHeaders[1]}</dt>
+                    <dd>{row[1]}</dd>
+                  </div>
+                  <div className="help-vendor-row">
+                    <dt>{content.android.batterySection.vendorHeaders[2]}</dt>
+                    <dd>{row[2]}</dd>
+                  </div>
+                </dl>
+              </details>
+            ))}
           </div>
         </section>
       </div>
