@@ -1,6 +1,6 @@
 import { Link, redirect } from "@/i18n/navigation";
 import { getLocale } from "next-intl/server";
-import { getCurrentUserClaims } from "@/lib/supabase/server";
+import { getCurrentUser, getCurrentUserClaims } from "@/lib/supabase/server";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LanguageSwitch } from "@/components/layout/language-switch";
 import { PublicFooter } from "@/components/layout/public-footer";
@@ -31,6 +31,12 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   const pl = locale === "pl";
 
   const { activeHousehold, availableHouseholds } = householdContext;
+  if (!activeHousehold) {
+    const { user: verifiedUser, error: verifiedError } = await getCurrentUser();
+    if (!verifiedUser || verifiedError) {
+      return redirect({ href: "/auth/stale-session", locale });
+    }
+  }
 
   return (
     <div className="household-shell">
