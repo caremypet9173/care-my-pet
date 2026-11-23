@@ -18,6 +18,7 @@ import {
   IconDeviceMobile,
   IconDroplet,
   IconFlask,
+  IconHelpCircle,
   IconList,
   IconMailForward,
   IconNotes,
@@ -2368,6 +2369,33 @@ export function HouseholdSchedule({
                 {pushFeedback.text}
               </p>
             )}
+
+            {(() => {
+              const guideHref = pushStatus?.env.isIos
+                ? "/help/notifications#ios"
+                : pushStatus?.env.isAndroid && pushStatus.permission === "denied"
+                  ? "/help/notifications#android-unblock"
+                  : pushStatus?.env.isAndroid && pushStatus.subscribed
+                    ? "/help/notifications#android-battery"
+                    : "/help/notifications";
+              return (
+                <div className="schedule-push-guide-row">
+                  <Link
+                    href={guideHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="schedule-push-guide-link"
+                  >
+                    <IconHelpCircle size={15} aria-hidden="true" />
+                    <span>
+                      {pl
+                        ? "Instrukcja z ekranami krok po kroku (Android / iPhone) →"
+                        : "Step-by-step visual guide (Android / iPhone) →"}
+                    </span>
+                  </Link>
+                </div>
+              );
+            })()}
           </div>
 
           <hr className="schedule-notif-divider" />

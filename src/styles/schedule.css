@@ -81,6 +81,9 @@
 .schedule-push-hint { margin: 0; font-size: .74rem; line-height: 1.45; padding: .5rem .75rem; border-radius: .55rem; }
 .schedule-push-hint.is-info { background: #eef6f1; color: #2b4538; border: 1px solid #cde2d6; }
 .schedule-push-hint.is-warning { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+.schedule-push-guide-row { display: flex; align-items: center; }
+.schedule-push-guide-link { display: inline-flex; align-items: center; gap: .38rem; font-size: .75rem; font-weight: 700; color: var(--color-primary); text-decoration: underline; text-underline-offset: 3px; }
+.schedule-push-guide-link:hover { color: var(--color-primary-hover); }
 .schedule-notif-divider { height: 1px; border: 0; background: #b8d4c5; margin: .25rem 0; width: 100%; }
 .schedule-notifications-panel { display: grid; gap: .9rem; padding: 1.1rem 1.25rem; border-radius: .95rem; border: 1px solid #b8d4c5; background: #f4faf6; }
 .schedule-notifications-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }

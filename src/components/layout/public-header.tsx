@@ -15,7 +15,13 @@ function getLinks(t: Translator) {
   return [
     { href: "/features", label: t("features") },
     { href: "/how-it-works", label: t("howItWorks") },
+    { href: "/help", label: t("help") },
   ];
+}
+
+function isLinkCurrent(pathname: string, href: string) {
+  if (pathname === href) return true;
+  return href === "/help" && pathname.startsWith("/help/");
 }
 
 export function PublicHeader({ signedIn = false }: { signedIn?: boolean }) {
@@ -40,7 +46,7 @@ export function PublicHeader({ signedIn = false }: { signedIn?: boolean }) {
             <Link
               key={link.href}
               href={link.href}
-              aria-current={pathname === link.href ? "page" : undefined}
+              aria-current={isLinkCurrent(pathname, link.href) ? "page" : undefined}
             >
               {link.label}
             </Link>
@@ -88,7 +94,7 @@ export function PublicHeader({ signedIn = false }: { signedIn?: boolean }) {
           <Link
             key={link.href}
             href={link.href}
-            aria-current={pathname === link.href ? "page" : undefined}
+            aria-current={isLinkCurrent(pathname, link.href) ? "page" : undefined}
             onClick={() => setOpen(false)}
           >
             {link.label}

@@ -12,6 +12,7 @@ export function PublicFooter({ signedIn = false }: { signedIn?: boolean }) {
         <div className="footer-top">
           <BrandLogo href={signedIn ? "/app" : "/"} />
           <nav aria-label={t("footerNavigation")}>
+            <Link href="/help">{t("help")}</Link>
             <Link href="/privacy">{t("privacy")}</Link>
             <Link href="/privacy#cookies">{t("cookieNoticeDetails")}</Link>
             <Link href="/terms">{t("terms")}</Link>

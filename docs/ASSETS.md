@@ -12,6 +12,7 @@ Import oryginalnych obrazów z eksportu tego ekranu: 2026-10-01.
 | `public/brand/mark.png` | Ikona Forest 192 px z `assets/brand/icon/pictorial/forest` |
 | `public/brand/favicon.png` | Ikona Forest 32 px z tego samego katalogu |
 | `public/brand/apple-touch-icon.png` | Ikona Forest 180 px z tego samego katalogu |
+| `public/media/guides/*.webp` | Zrzuty ekranu do poradników Centrum pomocy (`/help/*`): zanonimizowane i wykadrowane ekrany ustawień Androida (autor projektu) oraz widoki aplikacji Care My Pet wygenerowane Playwrightem na fikcyjnych danych demonstracyjnych |
 
 Pochodzenie zdjęć z projektu Stitch potwierdzone; niezależna licencja fotografii
 nie była dołączona do eksportu. Przed publikacją należy potwierdzić prawo do użycia.
