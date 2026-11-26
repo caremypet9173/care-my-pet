@@ -1,4 +1,9 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
+import {
+  buildPilotWelcomeEmailContent,
+  normalizePilotWelcomeEmails,
+  resolveAppOrigin,
+} from "../_shared/pilot-welcome.mjs";
 import { escapeHtml } from "../_shared/recovery-crypto.mjs";
 import { renderEmailCard } from "../_shared/recovery-email.ts";
 import {
@@ -896,6 +901,187 @@ Deno.serve(async (req) => {
       notified_count: entries.length,
       total_pending: totalPending ?? entries.length,
     });
+  }
+
+  if (action === "pilot_welcome") {
+    const cronAuthorized = await isAuthorizedCronRequest(req, adminClient);
+    if (!cronAuthorized) {
+      return reply({ error: "unauthorized" }, 401);
+    }
+
+    const dryRun = body.dry_run === true;
+    const force = body.force === true;
+    const locale = body.locale === "en" ? "en" : "pl";
+    const rawEmails = body.emails !== undefined ? body.emails : body.email;
+    const { valid, invalid, truncated } = normalizePilotWelcomeEmails(rawEmails);
+
+    if (valid.length === 0) {
+      return reply(
+        {
+          error: "no_valid_emails",
+          invalid,
+        },
+        400,
+      );
+    }
+
+    const { data: whitelistRows, error: wlErr } = await adminClient
+      .from("pilot_whitelist")
+      .select("email, welcome_sent_at")
+      .in("email", valid);
+
+    if (wlErr) {
+      console.error("[PilotWelcome] Failed to load pilot_whitelist:", wlErr);
+      return reply({ error: "database_error", detail: wlErr.message }, 500);
+    }
+
+    const whitelistMap = new Map<
+      string,
+      { email: string; welcome_sent_at: string | null }
+    >();
+    for (const row of whitelistRows ?? []) {
+      const normalized = String(row.email).trim().toLowerCase();
+      whitelistMap.set(normalized, {
+        email: String(row.email),
+        welcome_sent_at: row.welcome_sent_at ? String(row.welcome_sent_at) : null,
+      });
+    }
+
+    const skipped: Array<{
+      email: string;
+      reason: "invalid_email" | "not_whitelisted" | "already_sent";
+      welcome_sent_at?: string;
+    }> = [];
+    const targets: string[] = [];
+
+    for (const bad of invalid) {
+      skipped.push({ email: bad, reason: "invalid_email" });
+    }
+
+    for (const email of valid) {
+      const entry = whitelistMap.get(email);
+      if (!entry) {
+        skipped.push({ email, reason: "not_whitelisted" });
+        continue;
+      }
+      if (entry.welcome_sent_at && !force) {
+        skipped.push({
+          email,
+          reason: "already_sent",
+          welcome_sent_at: entry.welcome_sent_at,
+        });
+        continue;
+      }
+      targets.push(email);
+    }
+
+    const appOrigin = resolveAppOrigin(
+      Deno.env.get("SITE_URL"),
+      Deno.env.get("APP_URL"),
+    );
+    const preview = buildPilotWelcomeEmailContent({
+      email: targets[0] ?? valid[0],
+      locale,
+      appOrigin,
+    });
+
+    if (dryRun) {
+      return reply({
+        ok: true,
+        dry_run: true,
+        locale,
+        register_url: preview.registerUrl,
+        subject: preview.subject,
+        would_send: targets,
+        skipped,
+        truncated,
+      });
+    }
+
+    if (targets.length === 0) {
+      return reply({
+        ok: true,
+        dry_run: false,
+        locale,
+        register_url: preview.registerUrl,
+        subject: preview.subject,
+        sent: [],
+        skipped,
+        failed: [],
+        truncated,
+      });
+    }
+
+    let transporter: SmtpTransporter | null = null;
+    let from = "";
+    try {
+      const smtp = await createSmtpTransporter({ pooled: targets.length > 1 });
+      transporter = smtp.transporter;
+      from = smtp.from;
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "smtp_not_configured";
+      return reply({ error: "smtp_not_configured", detail }, 500);
+    }
+
+    const sent: string[] = [];
+    const failed: Array<{ email: string; error: string }> = [];
+
+    try {
+      for (const email of targets) {
+        const content = buildPilotWelcomeEmailContent({
+          email,
+          locale,
+          appOrigin,
+        });
+        const html = renderEmailCard(content.card);
+        try {
+          await transporter.sendMail({
+            from,
+            to: email,
+            subject: content.subject,
+            html,
+          });
+          sent.push(email);
+        } catch (err) {
+          failed.push({
+            email,
+            error: err instanceof Error ? err.message : "smtp_send_failed",
+          });
+        }
+      }
+    } finally {
+      transporter?.close?.();
+    }
+
+    let warning: string | undefined;
+    if (sent.length > 0) {
+      const dbEmails = sent.map((e) => whitelistMap.get(e)?.email ?? e);
+      const { error: markErr } = await adminClient
+        .from("pilot_whitelist")
+        .update({ welcome_sent_at: new Date().toISOString() })
+        .in("email", dbEmails);
+      if (markErr) {
+        console.error("[PilotWelcome] Failed to mark welcome_sent_at:", markErr);
+        warning = "mark_welcome_sent_failed";
+      }
+    }
+
+    const status = sent.length === 0 && failed.length > 0 ? 500 : 200;
+    return reply(
+      {
+        ok: failed.length === 0,
+        dry_run: false,
+        locale,
+        register_url: preview.registerUrl,
+        subject: preview.subject,
+        sent,
+        skipped,
+        failed,
+        truncated,
+        ...(warning ? { warning } : {}),
+      },
+      status,
+    );
   }
 
   if (action !== "cron_dispatch") {
